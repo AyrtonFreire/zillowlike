@@ -237,7 +237,6 @@ export default function HeroSection() {
       }
 
       params.set('purpose', purpose);
-
       router.push(`/?${params.toString()}`);
     }
   };
@@ -247,7 +246,7 @@ export default function HeroSection() {
 
     if (suggestion.kind === 'agency') {
       if (suggestion.publicSlug) {
-        router.push(`/imobiliaria/${suggestion.publicSlug}`);
+        router.push(`/agencia/${suggestion.publicSlug}`);
         return;
       }
 

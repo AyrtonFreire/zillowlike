@@ -884,6 +884,7 @@ export class RealtorAssistantService {
     context?: AssistantContext | null;
     teamId?: string | null;
     leadId?: string | null;
+    clientId?: string | null;
     type: any;
     priority: "LOW" | "MEDIUM" | "HIGH";
     title: string;
@@ -937,6 +938,7 @@ export class RealtorAssistantService {
           ownerId: params.ownerId,
           ...(context === "AGENCY" && teamId ? { teamId } : {}),
           leadId: params.leadId ?? null,
+          clientId: params.clientId ?? null,
           type: params.type,
           priority: params.priority,
           status: "ACTIVE",
@@ -975,6 +977,7 @@ export class RealtorAssistantService {
       where: { id: existing.id },
       data: {
         leadId: params.leadId ?? null,
+        clientId: params.clientId ?? null,
         ...(context === "AGENCY" ? { teamId } : { teamId: null }),
         type: params.type,
         priority: params.priority,

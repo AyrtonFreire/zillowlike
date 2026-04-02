@@ -45,11 +45,120 @@ type AgencyProfile = {
   phone: string | null;
   cnpj: string;
   teamId: string;
+  publicSlug: string | null;
+  publicProfileEnabled: boolean;
+  publicProfilePath: string | null;
+  publicHeadline: string | null;
+  publicBio: string | null;
+  publicCity: string | null;
+  publicState: string | null;
+  publicServiceAreas: string[];
+  publicWhatsApp: string | null;
+  publicInstagram: string | null;
+  website: string | null;
+  specialties: string[];
+  yearsInBusiness: number | null;
+  primaryAgentUserId: string | null;
+  playbookBuy: string | null;
+  playbookRent: string | null;
+  playbookList: string | null;
+  routing: {
+    buyRealtorId: string | null;
+    rentRealtorId: string | null;
+    listRealtorId: string | null;
+  };
+  verifiedPhoneVisible: boolean;
+  completion: {
+    score: number;
+    checklist: Array<{ key: string; label: string; done: boolean }>;
+  } | null;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    image: string | null;
+    headline: string | null;
+    publicSlug: string | null;
+    publicWhatsApp: string | null;
+    phone: string | null;
+    phoneVerified: boolean;
+  }>;
   team?: {
     id: string;
     name: string;
   };
 };
+
+type AgencyProfileFormState = {
+  name: string;
+  phone: string;
+  publicHeadline: string;
+  publicBio: string;
+  publicCity: string;
+  publicState: string;
+  publicServiceAreas: string;
+  publicWhatsApp: string;
+  publicInstagram: string;
+  website: string;
+  specialties: string;
+  yearsInBusiness: string;
+  primaryAgentUserId: string;
+  buyRealtorId: string;
+  rentRealtorId: string;
+  listRealtorId: string;
+  playbookBuy: string;
+  playbookRent: string;
+  playbookList: string;
+};
+
+const EMPTY_PROFILE_FORM: AgencyProfileFormState = {
+  name: "",
+  phone: "",
+  publicHeadline: "",
+  publicBio: "",
+  publicCity: "",
+  publicState: "",
+  publicServiceAreas: "",
+  publicWhatsApp: "",
+  publicInstagram: "",
+  website: "",
+  specialties: "",
+  yearsInBusiness: "",
+  primaryAgentUserId: "",
+  buyRealtorId: "",
+  rentRealtorId: "",
+  listRealtorId: "",
+  playbookBuy: "",
+  playbookRent: "",
+  playbookList: "",
+};
+
+function buildAgencyProfileFormState(profile: AgencyProfile | null | undefined): AgencyProfileFormState {
+  if (!profile) return { ...EMPTY_PROFILE_FORM };
+  return {
+    name: String(profile.name || ""),
+    phone: String(profile.phone || ""),
+    publicHeadline: String(profile.publicHeadline || ""),
+    publicBio: String(profile.publicBio || ""),
+    publicCity: String(profile.publicCity || ""),
+    publicState: String(profile.publicState || ""),
+    publicServiceAreas: Array.isArray(profile.publicServiceAreas) ? profile.publicServiceAreas.join(", ") : "",
+    publicWhatsApp: String(profile.publicWhatsApp || ""),
+    publicInstagram: String(profile.publicInstagram || ""),
+    website: String(profile.website || ""),
+    specialties: Array.isArray(profile.specialties) ? profile.specialties.join(", ") : "",
+    yearsInBusiness:
+      typeof profile.yearsInBusiness === "number" && Number.isFinite(profile.yearsInBusiness)
+        ? String(profile.yearsInBusiness)
+        : "",
+    primaryAgentUserId: String(profile.primaryAgentUserId || ""),
+    buyRealtorId: String(profile.routing?.buyRealtorId || ""),
+    rentRealtorId: String(profile.routing?.rentRealtorId || ""),
+    listRealtorId: String(profile.routing?.listRealtorId || ""),
+    playbookBuy: String(profile.playbookBuy || ""),
+    playbookRent: String(profile.playbookRent || ""),
+    playbookList: String(profile.playbookList || ""),
+  };
+}
 
 type TeamLeadDistributionMode = "ROUND_ROBIN" | "CAPTURER_FIRST" | "MANUAL";
 
@@ -99,16 +208,16 @@ type AgencyInsights = {
   }>;
 };
 
- function InlineSpinner({ message }: { message: string }) {
-   return (
-     <div className="py-16 flex items-center justify-center">
-       <div className="text-center">
-         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-         <p className="text-gray-600 text-sm">{message}</p>
-       </div>
-     </div>
-   );
- }
+function InlineSpinner({ message }: { message: string }) {
+  return (
+    <div className="py-16 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-600 text-sm">{message}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function AgencyTeamPage() {
   const { data: session, status } = useSession();
@@ -134,8 +243,7 @@ export default function AgencyTeamPage() {
   const [ownerTransferBusy, setOwnerTransferBusy] = useState(false);
   const [newOwnerId, setNewOwnerId] = useState("");
 
-  const [profileName, setProfileName] = useState("");
-  const [profilePhone, setProfilePhone] = useState("");
+  const [profileForm, setProfileForm] = useState<AgencyProfileFormState>({ ...EMPTY_PROFILE_FORM });
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [leadDistributionMode, setLeadDistributionMode] = useState<TeamLeadDistributionMode>("ROUND_ROBIN");
@@ -195,6 +303,27 @@ export default function AgencyTeamPage() {
     }>
   >([]);
 
+  const routingOptions = useMemo(() => {
+    const fromQueue = queueMembers.map((member) => ({
+      userId: String(member.userId),
+      name: member.name ? String(member.name) : "Corretor",
+      role: String(member.role || "AGENT"),
+    }));
+    const fromProfile = Array.isArray(agencyProfile?.teamMembers)
+      ? agencyProfile.teamMembers.map((member) => ({
+          userId: String(member.id),
+          name: String(member.name || "Corretor"),
+          role: "AGENT",
+        }))
+      : [];
+    const seen = new Set<string>();
+    return [...fromQueue, ...fromProfile].filter((member) => {
+      if (!member.userId || seen.has(member.userId)) return false;
+      seen.add(member.userId);
+      return true;
+    });
+  }, [agencyProfile?.teamMembers, queueMembers]);
+
   useEffect(() => {
     if (status !== "authenticated") return;
     if (role !== "AGENCY" && role !== "ADMIN") {
@@ -217,8 +346,7 @@ export default function AgencyTeamPage() {
         const profileJson = await profileRes.json().catch(() => null);
         if (profileRes.ok && profileJson?.success && profileJson?.agencyProfile) {
           setAgencyProfile(profileJson.agencyProfile);
-          setProfileName(String(profileJson.agencyProfile.name || ""));
-          setProfilePhone(String(profileJson.agencyProfile.phone || ""));
+          setProfileForm(buildAgencyProfileFormState(profileJson.agencyProfile));
         }
 
         if (selected?.id) {
@@ -479,12 +607,37 @@ export default function AgencyTeamPage() {
       setSavingProfile(true);
       setError(null);
 
+      const yearsInBusinessRaw = profileForm.yearsInBusiness.trim();
+      const yearsInBusiness = yearsInBusinessRaw ? Number(yearsInBusinessRaw) : null;
+      if (yearsInBusinessRaw && (!Number.isInteger(yearsInBusiness) || Number(yearsInBusiness) < 0)) {
+        throw new Error("Informe os anos de atuação com um número inteiro válido.");
+      }
+
       const res = await fetch("/api/agency/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: profileName.trim(),
-          phone: profilePhone.trim() ? profilePhone.trim() : null,
+          name: profileForm.name.trim(),
+          phone: profileForm.phone.trim() ? profileForm.phone.trim() : null,
+          publicHeadline: profileForm.publicHeadline.trim() ? profileForm.publicHeadline.trim() : null,
+          publicBio: profileForm.publicBio.trim() ? profileForm.publicBio.trim() : null,
+          publicCity: profileForm.publicCity.trim() ? profileForm.publicCity.trim() : null,
+          publicState: profileForm.publicState.trim() ? profileForm.publicState.trim().toUpperCase() : null,
+          publicServiceAreas: profileForm.publicServiceAreas,
+          publicWhatsApp: profileForm.publicWhatsApp.trim() ? profileForm.publicWhatsApp.trim() : null,
+          publicInstagram: profileForm.publicInstagram.trim() ? profileForm.publicInstagram.trim() : null,
+          website: profileForm.website.trim() ? profileForm.website.trim() : null,
+          specialties: profileForm.specialties,
+          yearsInBusiness,
+          primaryAgentUserId: profileForm.primaryAgentUserId || null,
+          playbookBuy: profileForm.playbookBuy.trim() ? profileForm.playbookBuy.trim() : null,
+          playbookRent: profileForm.playbookRent.trim() ? profileForm.playbookRent.trim() : null,
+          playbookList: profileForm.playbookList.trim() ? profileForm.playbookList.trim() : null,
+          routing: {
+            buyRealtorId: profileForm.buyRealtorId || null,
+            rentRealtorId: profileForm.rentRealtorId || null,
+            listRealtorId: profileForm.listRealtorId || null,
+          },
         }),
       });
 
@@ -495,6 +648,7 @@ export default function AgencyTeamPage() {
 
       const updated: AgencyProfile = data.agencyProfile;
       setAgencyProfile((prev) => (prev ? { ...prev, ...updated } : updated));
+      setProfileForm(buildAgencyProfileFormState(updated));
       if (team && updated?.teamId === team.id && updated?.name) {
         setTeam({ ...team, name: updated.name });
       }
@@ -1014,26 +1168,267 @@ export default function AgencyTeamPage() {
               <div id="advanced" className="space-y-6">
                 <StatCard title="Perfil da agência">
                   <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
+                        <input
+                          value={profileForm.name}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, name: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone</label>
+                        <input
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Headline pública</label>
                       <input
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
+                        value={profileForm.publicHeadline}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, publicHeadline: e.target.value }))}
+                        maxLength={120}
+                        placeholder="Ex.: Imobiliária especializada em compra, locação e captação"
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone</label>
-                      <input
-                        value={profilePhone}
-                        onChange={(e) => setProfilePhone(e.target.value)}
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Bio institucional</label>
+                      <textarea
+                        value={profileForm.publicBio}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, publicBio: e.target.value }))}
+                        rows={4}
+                        maxLength={500}
+                        placeholder="Conte em poucas linhas como sua imobiliária atende clientes e regiões."
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                       />
                     </div>
 
-                    <div className="text-[11px] text-gray-500">
-                      CNPJ: <span className="font-medium text-gray-700">{agencyProfile?.cnpj || "-"}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Cidade</label>
+                        <input
+                          value={profileForm.publicCity}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, publicCity: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">UF</label>
+                        <input
+                          value={profileForm.publicState}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, publicState: e.target.value.toUpperCase() }))}
+                          maxLength={2}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Anos de atuação</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={250}
+                          value={profileForm.yearsInBusiness}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, yearsInBusiness: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Áreas atendidas</label>
+                      <input
+                        value={profileForm.publicServiceAreas}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, publicServiceAreas: e.target.value }))}
+                        placeholder="Ex.: Centro, Zona Sul, Petrolina"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">WhatsApp público</label>
+                        <input
+                          value={profileForm.publicWhatsApp}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, publicWhatsApp: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Instagram</label>
+                        <input
+                          value={profileForm.publicInstagram}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, publicInstagram: e.target.value }))}
+                          placeholder="seuinstagram"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Site</label>
+                        <input
+                          value={profileForm.website}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, website: e.target.value }))}
+                          placeholder="https://sua-imobiliaria.com.br"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Especialidades</label>
+                        <input
+                          value={profileForm.specialties}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, specialties: e.target.value }))}
+                          placeholder="Ex.: alto padrão, locação, lançamentos"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 space-y-4">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">Operação pública</div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          Configure quem recebe cada intenção e quais mensagens base apoiam os CTAs institucionais.
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Corretor principal</label>
+                          <select
+                            value={profileForm.primaryAgentUserId}
+                            onChange={(e) => setProfileForm((prev) => ({ ...prev, primaryAgentUserId: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          >
+                            <option value="">Não definido</option>
+                            {routingOptions.map((member) => (
+                              <option key={`primary-${member.userId}`} value={member.userId}>
+                                {member.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Roteamento compra</label>
+                          <select
+                            value={profileForm.buyRealtorId}
+                            onChange={(e) => setProfileForm((prev) => ({ ...prev, buyRealtorId: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          >
+                            <option value="">Usar corretor principal</option>
+                            {routingOptions.map((member) => (
+                              <option key={`buy-${member.userId}`} value={member.userId}>
+                                {member.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Roteamento locação</label>
+                          <select
+                            value={profileForm.rentRealtorId}
+                            onChange={(e) => setProfileForm((prev) => ({ ...prev, rentRealtorId: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          >
+                            <option value="">Usar corretor principal</option>
+                            {routingOptions.map((member) => (
+                              <option key={`rent-${member.userId}`} value={member.userId}>
+                                {member.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Roteamento anunciar</label>
+                          <select
+                            value={profileForm.listRealtorId}
+                            onChange={(e) => setProfileForm((prev) => ({ ...prev, listRealtorId: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          >
+                            <option value="">Usar corretor principal</option>
+                            {routingOptions.map((member) => (
+                              <option key={`list-${member.userId}`} value={member.userId}>
+                                {member.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Playbook compra</label>
+                          <textarea
+                            value={profileForm.playbookBuy}
+                            onChange={(e) => setProfileForm((prev) => ({ ...prev, playbookBuy: e.target.value }))}
+                            rows={5}
+                            maxLength={500}
+                            placeholder="Mensagem-base para quem quer comprar."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Playbook locação</label>
+                          <textarea
+                            value={profileForm.playbookRent}
+                            onChange={(e) => setProfileForm((prev) => ({ ...prev, playbookRent: e.target.value }))}
+                            rows={5}
+                            maxLength={500}
+                            placeholder="Mensagem-base para quem quer alugar."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Playbook anunciar</label>
+                          <textarea
+                            value={profileForm.playbookList}
+                            onChange={(e) => setProfileForm((prev) => ({ ...prev, playbookList: e.target.value }))}
+                            rows={5}
+                            maxLength={500}
+                            placeholder="Mensagem-base para quem quer anunciar."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
+                      <span>
+                        CNPJ: <span className="font-medium text-gray-700">{agencyProfile?.cnpj || "-"}</span>
+                      </span>
+                      <span>
+                        Perfil público: <span className="font-medium text-gray-700">{agencyProfile?.publicSlug || "pendente"}</span>
+                      </span>
+                      {agencyProfile?.completion ? (
+                        <span>
+                          Completo: <span className="font-medium text-gray-700">{agencyProfile.completion.score}%</span>
+                        </span>
+                      ) : null}
+                      {agencyProfile?.publicProfilePath ? (
+                        <Link href={agencyProfile.publicProfilePath} className="font-semibold text-blue-600 hover:text-blue-700">
+                          Ver página pública
+                        </Link>
+                      ) : null}
                     </div>
 
                     <div className="flex items-center gap-2">

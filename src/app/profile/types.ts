@@ -1,3 +1,5 @@
+import { getPublicProfilePathByRole } from "@/lib/public-profile";
+
 export type ProfileStats = {
   properties: number;
   favorites: number;
@@ -76,13 +78,7 @@ export function isOwnerLike(role?: string | null) {
 
 export function getPublicProfilePath(profile?: Pick<UserProfile, "role" | "publicSlug" | "publicProfileEnabled"> | null) {
   if (!profile?.publicSlug) return null;
-  if (isRealtorOrAgency(profile.role)) {
-    return `/realtor/${profile.publicSlug}`;
-  }
-  if (isOwnerLike(profile.role) && profile.publicProfileEnabled) {
-    return `/owner/${profile.publicSlug}`;
-  }
-  return null;
+  return getPublicProfilePathByRole(profile);
 }
 
 export function formatRoleLabel(role?: string | null) {

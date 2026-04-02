@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { track } from "@/lib/analytics";
 import { cloudinaryUrl, cloudinarySrcSetW } from "@/lib/cloudinary";
+import { getPublicProfilePathByRole } from "@/lib/public-profile";
 import { buildPropertyPath } from "@/lib/slug";
 
 interface PropertyCardPremiumProps {
@@ -84,6 +85,15 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const d = property.createdAt instanceof Date ? property.createdAt : new Date(property.createdAt);
     return Number.isNaN(d.getTime()) ? null : d;
   }, [property.createdAt]);
+  const ownerPublicProfilePath = useMemo(
+    () =>
+      getPublicProfilePathByRole({
+        role: property.owner?.role || null,
+        publicSlug: property.owner?.publicSlug || null,
+        publicProfileEnabled: true,
+      }),
+    [property.owner?.publicSlug, property.owner?.role]
+  );
 
   const intelligentBadges = useMemo(() => {
     const badges: Array<{
@@ -756,9 +766,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           <div className="mt-auto pt-2 border-t border-gray-200/60 min-h-[36px] flex items-center">
             {property.owner?.name ? (
               <div className="flex items-center justify-between gap-3 w-full">
-                {property.owner?.publicSlug ? (
+                {ownerPublicProfilePath ? (
                   <Link
-                    href={`/realtor/${property.owner.publicSlug}`}
+                    href={ownerPublicProfilePath}
                     onClick={(e) => e.stopPropagation()}
                     className="group/realtor flex items-center gap-3 min-w-0 flex-1"
                     aria-label={`Ver perfil de ${property.owner.name}`}

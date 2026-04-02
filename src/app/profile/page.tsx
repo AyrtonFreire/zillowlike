@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { getPublicProfilePathByRole } from "@/lib/public-profile";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import {
   User,
   Mail,
@@ -242,6 +245,11 @@ function LegacyProfilePage() {
   }
 
   const isRealtorOrAgency = profile.role === "REALTOR" || profile.role === "AGENCY";
+  const professionalPublicPath = getPublicProfilePathByRole({
+    role: profile.role,
+    publicSlug: profile.publicSlug || null,
+    publicProfileEnabled: profile.publicProfileEnabled,
+  });
 
   return (
     <DashboardLayout
@@ -631,16 +639,16 @@ function LegacyProfilePage() {
                         Corretores e imobiliárias têm sempre uma página pública ativa. Basta compartilhar o link abaixo com seus
                         clientes.
                       </p>
-                      {profile.publicSlug && (
+                      {professionalPublicPath && (
                         <p className="text-xs text-blue-600 mt-2">
                           Seu link público:
                           {" "}
                           <Link
-                            href={`/realtor/${profile.publicSlug}`}
+                            href={professionalPublicPath}
                             className="underline break-all"
                             target="_blank"
                           >
-                            {`/realtor/${profile.publicSlug}`}
+                            {professionalPublicPath}
                           </Link>
                         </p>
                       )}

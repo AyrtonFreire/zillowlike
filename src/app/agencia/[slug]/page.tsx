@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!data) {
     return {
-      title: "Profissional não encontrado | OggaHub",
+      title: "Imobiliária não encontrada | OggaHub",
       description: "O perfil solicitado não está disponível.",
     };
   }
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function RealtorPublicProfilePage({ params }: PageProps) {
+export default async function AgencyPublicProfilePage({ params }: PageProps) {
   const { slug } = await params;
-  return <PublicProfessionalPageContent slug={slug} routeKind="realtor" />;
+  return <PublicProfessionalPageContent slug={slug} routeKind="agency" />;
 }

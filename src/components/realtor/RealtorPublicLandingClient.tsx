@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { ModernNavbar } from "@/components/modern";
 import { buildPropertyPath } from "@/lib/slug";
 import { track } from "@/lib/analytics";
+import AgencyPublicProfileSections from "@/components/realtor/AgencyPublicProfileSections";
 import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
 import SeloAtividade from "@/components/realtor/SeloAtividade";
 import RatingStars from "@/components/queue/RatingStars";
@@ -98,6 +99,7 @@ type RealtorPublicLandingClientProps = {
     id: string;
     name: string;
     role: "REALTOR" | "AGENCY";
+    publicSlug: string | null;
     image: string | null;
     publicHeadline: string | null;
     publicBio: string | null;
@@ -130,6 +132,39 @@ type RealtorPublicLandingClientProps = {
     authorName: string | null;
     authorImage: string | null;
   }>;
+  agencyProfile?: {
+    website: string | null;
+    specialties: string[];
+    yearsInBusiness: number | null;
+    serviceAreas: string[];
+    completion: {
+      score: number;
+      checklist: Array<{ key: string; label: string; done: boolean }>;
+    };
+    teamMembers: Array<{
+      id: string;
+      name: string;
+      image: string | null;
+      headline: string | null;
+      publicSlug: string | null;
+      whatsappHref: string | null;
+    }>;
+    ctaCards: Array<{
+      key: string;
+      intent: "BUY" | "RENT" | "LIST";
+      title: string;
+      description: string;
+      actionLabel: string;
+      href: string | null;
+      contactName: string | null;
+      helper: string | null;
+    }>;
+    operationMetrics: Array<{
+      label: string;
+      value: string;
+      helper: string;
+    }>;
+  } | null;
 };
 
 const DEFAULT_PAGE_SIZE = 36;
@@ -248,6 +283,7 @@ export default function RealtorPublicLandingClient({
   realtor,
   properties,
   initialRatingsPreview,
+  agencyProfile,
 }: RealtorPublicLandingClientProps) {
   void siteUrl;
   const { data: session } = useSession();
@@ -1013,6 +1049,21 @@ export default function RealtorPublicLandingClient({
                 </div>
               </div>
             </section>
+
+            {realtor.role === "AGENCY" && agencyProfile ? (
+              <AgencyPublicProfileSections
+                agencySlug={realtor.publicSlug}
+                agencyName={realtor.name}
+                website={agencyProfile.website}
+                specialties={agencyProfile.specialties}
+                yearsInBusiness={agencyProfile.yearsInBusiness}
+                serviceAreas={agencyProfile.serviceAreas}
+                completion={agencyProfile.completion}
+                teamMembers={agencyProfile.teamMembers}
+                ctaCards={agencyProfile.ctaCards}
+                operationMetrics={agencyProfile.operationMetrics}
+              />
+            ) : null}
 
             <section className="mt-6 px-4 sm:px-6 lg:px-10">
               <div className="flex items-start gap-4 overflow-x-auto pb-2">

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { getPublicProfilePathByRole } from "@/lib/public-profile";
 import { useToast } from "@/contexts/ToastContext";
 import RatingStars from "@/components/queue/RatingStars";
 
@@ -87,6 +88,15 @@ export default function PropertyContactCard({
   const hasPublicProfile =
     (isRealtorOrAgency && !!ownerPublicSlug) ||
     (!isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug);
+  const publicProfileHref = useMemo(
+    () =>
+      getPublicProfilePathByRole({
+        role: ownerRole,
+        publicSlug: ownerPublicSlug || null,
+        publicProfileEnabled: ownerPublicProfileEnabled,
+      }),
+    [ownerPublicProfileEnabled, ownerPublicSlug, ownerRole]
+  );
 
   useEffect(() => {
     const slug = String(ownerPublicSlug || "").trim();
@@ -256,9 +266,9 @@ export default function PropertyContactCard({
       {isRealtorOrAgency && ownerName && (
         <div className="p-6 border-b border-gray-200 bg-gradient-to-b from-gray-50 to-white">
           <div className="flex items-start justify-between gap-3">
-            {hasPublicProfile ? (
+            {hasPublicProfile && publicProfileHref ? (
               <Link
-                href={`/realtor/${ownerPublicSlug}`}
+                href={publicProfileHref}
                 onClick={(e) => {
                   if (disableActions) e.preventDefault();
                 }}
@@ -309,9 +319,9 @@ export default function PropertyContactCard({
               </div>
             )}
 
-            {hasPublicProfile && (
+            {hasPublicProfile && publicProfileHref && (
               <Link
-                href={`/realtor/${ownerPublicSlug}`}
+                href={publicProfileHref}
                 onClick={(e) => {
                   if (disableActions) e.preventDefault();
                 }}
@@ -343,9 +353,9 @@ export default function PropertyContactCard({
                 )}
 
                 {publicStats.activeListings > 0 && (
-                  hasPublicProfile ? (
+                  hasPublicProfile && publicProfileHref ? (
                     <Link
-                      href={`/realtor/${ownerPublicSlug}#anuncios`}
+                      href={`${publicProfileHref}#anuncios`}
                       onClick={(e) => {
                         if (disableActions) e.preventDefault();
                       }}
