@@ -76,7 +76,7 @@ export default function FinancingModal({ amountCents }: { amountCents: number })
             </div>
             <div className="p-4 border-t flex items-center justify-end gap-2">
               <button className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={()=> setOpen(false)}>Fechar</button>
-              <Link href="/financing" className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">Ver bancos</Link>
+              <Link href="/calculadora" className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">Ver bancos</Link>
             </div>
           </div>
         </div>

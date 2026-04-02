@@ -474,20 +474,10 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                           Serviços
                         </div>
-                        <div className="space-y-1">
-                          <Link
-                            href="/financing"
-                            onClick={() => setIsLeftMenuOpen(false)}
-                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                          >
-                            <span className="flex items-center gap-3">
-                              <Building2 className="w-4 h-4 text-brand-teal" />
-                              <span>Financiamento imobiliário</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                        </div>
+                        <div className="space-y-1" />
                       </div>
+
+                      <div className="border-t border-gray-200" />
                     </div>
                   )}
                 </div>

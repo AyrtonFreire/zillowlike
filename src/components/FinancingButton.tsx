@@ -26,7 +26,7 @@ export default function FinancingButton({
 
   return (
     <Link 
-      href={`/financing/${propertyId}`}
+      href="/calculadora"
       className={`inline-flex items-center gap-2 px-4 py-3 glass-teal text-white rounded-lg font-semibold transition-colors shadow-sm hover:shadow-md ${className}`}
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

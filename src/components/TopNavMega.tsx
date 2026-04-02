@@ -126,9 +126,6 @@ export default function TopNavMega() {
             >
               Vender
             </button>
-            <Link href="/financing" className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all">
-              Financiar
-            </Link>
           </nav>
 
           {/* Logo */}
@@ -271,7 +268,6 @@ export default function TopNavMega() {
                     }>
                       <Item href="/explore/buy?sort=recent">Novos imóveis</Item>
                       <Item href="/explore/buy?sort=price_asc">Menor preço</Item>
-                      <Item href="/financing">Financiamento</Item>
                       <Item href="/guia/compra">Guia do comprador</Item>
                     </Section>
                     <Divider />

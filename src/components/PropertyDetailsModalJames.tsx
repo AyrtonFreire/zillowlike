@@ -1880,7 +1880,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                               <p className="text-2xl font-bold text-teal">{fmt(calculation.monthlyPayment)}<span className="text-sm text-gray-600 font-normal">/mês</span></p>
                             </div>
                             {!isPreview && (
-                              <a href={`/financing/${property.id}`} target="_blank" rel="noopener noreferrer" className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity">Ver opções de bancos →</a>
+                              <a href="/calculadora" target="_blank" rel="noopener noreferrer" className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity">Ver opções de bancos →</a>
                             )}
                             <p className="text-xs text-gray-500 text-center">*Simulação aproximada. Consulte seu banco.</p>
                           </div>

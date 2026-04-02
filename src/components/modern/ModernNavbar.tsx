@@ -309,9 +309,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     { label: "Guia do comprador", href: "/guia/compra" },
     { label: "Guia do inquilino", href: "/guia/locacao" },
     { label: "Guia do vendedor", href: "/guia/venda" },
-    { label: "Financiamento imobiliário", href: "/financing" },
     { label: "Como anunciar", href: "/como-anunciar" },
-    { label: "Calculadora de financiamento", href: "/calculadora" },
   ];
 
   const simpleDropdownRightClass =
