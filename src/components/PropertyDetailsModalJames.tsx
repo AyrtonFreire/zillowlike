@@ -1413,22 +1413,24 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           )}
 
           {/* Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0">
+          <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0 ${isPublicLike && !isPreview ? "pb-28 md:pb-0" : ""}`}>
             {/* Main Content */}
-            <div className="lg:col-span-2 divide-y divide-gray-200">
-              <div className="pt-0 pb-8">
-                {/* Price */}
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
-                    {typeof property.price === "number" && property.price > 0
-                      ? new Intl.NumberFormat("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        }).format(property.price / 100)
-                      : "Sob consulta"}
-                  </h2>
+            <div className="lg:col-span-2 space-y-6">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm divide-y divide-gray-200">
+                <div className="pt-0 pb-8">
+                  {/* Price */}
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
+                      {typeof property.price === "number" && property.price > 0
+                        ? new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }).format(property.price / 100)
+                        : "Sob consulta"}
+                    </h2>
+                  </div>
                 </div>
 
                 {/* Title */}
@@ -1474,6 +1476,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                       propertyTitle={property.title}
                       propertyPurpose={property.purpose}
                       disableActions={isPreview}
+                      variant="compact"
                       ownerRole={property.owner?.role || "USER"}
                       ownerName={property.owner?.name || undefined}
                       ownerImage={property.owner?.image || undefined}
@@ -1942,6 +1945,22 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           </div>
           
           {/* Seções Nearby/Similar já estão acima, após Google Maps */}
+          {isPublicLike && !isPreview ? (
+            <PropertyContactCard
+              propertyId={property.id}
+              propertyTitle={property.title}
+              propertyPurpose={property.purpose}
+              disableActions={isPreview}
+              variant="sticky"
+              ownerRole={property.owner?.role || "USER"}
+              ownerName={property.owner?.name || undefined}
+              ownerImage={property.owner?.image || undefined}
+              ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+              ownerPublicSlug={property.owner?.publicSlug || null}
+              ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
+              hideOwnerContact={!!(property as any)?.hideOwnerContact}
+            />
+          ) : null}
         </div>
             </motion.div>
           ) : (
@@ -1979,11 +1998,11 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 {/* Feed de fotos */}
                 <div className="flex-1 overflow-y-auto">
                   {/* Mobile: todas as fotos do mesmo tamanho, full width */}
-                  <div className="md:hidden">
+                  <div className="md:hidden space-y-2 px-2 py-2">
                     {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                       <div
                         key={i}
-                        className="relative w-full aspect-[4/3] cursor-pointer"
+                        className="relative w-full aspect-[4/3] cursor-pointer rounded-xl overflow-hidden"
                         onClick={() => { setCurrentImageIndex(i); setPhotoViewMode("fullscreen"); }}
                       >
                         <img

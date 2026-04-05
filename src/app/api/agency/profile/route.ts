@@ -8,6 +8,7 @@ import {
   getAgencyProfileCompletion,
   normalizeAgencyPhone,
   normalizeAgencyWhatsApp,
+  upsertAgencyAiConfig,
   upsertAgencyProfileConfig,
   upsertAgencyPublicLeadConfig,
 } from "@/lib/agency-profile";
@@ -71,7 +72,7 @@ async function buildAgencyProfileResponse(userId: string) {
 
   if (!user) return null;
 
-  const [{ profileConfig, leadConfig }, teamMembers] = await Promise.all([
+  const [{ profileConfig, leadConfig, aiConfig }, teamMembers] = await Promise.all([
     getAgencyConfigs(String(agencyProfile.teamId)),
     (prisma as any).teamMember.findMany({
       where: {
@@ -162,6 +163,7 @@ async function buildAgencyProfileResponse(userId: string) {
     playbookRent: leadConfig.playbookRent,
     playbookList: leadConfig.playbookList,
     routing: leadConfig.routing,
+    aiConfig,
     verifiedPhoneVisible,
     completion,
     teamMembers: publicTeamMembers,
@@ -248,7 +250,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const payload = parsed.data;
-    const { profileConfig: existingProfileConfig, leadConfig: existingLeadConfig } = await getAgencyConfigs(
+    const { profileConfig: existingProfileConfig, leadConfig: existingLeadConfig, aiConfig: existingAiConfig } = await getAgencyConfigs(
       String(existingAgencyProfile.teamId)
     );
 
@@ -347,6 +349,58 @@ export async function PATCH(req: NextRequest) {
       routing: nextRouting,
     };
 
+    const aiConfig = {
+      channels: {
+        dashboard: payload.aiConfig?.channels?.dashboard ?? existingAiConfig.channels.dashboard,
+        teamChat: payload.aiConfig?.channels?.teamChat ?? existingAiConfig.channels.teamChat,
+        whatsapp: payload.aiConfig?.channels?.whatsapp ?? existingAiConfig.channels.whatsapp,
+        email: payload.aiConfig?.channels?.email ?? existingAiConfig.channels.email,
+      },
+      automations: {
+        leadUnassigned: payload.aiConfig?.automations?.leadUnassigned ?? existingAiConfig.automations.leadUnassigned,
+        leadPendingReply: payload.aiConfig?.automations?.leadPendingReply ?? existingAiConfig.automations.leadPendingReply,
+        leadNoFirstContact: payload.aiConfig?.automations?.leadNoFirstContact ?? existingAiConfig.automations.leadNoFirstContact,
+        staleLead: payload.aiConfig?.automations?.staleLead ?? existingAiConfig.automations.staleLead,
+        clientUnassigned: payload.aiConfig?.automations?.clientUnassigned ?? existingAiConfig.automations.clientUnassigned,
+        clientPendingReply: payload.aiConfig?.automations?.clientPendingReply ?? existingAiConfig.automations.clientPendingReply,
+        clientNoFirstContact: payload.aiConfig?.automations?.clientNoFirstContact ?? existingAiConfig.automations.clientNoFirstContact,
+        clientOverdueNextAction:
+          payload.aiConfig?.automations?.clientOverdueNextAction ?? existingAiConfig.automations.clientOverdueNextAction,
+        teamChatUnread: payload.aiConfig?.automations?.teamChatUnread ?? existingAiConfig.automations.teamChatUnread,
+        teamChatAwaitingResponse:
+          payload.aiConfig?.automations?.teamChatAwaitingResponse ?? existingAiConfig.automations.teamChatAwaitingResponse,
+        weeklySummary: payload.aiConfig?.automations?.weeklySummary ?? existingAiConfig.automations.weeklySummary,
+        manualPriorityBoard:
+          payload.aiConfig?.automations?.manualPriorityBoard ?? existingAiConfig.automations.manualPriorityBoard,
+      },
+      thresholds: {
+        leadPendingReplyMinutesChat:
+          payload.aiConfig?.thresholds?.leadPendingReplyMinutesChat ?? existingAiConfig.thresholds.leadPendingReplyMinutesChat,
+        leadPendingReplyMinutesForm:
+          payload.aiConfig?.thresholds?.leadPendingReplyMinutesForm ?? existingAiConfig.thresholds.leadPendingReplyMinutesForm,
+        leadPendingReplyMinutesWhatsApp:
+          payload.aiConfig?.thresholds?.leadPendingReplyMinutesWhatsApp ?? existingAiConfig.thresholds.leadPendingReplyMinutesWhatsApp,
+        staleLeadDays: payload.aiConfig?.thresholds?.staleLeadDays ?? existingAiConfig.thresholds.staleLeadDays,
+        clientPendingReplyMinutes:
+          payload.aiConfig?.thresholds?.clientPendingReplyMinutes ?? existingAiConfig.thresholds.clientPendingReplyMinutes,
+        clientFirstContactGraceMinutes:
+          payload.aiConfig?.thresholds?.clientFirstContactGraceMinutes ?? existingAiConfig.thresholds.clientFirstContactGraceMinutes,
+        teamChatResponseMinutes:
+          payload.aiConfig?.thresholds?.teamChatResponseMinutes ?? existingAiConfig.thresholds.teamChatResponseMinutes,
+      },
+      coaching: {
+        overloadLeadsPerAgent:
+          payload.aiConfig?.coaching?.overloadLeadsPerAgent ?? existingAiConfig.coaching.overloadLeadsPerAgent,
+        maxPendingReplyPerAgent:
+          payload.aiConfig?.coaching?.maxPendingReplyPerAgent ?? existingAiConfig.coaching.maxPendingReplyPerAgent,
+        minExecutionScore: payload.aiConfig?.coaching?.minExecutionScore ?? existingAiConfig.coaching.minExecutionScore,
+        alertOnWorkloadImbalance:
+          payload.aiConfig?.coaching?.alertOnWorkloadImbalance ?? existingAiConfig.coaching.alertOnWorkloadImbalance,
+        autoPrioritizeCriticalItems:
+          payload.aiConfig?.coaching?.autoPrioritizeCriticalItems ?? existingAiConfig.coaching.autoPrioritizeCriticalItems,
+      },
+    };
+
     const nameChanged = typeof agencyUpdateData.name === "string" && agencyUpdateData.name !== existingAgencyProfile.name;
 
     await (prisma as any).$transaction(async (tx: any) => {
@@ -366,6 +420,7 @@ export async function PATCH(req: NextRequest) {
 
       await upsertAgencyProfileConfig(tx, String(existingAgencyProfile.teamId), profileConfig, String(userId));
       await upsertAgencyPublicLeadConfig(tx, String(existingAgencyProfile.teamId), leadConfig, String(userId));
+      await upsertAgencyAiConfig(tx, String(existingAgencyProfile.teamId), aiConfig, String(userId));
 
       if (nameChanged) {
         await tx.team.update({

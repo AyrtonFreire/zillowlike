@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getAgencyAiConfig } from "@/lib/agency-profile";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 
 type AssistantAction = {
@@ -1800,6 +1801,17 @@ export class RealtorAssistantService {
   static async recalculateForAgencyTeam(ownerId: string, teamId: string) {
     const now = new Date();
     const today = startOfDay(now);
+    const aiConfig = await getAgencyAiConfig(String(teamId));
+    const dashboardChannelEnabled = aiConfig.channels.dashboard !== false;
+    const teamChatChannelEnabled = aiConfig.channels.teamChat !== false;
+    const autoPrioritizeCriticalItems = aiConfig.coaching.autoPrioritizeCriticalItems !== false;
+    const prioritizeCritical = (
+      priority: "LOW" | "MEDIUM" | "HIGH",
+      shouldPromote: boolean
+    ): "LOW" | "MEDIUM" | "HIGH" => {
+      if (autoPrioritizeCriticalItems && shouldPromote) return "HIGH";
+      return priority;
+    };
     const openClientUrl = (clientId?: string | null) =>
       clientId ? `/agency/clients/${encodeURIComponent(String(clientId))}` : `/agency/clients`;
 
@@ -1961,6 +1973,26 @@ export class RealtorAssistantService {
 
     const openTeamChatUrl = (threadId: string) => `/agency/team-chat?thread=${encodeURIComponent(String(threadId))}`;
 
+    if (!dashboardChannelEnabled) {
+      await (prisma as any).assistantItem.updateMany({
+        where: {
+          context: "AGENCY",
+          ownerId,
+          teamId,
+          source: "RULE",
+          status: { in: ["ACTIVE", "SNOOZED"] },
+        },
+        data: {
+          status: "RESOLVED",
+          resolvedAt: new Date(),
+        },
+      });
+
+      await this.emitItemsRecalculated(ownerId, { count: 0 }, { context: "AGENCY", teamId });
+
+      return { count: 0 };
+    }
+
     try {
       const teamRow: any = await (prisma as any).team.findUnique({
         where: { id: String(teamId) },
@@ -1988,7 +2020,7 @@ export class RealtorAssistantService {
       });
 
       const threadIds = (threads || []).map((t) => String(t.id)).filter(Boolean);
-      if (threadIds.length) {
+      if (threadIds.length && teamChatChannelEnabled) {
         const receipts = await (prisma as any).teamChatReadReceipt.findMany({
           where: { userId: String(ownerId), threadId: { in: threadIds } },
           select: { threadId: true, lastReadAt: true },
@@ -2021,7 +2053,7 @@ export class RealtorAssistantService {
           if (m?.threadId && m?.createdAt) lastOwnerByThread.set(String(m.threadId), new Date(m.createdAt));
         }
 
-        const SLA_AWAITING_RESPONSE_MINUTES = 30;
+        const teamChatResponseMinutes = Math.max(5, Number(aiConfig.thresholds.teamChatResponseMinutes || 30));
 
         for (const t of threads || []) {
           const threadId = String(t.id);
@@ -2040,7 +2072,7 @@ export class RealtorAssistantService {
             },
           });
 
-          if (Number(unreadCount || 0) > 0) {
+          if (aiConfig.automations.teamChatUnread && Number(unreadCount || 0) > 0) {
             const key = `TEAM_CHAT_UNREAD:${threadId}`;
             dedupeKeys.add(key);
             await this.upsertFromRule({
@@ -2072,11 +2104,12 @@ export class RealtorAssistantService {
           const awaitingResponse =
             lastSenderId && String(lastSenderId) !== String(ownerId) && (!lastOwnerMs || lastMsgAtMs > lastOwnerMs);
 
-          if (awaitingResponse) {
-            const dueAt = addMinutes(new Date(lastMsgAtMs), SLA_AWAITING_RESPONSE_MINUTES);
+          if (aiConfig.automations.teamChatAwaitingResponse && awaitingResponse) {
+            const dueAt = addMinutes(new Date(lastMsgAtMs), teamChatResponseMinutes);
             const msToDue = dueAt.getTime() - now.getTime();
-            const priority: "LOW" | "MEDIUM" | "HIGH" =
+            const basePriority: "LOW" | "MEDIUM" | "HIGH" =
               msToDue <= 0 ? "HIGH" : msToDue <= 30 * 60 * 1000 ? "MEDIUM" : "LOW";
+            const priority = prioritizeCritical(basePriority, msToDue <= 0);
 
             const key = `TEAM_CHAT_AWAITING_RESPONSE:${threadId}`;
             dedupeKeys.add(key);
@@ -2118,10 +2151,19 @@ export class RealtorAssistantService {
       const clientName = client?.name ? String(client.name) : "Cliente";
       const intent = safeString(client?.intent).toUpperCase();
       const signals = computeClientOperationalSignals(client, now);
+      const clientFirstContactDueAt = client?.createdAt
+        ? addMinutes(new Date(client.createdAt), Math.max(5, Number(aiConfig.thresholds.clientFirstContactGraceMinutes || 30)))
+        : null;
+      const clientMissingFirstContact = !!(
+        signals.activeOperational &&
+        !safeDate(client?.firstContactAt) &&
+        clientFirstContactDueAt &&
+        clientFirstContactDueAt.getTime() <= now.getTime()
+      );
       const preferredLocation = [safeString(client?.preference?.city), safeString(client?.preference?.state)].filter(Boolean).join("/");
       const playbookSummary = safeString(client?.playbookSnapshot).slice(0, 180);
 
-      if (signals.needsOwner) {
+      if (aiConfig.automations.clientUnassigned && signals.needsOwner) {
         const key = `CLIENT_UNASSIGNED:${client.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -2146,10 +2188,14 @@ export class RealtorAssistantService {
         });
       }
 
-      if (signals.pendingReply && client?.lastInboundAt) {
-        const dueAt = addMinutes(new Date(client.lastInboundAt), 60);
+      if (aiConfig.automations.clientPendingReply && signals.pendingReply && client?.lastInboundAt) {
+        const dueAt = addMinutes(
+          new Date(client.lastInboundAt),
+          Math.max(5, Number(aiConfig.thresholds.clientPendingReplyMinutes || 60))
+        );
         const msToDue = dueAt.getTime() - now.getTime();
-        const priority: "LOW" | "MEDIUM" | "HIGH" = msToDue <= 0 ? "HIGH" : msToDue <= 30 * 60 * 1000 ? "MEDIUM" : "LOW";
+        const basePriority: "LOW" | "MEDIUM" | "HIGH" = msToDue <= 0 ? "HIGH" : msToDue <= 30 * 60 * 1000 ? "MEDIUM" : "LOW";
+        const priority = prioritizeCritical(basePriority, msToDue <= 0);
         const key = `CLIENT_PENDING_REPLY:${client.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -2175,7 +2221,7 @@ export class RealtorAssistantService {
         });
       }
 
-      if (signals.missingFirstContact && signals.firstContactDueAt) {
+      if (aiConfig.automations.clientNoFirstContact && clientMissingFirstContact && clientFirstContactDueAt) {
         const key = `CLIENT_NO_FIRST_CONTACT:${client.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -2187,7 +2233,7 @@ export class RealtorAssistantService {
           priority: "HIGH",
           title: "Falta registrar o primeiro contato",
           message: `${clientName} entrou na carteira e ainda não recebeu um primeiro contato registrado.`,
-          dueAt: signals.firstContactDueAt,
+          dueAt: clientFirstContactDueAt,
           dedupeKey: key,
           primaryAction: { type: "OPEN_PAGE", url: openClientUrl(client.id) },
           secondaryAction: null,
@@ -2199,7 +2245,7 @@ export class RealtorAssistantService {
         });
       }
 
-      if (signals.nextActionOverdue && client?.nextActionAt) {
+      if (aiConfig.automations.clientOverdueNextAction && signals.nextActionOverdue && client?.nextActionAt) {
         const dueAt = new Date(client.nextActionAt);
         const key = `CLIENT_OVERDUE_NEXT_ACTION:${client.id}:${startOfDay(dueAt).toISOString().slice(0, 10)}`;
         dedupeKeys.add(key);
@@ -2233,7 +2279,7 @@ export class RealtorAssistantService {
       const clientName = lead.contact?.name || "Cliente";
       const conversationActive = String((lead as any)?.conversationState || "ACTIVE") === "ACTIVE";
 
-      if (conversationActive && !lead.realtorId && lead.status !== "RESERVED") {
+      if (aiConfig.automations.leadUnassigned && conversationActive && !lead.realtorId && lead.status !== "RESERVED") {
         const key = `LEAD_UNASSIGNED:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -2326,7 +2372,8 @@ export class RealtorAssistantService {
         const dueAt = addMinutes(firstUnreadAt, slaMinutes);
         const msToDue = dueAt.getTime() - now.getTime();
         const isOverdue = msToDue <= 0;
-        const priority: "LOW" | "MEDIUM" | "HIGH" = isOverdue || msToDue <= 5 * 60 * 1000 ? "HIGH" : "MEDIUM";
+        const basePriority: "LOW" | "MEDIUM" | "HIGH" = isOverdue || msToDue <= 5 * 60 * 1000 ? "HIGH" : "MEDIUM";
+        const priority = prioritizeCritical(basePriority, isOverdue);
 
         const lastPreview = String(lastClientInChannel.content || "").trim().slice(0, 140);
         const countText = unreadCount === 1 ? "uma mensagem" : `${unreadCount} mensagens`;
@@ -2361,10 +2408,9 @@ export class RealtorAssistantService {
         });
       }
 
-      const firstContactThreshold = new Date(lead.createdAt);
-      firstContactThreshold.setHours(firstContactThreshold.getHours() + 2);
+      const firstContactThreshold = addMinutes(new Date(lead.createdAt), Math.max(5, Number(aiConfig.thresholds.leadPendingReplyMinutesForm || 30)));
       const hasAnyProContact = !!lastProChatAt;
-      if (conversationActive && !hasAnyProContact && now > firstContactThreshold && lead.status === "ACCEPTED") {
+      if (aiConfig.automations.leadNoFirstContact && conversationActive && !hasAnyProContact && now > firstContactThreshold && lead.status === "ACCEPTED") {
         const key = `LEAD_NO_FIRST_CONTACT:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -2383,12 +2429,18 @@ export class RealtorAssistantService {
         });
       }
 
-      const staleThreshold = addDays(now, -3);
+      const staleThreshold = addDays(now, -Math.max(1, Number(aiConfig.thresholds.staleLeadDays || 3)));
       const lastInteractionMs = Math.max(
         lastClient?.createdAt ? new Date(lastClient.createdAt).getTime() : 0,
         lastProChatAt ? new Date(lastProChatAt).getTime() : 0
       );
-      if (conversationActive && lead.status === "ACCEPTED" && lastInteractionMs > 0 && lastInteractionMs < staleThreshold.getTime()) {
+      if (
+        aiConfig.automations.staleLead &&
+        conversationActive &&
+        lead.status === "ACCEPTED" &&
+        lastInteractionMs > 0 &&
+        lastInteractionMs < staleThreshold.getTime()
+      ) {
         const lastInteractionAt = new Date(lastInteractionMs);
         const key = `STALE_LEAD:${lead.id}:${startOfDay(lastInteractionAt).toISOString().slice(0, 10)}`;
         dedupeKeys.add(key);
@@ -2542,29 +2594,32 @@ export class RealtorAssistantService {
       return d;
     })();
 
-    const weekKey = `WEEKLY_SUMMARY:${weekStart.toISOString().slice(0, 10)}`;
-    dedupeKeys.add(weekKey);
+    if (aiConfig.automations.weeklySummary) {
+      const weekKey = `WEEKLY_SUMMARY:${weekStart.toISOString().slice(0, 10)}`;
+      dedupeKeys.add(weekKey);
 
-    const weeklyDueAt = new Date(weekStart);
-    weeklyDueAt.setHours(9, 0, 0, 0);
+      const weeklyDueAt = new Date(weekStart);
+      weeklyDueAt.setHours(9, 0, 0, 0);
 
-    await this.upsertFromRule({
-      context: "AGENCY",
-      ownerId,
-      teamId,
-      leadId: null,
-      type: "WEEKLY_SUMMARY",
-      priority: "LOW",
-      title: "Resumo da semana",
-      message: "Quando tiver 3 minutos, revise o que merece atenção e defina os próximos passos.",
-      dueAt: weeklyDueAt,
-      dedupeKey: weekKey,
-      primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(null) },
-      secondaryAction: null,
-      metadata: {
-        weekStart: weekStart.toISOString(),
-      },
-    });
+      await this.upsertFromRule({
+        context: "AGENCY",
+        ownerId,
+        teamId,
+        leadId: null,
+        type: "WEEKLY_SUMMARY",
+        priority: "LOW",
+        title: "Resumo da semana",
+        message: "Quando tiver 3 minutos, revise o que merece atenção e defina os próximos passos.",
+        dueAt: weeklyDueAt,
+        dedupeKey: weekKey,
+        primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(null) },
+        secondaryAction: null,
+        metadata: {
+          weekStart: weekStart.toISOString(),
+          channels: aiConfig.channels,
+        },
+      });
+    }
 
     await (prisma as any).assistantItem.updateMany({
       where: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { User, Building2, MessageCircle, ExternalLink, Timer } from "lucide-react";
+import { User, Building2, MessageCircle, ExternalLink, Timer, Phone } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
@@ -30,11 +30,14 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
+type ContactCardVariant = "card" | "compact" | "sticky";
+
 type ContactCardProps = {
   propertyId: string;
   propertyTitle: string;
   propertyPurpose?: "SALE" | "RENT";
   disableActions?: boolean;
+  variant?: ContactCardVariant;
   
   // Owner/Realtor info
   ownerRole: "USER" | "OWNER" | "REALTOR" | "AGENCY" | "ADMIN";
@@ -53,6 +56,7 @@ export default function PropertyContactCard({
   propertyId,
   propertyTitle,
   disableActions,
+  variant = "card",
   ownerRole,
   ownerName,
   ownerImage,
@@ -61,8 +65,11 @@ export default function PropertyContactCard({
   ownerPublicPhoneOptIn,
   hideOwnerContact,
 }: ContactCardProps) {
-  const [loading, setLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [whatsAppLoading, setWhatsAppLoading] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
   const [publicStatsLoading, setPublicStatsLoading] = useState(false);
+  const [contactAvailability, setContactAvailability] = useState<{ whatsapp: boolean; phone: boolean } | null>(null);
   const [publicStats, setPublicStats] = useState<null | {
     avgRating: number;
     totalRatings: number;
@@ -100,7 +107,7 @@ export default function PropertyContactCard({
 
   useEffect(() => {
     const slug = String(ownerPublicSlug || "").trim();
-    if (!isRealtorOrAgency || !slug) {
+    if (variant !== "card" || !isRealtorOrAgency || !slug) {
       setPublicStats(null);
       return;
     }
@@ -145,7 +152,7 @@ export default function PropertyContactCard({
     return () => {
       cancelled = true;
     };
-  }, [isRealtorOrAgency, ownerPublicSlug]);
+  }, [isRealtorOrAgency, ownerPublicSlug, variant]);
 
   const canShowWhatsApp = useMemo(() => {
     // Para corretores/imobiliárias: se houver opt-in no perfil, respeita; caso contrário, esconde.
@@ -155,32 +162,102 @@ export default function PropertyContactCard({
     return true;
   }, [hideOwnerContact, isRealtorOrAgency, ownerPublicPhoneOptIn]);
 
+  const canShowPhone = useMemo(() => {
+    if (isRealtorOrAgency) return !!ownerPublicPhoneOptIn;
+    if (hideOwnerContact) return false;
+    return true;
+  }, [hideOwnerContact, isRealtorOrAgency, ownerPublicPhoneOptIn]);
+
+  useEffect(() => {
+    if (variant !== "sticky") {
+      setContactAvailability(null);
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`/api/properties/${propertyId}/whatsapp`, { cache: "no-store" })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (!res.ok || !json) {
+          setContactAvailability({ whatsapp: false, phone: false });
+          return;
+        }
+        setContactAvailability({
+          whatsapp: !!String(json?.whatsappUrl || "").trim(),
+          phone: !!String(json?.phoneUrl || "").trim(),
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setContactAvailability({ whatsapp: false, phone: false });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [propertyId, variant]);
+
+  const canUseWhatsAppAction = !disableActions && (contactAvailability ? contactAvailability.whatsapp : canShowWhatsApp);
+  const canUsePhoneAction = !disableActions && (contactAvailability ? contactAvailability.phone : canShowPhone);
+
+  const fetchContactTargets = async (method: "GET" | "POST") => {
+    const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method });
+    const data = await res.json().catch(() => ({} as any));
+    return {
+      ok: res.ok,
+      whatsappUrl: data?.whatsappUrl as string | undefined,
+      phoneUrl: data?.phoneUrl as string | undefined,
+    };
+  };
+
   const handleWhatsAppClick = async () => {
     try {
       if (disableActions) return;
-      if (!canShowWhatsApp) {
+      if (!canUseWhatsAppAction) {
         toast.info("Contato via WhatsApp não está disponível para este anúncio.");
         return;
       }
 
-      const tryFetch = async (method: "GET" | "POST") => {
-        const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method });
-        const data = await res.json().catch(() => ({} as any));
-        const url = data?.whatsappUrl as string | undefined;
-        return { ok: res.ok, url };
-      };
+      setWhatsAppLoading(true);
 
-      const primary = await tryFetch("POST");
-      const fallback = primary.ok && primary.url ? primary : await tryFetch("GET");
+      const primary = await fetchContactTargets("POST");
+      const fallback = primary.ok && primary.whatsappUrl ? primary : await fetchContactTargets("GET");
 
-      if (!fallback.ok || !fallback.url) {
+      if (!fallback.ok || !fallback.whatsappUrl) {
         toast.error("WhatsApp indisponível no momento.");
         return;
       }
 
-      window.open(fallback.url, "_blank", "noopener,noreferrer");
+      window.open(fallback.whatsappUrl, "_blank", "noopener,noreferrer");
     } catch {
       toast.error("WhatsApp indisponível no momento.");
+    } finally {
+      setWhatsAppLoading(false);
+    }
+  };
+
+  const handlePhoneClick = async () => {
+    try {
+      if (disableActions) return;
+      if (!canUsePhoneAction) {
+        toast.info("Contato por telefone não está disponível para este anúncio.");
+        return;
+      }
+
+      setPhoneLoading(true);
+      const result = await fetchContactTargets("GET");
+
+      if (!result.ok || !result.phoneUrl) {
+        toast.error("Telefone indisponível no momento.");
+        return;
+      }
+
+      window.location.href = result.phoneUrl;
+    } catch {
+      toast.error("Telefone indisponível no momento.");
+    } finally {
+      setPhoneLoading(false);
     }
   };
 
@@ -204,7 +281,7 @@ export default function PropertyContactCard({
         return;
       }
 
-      setLoading(true);
+      setChatLoading(true);
 
       const payload: any = {
         propertyId,
@@ -239,7 +316,7 @@ export default function PropertyContactCard({
     } catch (err: any) {
       toast.error(err?.message || "Não conseguimos abrir o chat agora.");
     } finally {
-      setLoading(false);
+      setChatLoading(false);
     }
   };
 
@@ -259,6 +336,102 @@ export default function PropertyContactCard({
     const hours = Math.round(minutes / 60);
     return `Responde em ~${hours}h`;
   }, [publicStats?.avgResponseTime]);
+
+  const ownerRoleLabel = ownerRole === "AGENCY" ? "Imobiliária" : ownerRole === "REALTOR" ? "Corretor" : "Anunciante";
+
+  if (variant === "compact") {
+    const identityContent = (
+      <>
+        {ownerImage ? (
+          <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-teal/15 bg-white shadow-sm">
+            <Image src={ownerImage} alt={ownerName || "Anunciante"} fill className="object-cover" />
+          </div>
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-teal/10 bg-gradient-to-br from-teal/10 to-teal/25">
+            {ownerRole === "AGENCY" ? <Building2 className="h-5 w-5 text-teal" /> : <User className="h-5 w-5 text-teal" />}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Anunciado por</p>
+          <p className="mt-0.5 truncate text-sm font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
+          <p className="mt-0.5 text-xs text-gray-600">{ownerRoleLabel}</p>
+        </div>
+      </>
+    );
+
+    return (
+      <div className="rounded-2xl border border-gray-200/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          {hasPublicProfile && publicProfileHref ? (
+            <Link
+              href={publicProfileHref}
+              onClick={(e) => {
+                if (disableActions) e.preventDefault();
+              }}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl transition-colors hover:bg-teal/5"
+            >
+              {identityContent}
+            </Link>
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-3">{identityContent}</div>
+          )}
+
+          {hasPublicProfile && publicProfileHref ? (
+            <Link
+              href={publicProfileHref}
+              onClick={(e) => {
+                if (disableActions) e.preventDefault();
+              }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              title="Ver perfil"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "sticky") {
+    const buttonBase = "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400";
+
+    return (
+      <div className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-gray-200/80 bg-white/95 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] shadow-[0_-12px_30px_rgba(15,23,42,0.10)] backdrop-blur">
+        <div className="mx-auto flex max-w-xl items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePhoneClick}
+            disabled={!canUsePhoneAction || phoneLoading}
+            className={`${buttonBase} border-gray-200 bg-white text-gray-800 hover:bg-gray-50`}
+          >
+            <Phone className="h-5 w-5" />
+            <span className="truncate">{phoneLoading ? "Abrindo..." : "Telefone"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleWhatsAppClick}
+            disabled={!canUseWhatsAppAction || whatsAppLoading}
+            className={`${buttonBase} border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 hover:border-emerald-600 disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400`}
+          >
+            <WhatsAppIcon className="h-5 w-5" />
+            <span className="truncate">{whatsAppLoading ? "Abrindo..." : "WhatsApp"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={createLeadAndOpenChat}
+            disabled={!!disableActions || chatLoading}
+            className={`${buttonBase} border-teal-600 bg-teal-600 text-white hover:bg-teal-700 hover:border-teal-700 disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400`}
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="truncate">{chatLoading ? "Abrindo..." : "Chat"}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -423,11 +596,11 @@ export default function PropertyContactCard({
           <button
             type="button"
             onClick={handleWhatsAppClick}
-            disabled={!!disableActions || !canShowWhatsApp}
+            disabled={!canUseWhatsAppAction || whatsAppLoading}
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <WhatsAppIcon className="w-5 h-5" />
-            WhatsApp
+            {whatsAppLoading ? "Abrindo..." : "WhatsApp"}
           </button>
         </div>
 
@@ -443,11 +616,11 @@ export default function PropertyContactCard({
           <button
             type="button"
             onClick={createLeadAndOpenChat}
-            disabled={!!disableActions || loading}
+            disabled={!!disableActions || chatLoading}
             className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-teal-700 active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <MessageCircle className="w-5 h-5" />
-            {loading ? "Abrindo..." : "Chat"}
+            {chatLoading ? "Abrindo..." : "Chat"}
           </button>
         </div>
       </div>

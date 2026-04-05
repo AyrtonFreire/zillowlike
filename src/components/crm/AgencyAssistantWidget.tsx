@@ -7,11 +7,17 @@ import { AgencyAssistantFeed } from "@/components/crm/AgencyAssistantFeed";
 
 type AgencyProfile = {
   teamId: string;
+  aiConfig?: {
+    channels?: {
+      dashboard?: boolean;
+    };
+  };
 };
 
 export function AgencyAssistantWidget() {
   const [mounted, setMounted] = useState(false);
   const [teamId, setTeamId] = useState<string | null>(null);
+  const [dashboardEnabled, setDashboardEnabled] = useState(true);
   const [open, setOpen] = useState(false);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [launcherPosition, setLauncherPosition] = useState<{ x: number; y: number } | null>(null);
@@ -34,9 +40,13 @@ export function AgencyAssistantWidget() {
         if (!response.ok || !data?.success || !data?.agencyProfile?.teamId) {
           return;
         }
-        const profile: AgencyProfile = { teamId: String(data.agencyProfile.teamId) };
+        const profile: AgencyProfile = {
+          teamId: String(data.agencyProfile.teamId),
+          aiConfig: data.agencyProfile.aiConfig,
+        };
         if (cancelled) return;
         setTeamId(profile.teamId);
+        setDashboardEnabled(profile.aiConfig?.channels?.dashboard !== false);
       } catch {
       }
     };
@@ -49,6 +59,10 @@ export function AgencyAssistantWidget() {
   }, []);
 
   const fetchCount = useCallback(async () => {
+    if (!dashboardEnabled) {
+      setActiveCount(0);
+      return;
+    }
     try {
       const headers: any = {};
       if (countEtagRef.current) headers["if-none-match"] = countEtagRef.current;
@@ -67,13 +81,14 @@ export function AgencyAssistantWidget() {
       setActiveCount(nextCount);
     } catch {
     }
-  }, []);
+  }, [dashboardEnabled]);
 
   useEffect(() => {
+    if (!dashboardEnabled) return;
     void fetchCount();
     const t = window.setInterval(() => fetchCount(), 30000);
     return () => window.clearInterval(t);
-  }, [fetchCount]);
+  }, [dashboardEnabled, fetchCount]);
 
   useEffect(() => {
     const onForce = () => fetchCount();
@@ -96,9 +111,6 @@ export function AgencyAssistantWidget() {
   const launcherStyle = launcherPosition
     ? { left: `${launcherPosition.x}px`, top: `${launcherPosition.y}px` }
     : mobileSafeAreaStyle;
-
-  if (!canRender) return null;
-  if (!teamId) return null;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -153,7 +165,7 @@ export function AgencyAssistantWidget() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [launcherPosition]);
+  }, [isDraggingLauncher, launcherPosition]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -180,6 +192,10 @@ export function AgencyAssistantWidget() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [launcherPosition]);
+
+  if (!canRender) return null;
+  if (!teamId) return null;
+  if (!dashboardEnabled) return null;
 
   const widgetUi = !open ? (
     <>

@@ -212,10 +212,12 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
   const propertyUrl = `${origin}/property/${property.id}`;
   const text = encodeURIComponent(`Olá! Tenho interesse no imóvel: ${propertyUrl}`);
   const whatsappUrl = `https://wa.me/${phoneDigits}?text=${text}`;
+  const phoneUrl = `tel:+${phoneDigits}`;
 
   return {
     ok: true as const,
     whatsappUrl,
+    phoneUrl,
     propertyId: String(property.id),
     propertyTitle: property.title ? String(property.title) : "Imóvel",
     propertyUrl,
@@ -235,7 +237,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     const payload = await getWhatsAppPayload(req, String(id));
     if (!payload.ok) return payload.response;
 
-    const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl });
+    const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl, phoneUrl: payload.phoneUrl });
     res.headers.set("Cache-Control", "no-store");
     return res;
   } catch (e) {
@@ -421,12 +423,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         }
       }
 
-      const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl });
+      const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl, phoneUrl: payload.phoneUrl });
       res.headers.set("Cache-Control", "no-store");
       return res;
     }
 
-    const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl });
+    const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl, phoneUrl: payload.phoneUrl });
     res.headers.set("Cache-Control", "no-store");
     return res;
   } catch (e) {

@@ -35,6 +35,19 @@ const normalizeOptionalSocialHandle = (value: unknown) => {
   return normalized.replace(/^@+/, "");
 };
 
+const normalizePositiveInt = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+};
+
 const normalizeStringList = (value: unknown) => {
   if (value === undefined) return undefined;
   if (value === null) return [];
@@ -87,6 +100,53 @@ export const agencyPublicLeadConfigSchema = z.object({
     .optional(),
 });
 
+export const agencyAiConfigSchema = z.object({
+  channels: z
+    .object({
+      dashboard: z.boolean().optional(),
+      teamChat: z.boolean().optional(),
+      whatsapp: z.boolean().optional(),
+      email: z.boolean().optional(),
+    })
+    .optional(),
+  automations: z
+    .object({
+      leadUnassigned: z.boolean().optional(),
+      leadPendingReply: z.boolean().optional(),
+      leadNoFirstContact: z.boolean().optional(),
+      staleLead: z.boolean().optional(),
+      clientUnassigned: z.boolean().optional(),
+      clientPendingReply: z.boolean().optional(),
+      clientNoFirstContact: z.boolean().optional(),
+      clientOverdueNextAction: z.boolean().optional(),
+      teamChatUnread: z.boolean().optional(),
+      teamChatAwaitingResponse: z.boolean().optional(),
+      weeklySummary: z.boolean().optional(),
+      manualPriorityBoard: z.boolean().optional(),
+    })
+    .optional(),
+  thresholds: z
+    .object({
+      leadPendingReplyMinutesChat: z.preprocess(normalizePositiveInt, z.number().int().min(5).max(720).optional()),
+      leadPendingReplyMinutesForm: z.preprocess(normalizePositiveInt, z.number().int().min(5).max(720).optional()),
+      leadPendingReplyMinutesWhatsApp: z.preprocess(normalizePositiveInt, z.number().int().min(5).max(1440).optional()),
+      staleLeadDays: z.preprocess(normalizePositiveInt, z.number().int().min(1).max(30).optional()),
+      clientPendingReplyMinutes: z.preprocess(normalizePositiveInt, z.number().int().min(5).max(1440).optional()),
+      clientFirstContactGraceMinutes: z.preprocess(normalizePositiveInt, z.number().int().min(5).max(1440).optional()),
+      teamChatResponseMinutes: z.preprocess(normalizePositiveInt, z.number().int().min(5).max(720).optional()),
+    })
+    .optional(),
+  coaching: z
+    .object({
+      overloadLeadsPerAgent: z.preprocess(normalizePositiveInt, z.number().int().min(1).max(500).optional()),
+      maxPendingReplyPerAgent: z.preprocess(normalizePositiveInt, z.number().int().min(1).max(100).optional()),
+      minExecutionScore: z.preprocess(normalizePositiveInt, z.number().int().min(0).max(100).optional()),
+      alertOnWorkloadImbalance: z.boolean().optional(),
+      autoPrioritizeCriticalItems: z.boolean().optional(),
+    })
+    .optional(),
+});
+
 export const agencyProfilePatchSchema = z
   .object({
     name: z.string().trim().min(2, "Informe o nome da imobiliária.").max(120, "O nome pode ter no máximo 120 caracteres.").optional(),
@@ -130,11 +190,13 @@ export const agencyProfilePatchSchema = z
     playbookRent: agencyPublicLeadConfigSchema.shape.playbookRent,
     playbookList: agencyPublicLeadConfigSchema.shape.playbookList,
     routing: agencyPublicLeadConfigSchema.shape.routing,
+    aiConfig: agencyAiConfigSchema.optional(),
   })
   .strict();
 
 export type AgencyProfileConfig = z.infer<typeof agencyProfileConfigSchema>;
 export type AgencyPublicLeadConfig = z.infer<typeof agencyPublicLeadConfigSchema>;
+export type AgencyAiConfig = z.infer<typeof agencyAiConfigSchema>;
 export type AgencyProfilePatchInput = z.infer<typeof agencyProfilePatchSchema>;
 
 export const DEFAULT_AGENCY_PUBLIC_LEAD_CONFIG: Required<AgencyPublicLeadConfig> = {
@@ -155,12 +217,55 @@ export const DEFAULT_AGENCY_PROFILE_CONFIG: Required<AgencyProfileConfig> = {
   primaryAgentUserId: null,
 };
 
+export const DEFAULT_AGENCY_AI_CONFIG: Required<AgencyAiConfig> = {
+  channels: {
+    dashboard: true,
+    teamChat: true,
+    whatsapp: true,
+    email: false,
+  },
+  automations: {
+    leadUnassigned: true,
+    leadPendingReply: true,
+    leadNoFirstContact: true,
+    staleLead: true,
+    clientUnassigned: true,
+    clientPendingReply: true,
+    clientNoFirstContact: true,
+    clientOverdueNextAction: true,
+    teamChatUnread: true,
+    teamChatAwaitingResponse: true,
+    weeklySummary: true,
+    manualPriorityBoard: true,
+  },
+  thresholds: {
+    leadPendingReplyMinutesChat: 15,
+    leadPendingReplyMinutesForm: 30,
+    leadPendingReplyMinutesWhatsApp: 60,
+    staleLeadDays: 3,
+    clientPendingReplyMinutes: 60,
+    clientFirstContactGraceMinutes: 30,
+    teamChatResponseMinutes: 30,
+  },
+  coaching: {
+    overloadLeadsPerAgent: 25,
+    maxPendingReplyPerAgent: 5,
+    minExecutionScore: 70,
+    alertOnWorkloadImbalance: true,
+    autoPrioritizeCriticalItems: true,
+  },
+};
+
 function agencyProfileConfigKey(teamId: string) {
   return `agency:${teamId}:profileConfig`;
 }
 
 function agencyLeadConfigKey(teamId: string) {
   return `agency:${teamId}:publicLeadConfig`;
+}
+
+function agencyAiConfigKey(teamId: string) {
+  return `agency:${teamId}:aiConfig`;
 }
 
 function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
@@ -199,6 +304,68 @@ function normalizeLeadConfig(config: AgencyPublicLeadConfig | null | undefined):
   };
 }
 
+function normalizeAiConfig(config: AgencyAiConfig | null | undefined): Required<AgencyAiConfig> {
+  const parsed = agencyAiConfigSchema.safeParse(config || {});
+  if (!parsed.success) {
+    return {
+      ...DEFAULT_AGENCY_AI_CONFIG,
+      channels: { ...DEFAULT_AGENCY_AI_CONFIG.channels },
+      automations: { ...DEFAULT_AGENCY_AI_CONFIG.automations },
+      thresholds: { ...DEFAULT_AGENCY_AI_CONFIG.thresholds },
+      coaching: { ...DEFAULT_AGENCY_AI_CONFIG.coaching },
+    };
+  }
+
+  return {
+    channels: {
+      dashboard: parsed.data.channels?.dashboard ?? DEFAULT_AGENCY_AI_CONFIG.channels.dashboard,
+      teamChat: parsed.data.channels?.teamChat ?? DEFAULT_AGENCY_AI_CONFIG.channels.teamChat,
+      whatsapp: parsed.data.channels?.whatsapp ?? DEFAULT_AGENCY_AI_CONFIG.channels.whatsapp,
+      email: parsed.data.channels?.email ?? DEFAULT_AGENCY_AI_CONFIG.channels.email,
+    },
+    automations: {
+      leadUnassigned: parsed.data.automations?.leadUnassigned ?? DEFAULT_AGENCY_AI_CONFIG.automations.leadUnassigned,
+      leadPendingReply: parsed.data.automations?.leadPendingReply ?? DEFAULT_AGENCY_AI_CONFIG.automations.leadPendingReply,
+      leadNoFirstContact: parsed.data.automations?.leadNoFirstContact ?? DEFAULT_AGENCY_AI_CONFIG.automations.leadNoFirstContact,
+      staleLead: parsed.data.automations?.staleLead ?? DEFAULT_AGENCY_AI_CONFIG.automations.staleLead,
+      clientUnassigned: parsed.data.automations?.clientUnassigned ?? DEFAULT_AGENCY_AI_CONFIG.automations.clientUnassigned,
+      clientPendingReply: parsed.data.automations?.clientPendingReply ?? DEFAULT_AGENCY_AI_CONFIG.automations.clientPendingReply,
+      clientNoFirstContact: parsed.data.automations?.clientNoFirstContact ?? DEFAULT_AGENCY_AI_CONFIG.automations.clientNoFirstContact,
+      clientOverdueNextAction: parsed.data.automations?.clientOverdueNextAction ?? DEFAULT_AGENCY_AI_CONFIG.automations.clientOverdueNextAction,
+      teamChatUnread: parsed.data.automations?.teamChatUnread ?? DEFAULT_AGENCY_AI_CONFIG.automations.teamChatUnread,
+      teamChatAwaitingResponse: parsed.data.automations?.teamChatAwaitingResponse ?? DEFAULT_AGENCY_AI_CONFIG.automations.teamChatAwaitingResponse,
+      weeklySummary: parsed.data.automations?.weeklySummary ?? DEFAULT_AGENCY_AI_CONFIG.automations.weeklySummary,
+      manualPriorityBoard: parsed.data.automations?.manualPriorityBoard ?? DEFAULT_AGENCY_AI_CONFIG.automations.manualPriorityBoard,
+    },
+    thresholds: {
+      leadPendingReplyMinutesChat:
+        parsed.data.thresholds?.leadPendingReplyMinutesChat ?? DEFAULT_AGENCY_AI_CONFIG.thresholds.leadPendingReplyMinutesChat,
+      leadPendingReplyMinutesForm:
+        parsed.data.thresholds?.leadPendingReplyMinutesForm ?? DEFAULT_AGENCY_AI_CONFIG.thresholds.leadPendingReplyMinutesForm,
+      leadPendingReplyMinutesWhatsApp:
+        parsed.data.thresholds?.leadPendingReplyMinutesWhatsApp ?? DEFAULT_AGENCY_AI_CONFIG.thresholds.leadPendingReplyMinutesWhatsApp,
+      staleLeadDays: parsed.data.thresholds?.staleLeadDays ?? DEFAULT_AGENCY_AI_CONFIG.thresholds.staleLeadDays,
+      clientPendingReplyMinutes:
+        parsed.data.thresholds?.clientPendingReplyMinutes ?? DEFAULT_AGENCY_AI_CONFIG.thresholds.clientPendingReplyMinutes,
+      clientFirstContactGraceMinutes:
+        parsed.data.thresholds?.clientFirstContactGraceMinutes ?? DEFAULT_AGENCY_AI_CONFIG.thresholds.clientFirstContactGraceMinutes,
+      teamChatResponseMinutes:
+        parsed.data.thresholds?.teamChatResponseMinutes ?? DEFAULT_AGENCY_AI_CONFIG.thresholds.teamChatResponseMinutes,
+    },
+    coaching: {
+      overloadLeadsPerAgent:
+        parsed.data.coaching?.overloadLeadsPerAgent ?? DEFAULT_AGENCY_AI_CONFIG.coaching.overloadLeadsPerAgent,
+      maxPendingReplyPerAgent:
+        parsed.data.coaching?.maxPendingReplyPerAgent ?? DEFAULT_AGENCY_AI_CONFIG.coaching.maxPendingReplyPerAgent,
+      minExecutionScore: parsed.data.coaching?.minExecutionScore ?? DEFAULT_AGENCY_AI_CONFIG.coaching.minExecutionScore,
+      alertOnWorkloadImbalance:
+        parsed.data.coaching?.alertOnWorkloadImbalance ?? DEFAULT_AGENCY_AI_CONFIG.coaching.alertOnWorkloadImbalance,
+      autoPrioritizeCriticalItems:
+        parsed.data.coaching?.autoPrioritizeCriticalItems ?? DEFAULT_AGENCY_AI_CONFIG.coaching.autoPrioritizeCriticalItems,
+    },
+  };
+}
+
 export function normalizeAgencyPhone(value: string | null | undefined) {
   const raw = String(value || "").trim();
   if (!raw) return { raw: null, normalized: null };
@@ -229,12 +396,21 @@ export async function getAgencyPublicLeadConfig(teamId: string) {
   return normalizeLeadConfig(safeJsonParse(record?.value, DEFAULT_AGENCY_PUBLIC_LEAD_CONFIG));
 }
 
+export async function getAgencyAiConfig(teamId: string) {
+  const record = await (prisma as any).systemSetting.findUnique({
+    where: { key: agencyAiConfigKey(teamId) },
+    select: { value: true },
+  });
+  return normalizeAiConfig(safeJsonParse(record?.value, DEFAULT_AGENCY_AI_CONFIG));
+}
+
 export async function getAgencyConfigs(teamId: string) {
-  const [profileConfig, leadConfig] = await Promise.all([
+  const [profileConfig, leadConfig, aiConfig] = await Promise.all([
     getAgencyProfileConfig(teamId),
     getAgencyPublicLeadConfig(teamId),
+    getAgencyAiConfig(teamId),
   ]);
-  return { profileConfig, leadConfig };
+  return { profileConfig, leadConfig, aiConfig };
 }
 
 export async function upsertAgencyProfileConfig(tx: any, teamId: string, config: AgencyProfileConfig, updatedByUserId: string) {
@@ -243,6 +419,23 @@ export async function upsertAgencyProfileConfig(tx: any, teamId: string, config:
     where: { key: agencyProfileConfigKey(teamId) },
     create: {
       key: agencyProfileConfigKey(teamId),
+      value: JSON.stringify(normalized),
+      updatedByUserId,
+    },
+    update: {
+      value: JSON.stringify(normalized),
+      updatedByUserId,
+    },
+    select: { key: true },
+  });
+}
+
+export async function upsertAgencyAiConfig(tx: any, teamId: string, config: AgencyAiConfig, updatedByUserId: string) {
+  const normalized = normalizeAiConfig(config);
+  return await tx.systemSetting.upsert({
+    where: { key: agencyAiConfigKey(teamId) },
+    create: {
+      key: agencyAiConfigKey(teamId),
       value: JSON.stringify(normalized),
       updatedByUserId,
     },

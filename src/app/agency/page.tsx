@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Activity, AlertTriangle, MessageCircle, Settings, Users, X } from "lucide-react";
+import { Activity, AlertTriangle, Bot, MessageCircle, Settings, Sparkles, Users, X } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
+import { AgencyAssistantFeed } from "@/components/crm/AgencyAssistantFeed";
 
 type Team = {
   id: string;
@@ -63,6 +64,47 @@ type AgencyInsightsResponse = {
     }>;
     clientNoFirstContact: number;
     clientOverdueNextAction: number;
+  };
+  aiConfig: {
+    channels: Record<string, boolean>;
+    automations: Record<string, boolean>;
+    thresholds: Record<string, number>;
+    coaching: {
+      overloadLeadsPerAgent: number;
+      maxPendingReplyPerAgent: number;
+      minExecutionScore: number;
+      alertOnWorkloadImbalance: boolean;
+      autoPrioritizeCriticalItems: boolean;
+    };
+  };
+  coaching: {
+    teamExecutionScore: number;
+    minExecutionScoreTarget: number;
+    avgFirstResponseMinutes: number | null;
+    workloadImbalanceIndex: number;
+    automationCoverage: {
+      enabledRules: number;
+      totalRules: number;
+      activeChannels: number;
+      totalChannels: number;
+    };
+    alerts: AgencyInsight[];
+    members: Array<{
+      userId: string;
+      name: string | null;
+      email: string | null;
+      role: string;
+      activeLeads: number;
+      pendingReply: number;
+      stalledLeads: number;
+      activeClients?: number;
+      clientPendingReply?: number;
+      clientNoFirstContact?: number;
+      avgFirstResponseMinutes?: number | null;
+      executionScore: number;
+      workloadStatus: "balanced" | "attention" | "overloaded";
+      totalPending: number;
+    }>;
   };
   members: Array<{
     userId: string;
@@ -158,6 +200,45 @@ export default function AgencyDashboardPage() {
   }, [pipelineLeads, selectedRealtorId]);
 
   const selectedLeadIdSet = useMemo(() => new Set(selectedLeadIds.map(String)), [selectedLeadIds]);
+
+  const aiChannelsSummary = useMemo(() => {
+    const channels = insights?.aiConfig?.channels || {};
+    return Object.entries(channels)
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([key]) => {
+        if (key === "dashboard") return "Dashboard";
+        if (key === "teamChat") return "Chat do time";
+        if (key === "whatsapp") return "WhatsApp";
+        if (key === "email") return "Email";
+        return key;
+      });
+  }, [insights?.aiConfig?.channels]);
+
+  const aiDashboardEnabled = insights?.aiConfig?.channels?.dashboard !== false;
+  const aiTeamChatEnabled = insights?.aiConfig?.channels?.teamChat !== false;
+  const aiWhatsappEnabled = insights?.aiConfig?.channels?.whatsapp !== false;
+  const aiEmailEnabled = insights?.aiConfig?.channels?.email === true;
+
+  const automationCoveragePercent = useMemo(() => {
+    const enabledRules = Number(insights?.coaching?.automationCoverage?.enabledRules || 0);
+    const totalRules = Number(insights?.coaching?.automationCoverage?.totalRules || 0);
+    if (!totalRules) return 0;
+    return Math.round((enabledRules / totalRules) * 100);
+  }, [insights?.coaching?.automationCoverage]);
+
+  const coachingAlerts = useMemo(() => {
+    return Array.isArray(insights?.coaching?.alerts) ? insights.coaching.alerts : [];
+  }, [insights?.coaching?.alerts]);
+
+  const coachingTopMembers = useMemo(() => {
+    return Array.isArray(insights?.coaching?.members) ? insights.coaching.members.slice(0, 3) : [];
+  }, [insights?.coaching?.members]);
+
+  const workloadBadgeClass = (status: "balanced" | "attention" | "overloaded") => {
+    if (status === "overloaded") return "border-rose-200 bg-rose-50 text-rose-700";
+    if (status === "attention") return "border-amber-200 bg-amber-50 text-amber-700";
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  };
 
   const getRealtorWhatsAppUrl = useMemo(() => {
     const raw =
@@ -425,7 +506,228 @@ export default function AgencyDashboardPage() {
             />
           </div>
 
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
+              {aiDashboardEnabled ? (
+                <>
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                        <Bot className="h-3.5 w-3.5" />
+                        Central operacional IA
+                      </div>
+                      <h2 className="mt-3 text-xl font-semibold text-gray-900">Prioridades do time, coaching e automações em um lugar</h2>
+                      <p className="mt-1 text-sm text-gray-600">
+                        A IA monitora SLAs, gargalos do time e próximos passos. Você continua no controle das decisões.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 min-w-[240px]">
+                      <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Score do time</div>
+                        <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.teamExecutionScore}</div>
+                        <div className="text-xs text-gray-500">Meta {insights.coaching.minExecutionScoreTarget}</div>
+                      </div>
+                      <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Automações ativas</div>
+                        <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.automationCoverage.enabledRules}</div>
+                        <div className="text-xs text-gray-500">de {insights.coaching.automationCoverage.totalRules} regras</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Canais</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {aiChannelsSummary.length > 0 ? (
+                          aiChannelsSummary.map((channel) => (
+                            <span key={channel} className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700">
+                              {channel}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-500">Nenhum canal ativo.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resposta média</div>
+                      <div className="mt-1 text-2xl font-semibold text-gray-900">
+                        {typeof insights.coaching.avgFirstResponseMinutes === "number" ? `${insights.coaching.avgFirstResponseMinutes} min` : "-"}
+                      </div>
+                      <div className="text-xs text-gray-500">Primeiro retorno do time</div>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Desequilíbrio</div>
+                      <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.workloadImbalanceIndex}</div>
+                      <div className="text-xs text-gray-500">Diferença entre carteiras</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-white p-5">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
+                    <Settings className="h-3.5 w-3.5" />
+                    Central IA desativada no dashboard
+                  </div>
+                  <h2 className="mt-3 text-xl font-semibold text-gray-900">Os guardrails continuam salvos, mas a central operacional está oculta</h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Reative o canal de dashboard para voltar a exibir fila da IA, coaching prioritário e atalhos operacionais nesta home.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href="/agency/team#advanced"
+                      className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
+                    >
+                      Abrir configuração da IA
+                    </Link>
+                    <div className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">
+                      Canais ativos: {aiChannelsSummary.join(" • ") || "nenhum"}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Coaching prioritário</p>
+                  <p className="mt-1 text-xs text-gray-500">Quem precisa de atenção primeiro</p>
+                </div>
+                <Sparkles className="h-5 w-5 text-emerald-600" />
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {coachingTopMembers.length > 0 ? (
+                  coachingTopMembers.map((member) => (
+                    <div key={member.userId} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.email || "Corretor"}</p>
+                          <p className="text-xs text-gray-500">
+                            {member.totalPending} pendência(s) • {member.activeLeads} leads ativos
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 ${workloadBadgeClass(member.workloadStatus)}`}>
+                              {member.workloadStatus === "overloaded"
+                                ? "Sobrecarregado"
+                                : member.workloadStatus === "attention"
+                                  ? "Atenção"
+                                  : "Equilibrado"}
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
+                              Resp. média: {typeof member.avgFirstResponseMinutes === "number" ? `${member.avgFirstResponseMinutes} min` : "-"}
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${member.executionScore < insights.coaching.minExecutionScoreTarget ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>
+                          {member.executionScore}/100
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-600">A IA ainda não detectou gargalos individuais relevantes.</div>
+                )}
+              </div>
+
+              {coachingAlerts.length > 0 ? (
+                <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Alertas de coaching</div>
+                  {coachingAlerts.slice(0, 3).map((alert, idx) => {
+                    const styles = severityStyles(alert.severity);
+                    return (
+                      <div key={`${alert.title}-${idx}`} className="rounded-xl border border-gray-200 bg-white px-3 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${styles.badge}`}>
+                                {styles.label}
+                              </span>
+                              <p className="text-sm font-semibold text-gray-900 line-clamp-1">{alert.title}</p>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-600">{alert.detail}</p>
+                          </div>
+                          {alert.href ? (
+                            <Link href={alert.href} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                              {alert.hrefLabel || "Abrir"}
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <StatCard
+                title="Fila operacional da IA"
+                action={
+                  <Link href="/agency/team#advanced" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Ajustar regras
+                  </Link>
+                }
+              >
+                {aiDashboardEnabled ? (
+                  <AgencyAssistantFeed teamId={insights.team.id} embedded />
+                ) : (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                    A fila operacional está desativada para o canal de dashboard desta agência.
+                  </div>
+                )}
+              </StatCard>
+            </div>
+
+            <div className="lg:col-span-1">
+              <StatCard title="Automações e guardrails">
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Cobertura</div>
+                    <div className="mt-1 text-sm font-semibold text-gray-900">{automationCoveragePercent}% das regras ativas</div>
+                    <div className="text-xs text-gray-500">
+                      {insights.coaching.automationCoverage.enabledRules} de {insights.coaching.automationCoverage.totalRules} regras
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Canais operacionais</div>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiDashboardEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
+                        Dashboard {aiDashboardEnabled ? "ativo" : "off"}
+                      </span>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiTeamChatEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
+                        Chat {aiTeamChatEnabled ? "ativo" : "off"}
+                      </span>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiWhatsappEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
+                        WhatsApp {aiWhatsappEnabled ? "ativo" : "off"}
+                      </span>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiEmailEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
+                        E-mail {aiEmailEnabled ? "ativo" : "off"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Guardrails principais</div>
+                    <div className="mt-1 text-sm font-semibold text-gray-900">{insights.aiConfig.thresholds.clientFirstContactGraceMinutes} min para 1º contato</div>
+                    <div className="text-xs text-gray-500">Lead parado após {insights.aiConfig.thresholds.staleLeadDays} dia(s) sem avanço</div>
+                  </div>
+                  <Link
+                    href="/agency/team#advanced"
+                    className="inline-flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Abrir configuração da IA
+                  </Link>
+                </div>
+              </StatCard>
+            </div>
+
             <div className="lg:col-span-3">
               <StatCard
                 title="Alertas do time"
@@ -551,7 +853,7 @@ export default function AgencyDashboardPage() {
                         </label>
                       </div>
 
-                      {getRealtorWhatsAppUrl && selectedRealtorId && (
+                      {aiWhatsappEnabled && getRealtorWhatsAppUrl && selectedRealtorId && (
                         <div>
                           <a
                             href={getRealtorWhatsAppUrl}
@@ -564,6 +866,12 @@ export default function AgencyDashboardPage() {
                           </a>
                         </div>
                       )}
+
+                      {!aiWhatsappEnabled && selectedRealtorId ? (
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                          O atalho de WhatsApp está desativado nas configurações da IA desta agência.
+                        </div>
+                      ) : null}
 
                       <label className="block">
                         <span className="block text-[11px] font-semibold text-gray-600">Mensagem</span>

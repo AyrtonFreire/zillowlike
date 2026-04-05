@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, MessageCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Flag, MessageCircle, RefreshCw, Sparkles } from "lucide-react";
 import AgencyLeadSidePanel from "../../../../../components/leads/AgencyLeadSidePanel";
 import { getPusherClient } from "@/lib/pusher-client";
 import {
@@ -99,6 +99,22 @@ type AgencyInsightsResponse = {
   };
 };
 
+type AgencyProfileResponse = {
+  success: boolean;
+  agencyProfile?: {
+    aiConfig?: {
+      channels?: {
+        whatsapp?: boolean;
+      };
+      automations?: {
+        manualPriorityBoard?: boolean;
+      };
+    };
+  };
+};
+
+type AgencyAiConfig = NonNullable<NonNullable<AgencyProfileResponse["agencyProfile"]>["aiConfig"]>;
+
 function formatShortDate(value: string | null | undefined) {
   if (!value) return "";
   const d = new Date(value);
@@ -166,6 +182,10 @@ export default function AgencyTeamCrmPage() {
   const [leadPanelInitialTab, setLeadPanelInitialTab] = useState<"ATIVIDADES" | "NOTAS">("ATIVIDADES");
 
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
+  const [draftingLeadId, setDraftingLeadId] = useState<string | null>(null);
+  const [prioritizingLeadId, setPrioritizingLeadId] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [agencyAiConfig, setAgencyAiConfig] = useState<AgencyAiConfig | null>(null);
 
   const [templateModal, setTemplateModal] = useState<null | {
     leadId: string;
@@ -297,6 +317,28 @@ export default function AgencyTeamCrmPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (!teamId) return;
+
+    let cancelled = false;
+    const loadAgencyProfile = async () => {
+      try {
+        const response = await fetch(`/api/agency/profile`, { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as AgencyProfileResponse | null;
+        if (!response.ok || !data?.success) return;
+        if (cancelled) return;
+        setAgencyAiConfig(data.agencyProfile?.aiConfig || null);
+      } catch {
+      }
+    };
+
+    void loadAgencyProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
+
+  useEffect(() => {
     if (!teamId || !initialized) return;
     const t = window.setTimeout(() => {
       void reload({ append: false });
@@ -339,6 +381,9 @@ export default function AgencyTeamCrmPage() {
     };
   }, []);
 
+  const whatsappChannelEnabled = agencyAiConfig?.channels?.whatsapp !== false;
+  const manualPriorityEnabled = agencyAiConfig?.automations?.manualPriorityBoard !== false;
+
   const openLeadPanel = (id: string, tab: "ATIVIDADES" | "NOTAS" = "ATIVIDADES") => {
     setSelectedLeadId(String(id));
     setLeadPanelInitialTab(tab);
@@ -350,6 +395,7 @@ export default function AgencyTeamCrmPage() {
     const rid = String(nextRealtorId);
     if (!id) return;
     try {
+      setSuccessMessage(null);
       setSavingLeadId(id);
       const res = await fetch(`/api/leads/${encodeURIComponent(id)}/assign`, {
         method: "PATCH",
@@ -380,6 +426,105 @@ export default function AgencyTeamCrmPage() {
       setError(e?.message || "Não conseguimos reatribuir este lead agora.");
     } finally {
       setSavingLeadId(null);
+    }
+  };
+
+  const handleGenerateAiDraft = async (lead: PipelineLead, member: PipelineMember | null, templateCtx: any) => {
+    const leadId = String(lead.id || "");
+    if (!leadId) return;
+    const assignedId = member?.userId ? String(member.userId) : lead.realtor?.id ? String(lead.realtor.id) : "";
+    if (!assignedId && !whatsappChannelEnabled) {
+      setError("O canal de WhatsApp da IA está desativado para esta agência.");
+      return;
+    }
+    const wa = whatsappNumberFromMember(member);
+
+    try {
+      setDraftingLeadId(leadId);
+      setError(null);
+      setSuccessMessage(null);
+
+      const url = assignedId
+        ? `/api/agency/leads/${encodeURIComponent(leadId)}/realtor-contact-draft?realtorId=${encodeURIComponent(assignedId)}`
+        : `/api/agency/leads/${encodeURIComponent(leadId)}/realtor-contact-draft`;
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success || !String(data?.draft || "").trim()) {
+        throw new Error(data?.error || "Não conseguimos gerar a mensagem com IA agora.");
+      }
+
+      const defaultChannel: "CHAT" | "WHATSAPP" = assignedId ? "CHAT" : "WHATSAPP";
+      const options = buildAgencyLeadTemplateOptions(templateCtx);
+      setTemplateModal({
+        leadId,
+        channel: defaultChannel,
+        assignedId,
+        whatsappNumber: wa,
+        options: [
+          {
+            id: "ai-draft",
+            label: data?.usedAi ? "Gerado com IA" : "Sugestão base",
+            text: String(data.draft).trim(),
+          },
+          ...options,
+        ],
+      });
+    } catch (e: any) {
+      setError(e?.message || "Não conseguimos gerar a mensagem com IA agora.");
+    } finally {
+      setDraftingLeadId(null);
+    }
+  };
+
+  const handlePrioritizeLead = async (lead: PipelineLead, pendingAt?: string | null) => {
+    const leadId = String(lead.id || "");
+    if (!leadId) return;
+    if (!manualPriorityEnabled) {
+      setError("A fila manual da central IA está desativada para esta agência.");
+      return;
+    }
+
+    const title = !lead.realtor?.id
+      ? "Distribuir lead no CRM"
+      : pendingAt
+        ? "Cobrar atendimento do lead"
+        : "Revisar lead com IA";
+    const message = !lead.realtor?.id
+      ? `${lead.contact?.name || "Este lead"} está sem responsável e precisa ser distribuído.`
+      : pendingAt
+        ? `${lead.contact?.name || "Este lead"} segue aguardando retorno do corretor ${lead.realtor?.name || "responsável"}.`
+        : `${lead.contact?.name || "Este lead"} merece revisão operacional para acelerar o próximo passo.`;
+
+    try {
+      setPrioritizingLeadId(leadId);
+      setError(null);
+      setSuccessMessage(null);
+
+      const res = await fetch("/api/assistant/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context: "AGENCY",
+          teamId,
+          targetType: "LEAD",
+          targetId: leadId,
+          title,
+          message,
+          priority: pendingAt || !lead.realtor?.id ? "HIGH" : "MEDIUM",
+          actionUrl: `/agency/teams/${encodeURIComponent(teamId)}/crm?lead=${encodeURIComponent(leadId)}`,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos priorizar este lead agora.");
+      }
+
+      setSuccessMessage("Lead enviado para a fila operacional da IA.");
+      await reload({ append: false });
+    } catch (e: any) {
+      setError(e?.message || "Não conseguimos priorizar este lead agora.");
+    } finally {
+      setPrioritizingLeadId(null);
     }
   };
 
@@ -417,6 +562,12 @@ export default function AgencyTeamCrmPage() {
       {error && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {successMessage}
         </div>
       )}
 
@@ -573,6 +724,7 @@ export default function AgencyTeamCrmPage() {
                   const wa = whatsappNumberFromMember(member);
                   const canChat = !!assignedId;
                   const canWhatsApp = !!wa;
+                  const canUseAiDraft = canChat || whatsappChannelEnabled;
                   return (
                     <tr key={leadId} className="hover:bg-gray-50">
                       <td className="pl-2 pr-3 py-3">
@@ -686,10 +838,37 @@ export default function AgencyTeamCrmPage() {
 
                           <button
                             type="button"
-                            onClick={(e) => {
-                              const options = buildAgencyLeadTemplateOptions(templateCtx);
+                            onClick={() => handleGenerateAiDraft(l, member, templateCtx)}
+                            disabled={draftingLeadId === leadId || !canUseAiDraft}
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 disabled:opacity-60"
+                            title={canUseAiDraft ? "Gerar mensagem com IA" : "WhatsApp da IA desativado para esta agência"}
+                            aria-label="Gerar mensagem com IA"
+                          >
+                            <Sparkles className="w-5 h-5" />
+                          </button>
 
-                              if (!canWhatsApp || e.shiftKey) {
+                          {whatsappChannelEnabled ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                const options = buildAgencyLeadTemplateOptions(templateCtx);
+
+                                if (!canWhatsApp || e.shiftKey) {
+                                  setTemplateModal({
+                                    leadId,
+                                    channel: "WHATSAPP",
+                                    assignedId,
+                                    whatsappNumber: wa,
+                                    options,
+                                  });
+                                  return;
+                                }
+
+                                window.open(`https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}`, "_blank");
+                              }}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                const options = buildAgencyLeadTemplateOptions(templateCtx);
                                 setTemplateModal({
                                   leadId,
                                   channel: "WHATSAPP",
@@ -697,38 +876,37 @@ export default function AgencyTeamCrmPage() {
                                   whatsappNumber: wa,
                                   options,
                                 });
-                                return;
+                              }}
+                              aria-disabled={!canWhatsApp}
+                              className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 ${
+                                canWhatsApp ? "" : "opacity-50"
+                              }`}
+                              title={
+                                canWhatsApp
+                                  ? "WhatsApp (Shift+clique ou clique direito para escolher)"
+                                  : "WhatsApp indisponível (clique para copiar mensagem)"
                               }
+                              aria-label="Abrir WhatsApp"
+                            >
+                              <svg viewBox="0 0 32 32" className="w-5 h-5" fill="currentColor" aria-hidden="true">
+                                <path d="M19.11 17.67c-.27-.14-1.6-.79-1.85-.88-.25-.09-.43-.14-.61.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.59.07-.27-.14-1.16-.43-2.2-1.38-.81-.72-1.36-1.61-1.52-1.88-.16-.27-.02-.41.12-.55.12-.12.27-.32.41-.48.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.61-1.47-.84-2.02-.22-.53-.45-.46-.61-.47h-.52c-.18 0-.48.07-.73.34-.25.27-.95.93-.95 2.27 0 1.34.98 2.64 1.11 2.82.14.18 1.93 2.95 4.67 4.13.65.28 1.16.45 1.55.58.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.83-1.27.23-.63.23-1.16.16-1.27-.07-.11-.25-.18-.52-.32z" />
+                                <path d="M26.68 5.32C23.93 2.57 20.28 1.05 16.4 1.05 8.39 1.05 1.88 7.56 1.88 15.57c0 2.56.67 5.06 1.94 7.26L1.76 30.95l8.29-2.17c2.11 1.15 4.48 1.75 6.9 1.75h.01c8.01 0 14.52-6.51 14.52-14.52 0-3.88-1.51-7.53-4.27-10.69zm-10.27 22.7h-.01c-2.18 0-4.31-.59-6.16-1.7l-.44-.26-4.92 1.29 1.31-4.8-.29-.49c-1.21-1.96-1.85-4.22-1.85-6.54 0-6.83 5.56-12.39 12.39-12.39 3.31 0 6.42 1.29 8.76 3.63 2.34 2.34 3.63 5.46 3.63 8.76 0 6.83-5.56 12.5-12.42 12.5z" />
+                              </svg>
+                            </button>
+                          ) : null}
 
-                              window.open(`https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}`, "_blank");
-                            }}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              const options = buildAgencyLeadTemplateOptions(templateCtx);
-                              setTemplateModal({
-                                leadId,
-                                channel: "WHATSAPP",
-                                assignedId,
-                                whatsappNumber: wa,
-                                options,
-                              });
-                            }}
-                            aria-disabled={!canWhatsApp}
-                            className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 ${
-                              canWhatsApp ? "" : "opacity-50"
-                            }`}
-                            title={
-                              canWhatsApp
-                                ? "WhatsApp (Shift+clique ou clique direito para escolher)"
-                                : "WhatsApp indisponível (clique para copiar mensagem)"
-                            }
-                            aria-label="Abrir WhatsApp"
-                          >
-                            <svg viewBox="0 0 32 32" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-                              <path d="M19.11 17.67c-.27-.14-1.6-.79-1.85-.88-.25-.09-.43-.14-.61.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.59.07-.27-.14-1.16-.43-2.2-1.38-.81-.72-1.36-1.61-1.52-1.88-.16-.27-.02-.41.12-.55.12-.12.27-.32.41-.48.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.61-1.47-.84-2.02-.22-.53-.45-.46-.61-.47h-.52c-.18 0-.48.07-.73.34-.25.27-.95.93-.95 2.27 0 1.34.98 2.64 1.11 2.82.14.18 1.93 2.95 4.67 4.13.65.28 1.16.45 1.55.58.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.83-1.27.23-.63.23-1.16.16-1.27-.07-.11-.25-.18-.52-.32z" />
-                              <path d="M26.68 5.32C23.93 2.57 20.28 1.05 16.4 1.05 8.39 1.05 1.88 7.56 1.88 15.57c0 2.56.67 5.06 1.94 7.26L1.76 30.95l8.29-2.17c2.11 1.15 4.48 1.75 6.9 1.75h.01c8.01 0 14.52-6.51 14.52-14.52 0-3.88-1.51-7.53-4.27-10.69zm-10.27 22.7h-.01c-2.18 0-4.31-.59-6.16-1.7l-.44-.26-4.92 1.29 1.31-4.8-.29-.49c-1.21-1.96-1.85-4.22-1.85-6.54 0-6.83 5.56-12.39 12.39-12.39 3.31 0 6.42 1.29 8.76 3.63 2.34 2.34 3.63 5.46 3.63 8.76 0 6.83-5.56 12.5-12.42 12.5z" />
-                            </svg>
-                          </button>
+                          {manualPriorityEnabled ? (
+                            <button
+                              type="button"
+                              onClick={() => handlePrioritizeLead(l, pending?.lastClientAt || null)}
+                              disabled={prioritizingLeadId === leadId}
+                              className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                              title="Priorizar na central IA"
+                              aria-label="Priorizar na central IA"
+                            >
+                              <Flag className="w-5 h-5" />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

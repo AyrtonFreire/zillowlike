@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
+import { AgencyAssistantWidget } from "@/components/crm/AgencyAssistantWidget";
 import { ModernNavbar } from "@/components/modern";
 
 type NavItem = {
@@ -175,6 +176,7 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </div>
+      <AgencyAssistantWidget />
     </div>
   );
 }

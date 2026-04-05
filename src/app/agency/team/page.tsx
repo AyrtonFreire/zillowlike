@@ -58,6 +58,18 @@ type AgencyProfile = {
     rentRealtorId: string | null;
     listRealtorId: string | null;
   };
+  aiConfig: {
+    channels: Record<string, boolean>;
+    automations: Record<string, boolean>;
+    thresholds: Record<string, number>;
+    coaching: {
+      overloadLeadsPerAgent: number;
+      maxPendingReplyPerAgent: number;
+      minExecutionScore: number;
+      alertOnWorkloadImbalance: boolean;
+      autoPrioritizeCriticalItems: boolean;
+    };
+  };
   verifiedPhoneVisible: boolean;
   completion: {
     score: number;
@@ -101,6 +113,45 @@ type AgencyProfileFormState = {
   playbookList: string;
 };
 
+type AgencyAiConfigFormState = {
+  channels: {
+    dashboard: boolean;
+    teamChat: boolean;
+    whatsapp: boolean;
+    email: boolean;
+  };
+  automations: {
+    leadUnassigned: boolean;
+    leadPendingReply: boolean;
+    leadNoFirstContact: boolean;
+    staleLead: boolean;
+    clientUnassigned: boolean;
+    clientPendingReply: boolean;
+    clientNoFirstContact: boolean;
+    clientOverdueNextAction: boolean;
+    teamChatUnread: boolean;
+    teamChatAwaitingResponse: boolean;
+    weeklySummary: boolean;
+    manualPriorityBoard: boolean;
+  };
+  thresholds: {
+    leadPendingReplyMinutesChat: string;
+    leadPendingReplyMinutesForm: string;
+    leadPendingReplyMinutesWhatsApp: string;
+    staleLeadDays: string;
+    clientPendingReplyMinutes: string;
+    clientFirstContactGraceMinutes: string;
+    teamChatResponseMinutes: string;
+  };
+  coaching: {
+    overloadLeadsPerAgent: string;
+    maxPendingReplyPerAgent: string;
+    minExecutionScore: string;
+    alertOnWorkloadImbalance: boolean;
+    autoPrioritizeCriticalItems: boolean;
+  };
+};
+
 const EMPTY_PROFILE_FORM: AgencyProfileFormState = {
   name: "",
   phone: "",
@@ -121,6 +172,45 @@ const EMPTY_PROFILE_FORM: AgencyProfileFormState = {
   playbookBuy: "",
   playbookRent: "",
   playbookList: "",
+};
+
+const EMPTY_AI_CONFIG_FORM: AgencyAiConfigFormState = {
+  channels: {
+    dashboard: true,
+    teamChat: true,
+    whatsapp: true,
+    email: false,
+  },
+  automations: {
+    leadUnassigned: true,
+    leadPendingReply: true,
+    leadNoFirstContact: true,
+    staleLead: true,
+    clientUnassigned: true,
+    clientPendingReply: true,
+    clientNoFirstContact: true,
+    clientOverdueNextAction: true,
+    teamChatUnread: true,
+    teamChatAwaitingResponse: true,
+    weeklySummary: true,
+    manualPriorityBoard: true,
+  },
+  thresholds: {
+    leadPendingReplyMinutesChat: "15",
+    leadPendingReplyMinutesForm: "30",
+    leadPendingReplyMinutesWhatsApp: "60",
+    staleLeadDays: "3",
+    clientPendingReplyMinutes: "60",
+    clientFirstContactGraceMinutes: "30",
+    teamChatResponseMinutes: "30",
+  },
+  coaching: {
+    overloadLeadsPerAgent: "25",
+    maxPendingReplyPerAgent: "5",
+    minExecutionScore: "70",
+    alertOnWorkloadImbalance: true,
+    autoPrioritizeCriticalItems: true,
+  },
 };
 
 function buildAgencyProfileFormState(profile: AgencyProfile | null | undefined): AgencyProfileFormState {
@@ -150,6 +240,115 @@ function buildAgencyProfileFormState(profile: AgencyProfile | null | undefined):
     playbookList: String(profile.playbookList || ""),
   };
 }
+
+function buildAgencyAiConfigFormState(config: AgencyProfile["aiConfig"] | null | undefined): AgencyAiConfigFormState {
+  return {
+    channels: {
+      dashboard: config?.channels?.dashboard ?? EMPTY_AI_CONFIG_FORM.channels.dashboard,
+      teamChat: config?.channels?.teamChat ?? EMPTY_AI_CONFIG_FORM.channels.teamChat,
+      whatsapp: config?.channels?.whatsapp ?? EMPTY_AI_CONFIG_FORM.channels.whatsapp,
+      email: config?.channels?.email ?? EMPTY_AI_CONFIG_FORM.channels.email,
+    },
+    automations: {
+      leadUnassigned: config?.automations?.leadUnassigned ?? EMPTY_AI_CONFIG_FORM.automations.leadUnassigned,
+      leadPendingReply: config?.automations?.leadPendingReply ?? EMPTY_AI_CONFIG_FORM.automations.leadPendingReply,
+      leadNoFirstContact: config?.automations?.leadNoFirstContact ?? EMPTY_AI_CONFIG_FORM.automations.leadNoFirstContact,
+      staleLead: config?.automations?.staleLead ?? EMPTY_AI_CONFIG_FORM.automations.staleLead,
+      clientUnassigned: config?.automations?.clientUnassigned ?? EMPTY_AI_CONFIG_FORM.automations.clientUnassigned,
+      clientPendingReply: config?.automations?.clientPendingReply ?? EMPTY_AI_CONFIG_FORM.automations.clientPendingReply,
+      clientNoFirstContact: config?.automations?.clientNoFirstContact ?? EMPTY_AI_CONFIG_FORM.automations.clientNoFirstContact,
+      clientOverdueNextAction: config?.automations?.clientOverdueNextAction ?? EMPTY_AI_CONFIG_FORM.automations.clientOverdueNextAction,
+      teamChatUnread: config?.automations?.teamChatUnread ?? EMPTY_AI_CONFIG_FORM.automations.teamChatUnread,
+      teamChatAwaitingResponse:
+        config?.automations?.teamChatAwaitingResponse ?? EMPTY_AI_CONFIG_FORM.automations.teamChatAwaitingResponse,
+      weeklySummary: config?.automations?.weeklySummary ?? EMPTY_AI_CONFIG_FORM.automations.weeklySummary,
+      manualPriorityBoard: config?.automations?.manualPriorityBoard ?? EMPTY_AI_CONFIG_FORM.automations.manualPriorityBoard,
+    },
+    thresholds: {
+      leadPendingReplyMinutesChat: String(
+        config?.thresholds?.leadPendingReplyMinutesChat ?? EMPTY_AI_CONFIG_FORM.thresholds.leadPendingReplyMinutesChat
+      ),
+      leadPendingReplyMinutesForm: String(
+        config?.thresholds?.leadPendingReplyMinutesForm ?? EMPTY_AI_CONFIG_FORM.thresholds.leadPendingReplyMinutesForm
+      ),
+      leadPendingReplyMinutesWhatsApp: String(
+        config?.thresholds?.leadPendingReplyMinutesWhatsApp ?? EMPTY_AI_CONFIG_FORM.thresholds.leadPendingReplyMinutesWhatsApp
+      ),
+      staleLeadDays: String(config?.thresholds?.staleLeadDays ?? EMPTY_AI_CONFIG_FORM.thresholds.staleLeadDays),
+      clientPendingReplyMinutes: String(
+        config?.thresholds?.clientPendingReplyMinutes ?? EMPTY_AI_CONFIG_FORM.thresholds.clientPendingReplyMinutes
+      ),
+      clientFirstContactGraceMinutes: String(
+        config?.thresholds?.clientFirstContactGraceMinutes ?? EMPTY_AI_CONFIG_FORM.thresholds.clientFirstContactGraceMinutes
+      ),
+      teamChatResponseMinutes: String(
+        config?.thresholds?.teamChatResponseMinutes ?? EMPTY_AI_CONFIG_FORM.thresholds.teamChatResponseMinutes
+      ),
+    },
+    coaching: {
+      overloadLeadsPerAgent: String(
+        config?.coaching?.overloadLeadsPerAgent ?? EMPTY_AI_CONFIG_FORM.coaching.overloadLeadsPerAgent
+      ),
+      maxPendingReplyPerAgent: String(
+        config?.coaching?.maxPendingReplyPerAgent ?? EMPTY_AI_CONFIG_FORM.coaching.maxPendingReplyPerAgent
+      ),
+      minExecutionScore: String(config?.coaching?.minExecutionScore ?? EMPTY_AI_CONFIG_FORM.coaching.minExecutionScore),
+      alertOnWorkloadImbalance:
+        config?.coaching?.alertOnWorkloadImbalance ?? EMPTY_AI_CONFIG_FORM.coaching.alertOnWorkloadImbalance,
+      autoPrioritizeCriticalItems:
+        config?.coaching?.autoPrioritizeCriticalItems ?? EMPTY_AI_CONFIG_FORM.coaching.autoPrioritizeCriticalItems,
+    },
+  };
+}
+
+function toOptionalInt(value: string) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return undefined;
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+const AI_CHANNEL_FIELDS: Array<{ key: keyof AgencyAiConfigFormState["channels"]; label: string; hint: string }> = [
+  { key: "dashboard", label: "Dashboard", hint: "Mostra a central operacional e indicadores na home da agência." },
+  { key: "teamChat", label: "Chat do time", hint: "Permite sinais baseados em chat interno e atendimento entre membros." },
+  { key: "whatsapp", label: "WhatsApp", hint: "Habilita drafts e gatilhos ligados ao canal de mensagens externas." },
+  { key: "email", label: "E-mail", hint: "Reserva o canal para automações por e-mail quando estiver disponível." },
+];
+
+const AI_AUTOMATION_FIELDS: Array<{ key: keyof AgencyAiConfigFormState["automations"]; label: string }> = [
+  { key: "leadUnassigned", label: "Leads sem responsável" },
+  { key: "leadPendingReply", label: "Leads aguardando resposta" },
+  { key: "leadNoFirstContact", label: "Leads sem 1º contato" },
+  { key: "staleLead", label: "Leads parados" },
+  { key: "clientUnassigned", label: "Clientes sem responsável" },
+  { key: "clientPendingReply", label: "Clientes aguardando retorno" },
+  { key: "clientNoFirstContact", label: "Clientes sem 1º contato" },
+  { key: "clientOverdueNextAction", label: "Clientes com próxima ação vencida" },
+  { key: "teamChatUnread", label: "Chat do time não lido" },
+  { key: "teamChatAwaitingResponse", label: "Chat aguardando resposta" },
+  { key: "weeklySummary", label: "Resumo semanal" },
+  { key: "manualPriorityBoard", label: "Fila de prioridade manual" },
+];
+
+const AI_THRESHOLD_FIELDS: Array<{ key: keyof AgencyAiConfigFormState["thresholds"]; label: string; suffix: string }> = [
+  { key: "leadPendingReplyMinutesChat", label: "Lead pendente via chat", suffix: "min" },
+  { key: "leadPendingReplyMinutesForm", label: "Lead pendente via formulário", suffix: "min" },
+  { key: "leadPendingReplyMinutesWhatsApp", label: "Lead pendente via WhatsApp", suffix: "min" },
+  { key: "staleLeadDays", label: "Lead parado", suffix: "dias" },
+  { key: "clientPendingReplyMinutes", label: "Cliente aguardando retorno", suffix: "min" },
+  { key: "clientFirstContactGraceMinutes", label: "Janela de 1º contato", suffix: "min" },
+  { key: "teamChatResponseMinutes", label: "Resposta no chat interno", suffix: "min" },
+];
+
+const AI_COACHING_FIELDS: Array<{
+  key: "overloadLeadsPerAgent" | "maxPendingReplyPerAgent" | "minExecutionScore";
+  label: string;
+  suffix: string;
+}> = [
+  { key: "overloadLeadsPerAgent", label: "Carteira confortável por corretor", suffix: "leads" },
+  { key: "maxPendingReplyPerAgent", label: "Pendências antes de alertar", suffix: "itens" },
+  { key: "minExecutionScore", label: "Score mínimo desejado", suffix: "%" },
+];
 
 type TeamLeadDistributionMode = "ROUND_ROBIN" | "CAPTURER_FIRST" | "MANUAL";
 
@@ -258,6 +457,7 @@ export default function AgencyTeamPage() {
   const [newOwnerId, setNewOwnerId] = useState("");
 
   const [profileForm, setProfileForm] = useState<AgencyProfileFormState>({ ...EMPTY_PROFILE_FORM });
+  const [aiConfigForm, setAiConfigForm] = useState<AgencyAiConfigFormState>({ ...EMPTY_AI_CONFIG_FORM });
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [leadDistributionMode, setLeadDistributionMode] = useState<TeamLeadDistributionMode>("ROUND_ROBIN");
@@ -360,6 +560,7 @@ export default function AgencyTeamPage() {
         if (profileRes.ok && profileJson?.success && profileJson?.agencyProfile) {
           setAgencyProfile(profileJson.agencyProfile);
           setProfileForm(buildAgencyProfileFormState(profileJson.agencyProfile));
+          setAiConfigForm(buildAgencyAiConfigFormState(profileJson.agencyProfile.aiConfig));
         }
 
         if (selected?.id) {
@@ -651,6 +852,26 @@ export default function AgencyTeamPage() {
             rentRealtorId: profileForm.rentRealtorId || null,
             listRealtorId: profileForm.listRealtorId || null,
           },
+          aiConfig: {
+            channels: { ...aiConfigForm.channels },
+            automations: { ...aiConfigForm.automations },
+            thresholds: {
+              leadPendingReplyMinutesChat: toOptionalInt(aiConfigForm.thresholds.leadPendingReplyMinutesChat),
+              leadPendingReplyMinutesForm: toOptionalInt(aiConfigForm.thresholds.leadPendingReplyMinutesForm),
+              leadPendingReplyMinutesWhatsApp: toOptionalInt(aiConfigForm.thresholds.leadPendingReplyMinutesWhatsApp),
+              staleLeadDays: toOptionalInt(aiConfigForm.thresholds.staleLeadDays),
+              clientPendingReplyMinutes: toOptionalInt(aiConfigForm.thresholds.clientPendingReplyMinutes),
+              clientFirstContactGraceMinutes: toOptionalInt(aiConfigForm.thresholds.clientFirstContactGraceMinutes),
+              teamChatResponseMinutes: toOptionalInt(aiConfigForm.thresholds.teamChatResponseMinutes),
+            },
+            coaching: {
+              overloadLeadsPerAgent: toOptionalInt(aiConfigForm.coaching.overloadLeadsPerAgent),
+              maxPendingReplyPerAgent: toOptionalInt(aiConfigForm.coaching.maxPendingReplyPerAgent),
+              minExecutionScore: toOptionalInt(aiConfigForm.coaching.minExecutionScore),
+              alertOnWorkloadImbalance: aiConfigForm.coaching.alertOnWorkloadImbalance,
+              autoPrioritizeCriticalItems: aiConfigForm.coaching.autoPrioritizeCriticalItems,
+            },
+          },
         }),
       });
 
@@ -662,6 +883,7 @@ export default function AgencyTeamPage() {
       const updated: AgencyProfile = data.agencyProfile;
       setAgencyProfile((prev) => (prev ? { ...prev, ...updated } : updated));
       setProfileForm(buildAgencyProfileFormState(updated));
+      setAiConfigForm(buildAgencyAiConfigFormState(updated.aiConfig));
       if (team && updated?.teamId === team.id && updated?.name) {
         setTeam({ ...team, name: updated.name });
       }
@@ -1475,6 +1697,163 @@ export default function AgencyTeamPage() {
                       >
                         {savingProfile ? "Salvando..." : "Salvar perfil"}
                       </button>
+                    </div>
+                  </div>
+                </StatCard>
+
+                <StatCard title="Guardrails e automações da IA">
+                  <div className="space-y-6">
+                    <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+                      <div className="text-sm font-semibold text-violet-950">Canais ativos</div>
+                      <div className="mt-1 text-xs text-violet-800">
+                        Escolha onde a operação assistida fica visível para o time, sem transformar isso em pressão sobre os corretores.
+                      </div>
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {AI_CHANNEL_FIELDS.map((field) => (
+                          <label key={field.key} className="flex items-start gap-3 rounded-xl border border-violet-100 bg-white px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={aiConfigForm.channels[field.key]}
+                              onChange={(e) =>
+                                setAiConfigForm((prev) => ({
+                                  ...prev,
+                                  channels: { ...prev.channels, [field.key]: e.target.checked },
+                                }))
+                              }
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                            />
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">{field.label}</div>
+                              <div className="text-xs text-gray-500">{field.hint}</div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+                      <div className="text-sm font-semibold text-gray-900">Regras operacionais</div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        Ative apenas os sinais que realmente ajudam a conectar time, leads e clientes com o próximo passo certo.
+                      </div>
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {AI_AUTOMATION_FIELDS.map((field) => (
+                          <label key={field.key} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={aiConfigForm.automations[field.key]}
+                              onChange={(e) =>
+                                setAiConfigForm((prev) => ({
+                                  ...prev,
+                                  automations: { ...prev.automations, [field.key]: e.target.checked },
+                                }))
+                              }
+                              className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+                            />
+                            <span className="font-medium">{field.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                      <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                        <div className="text-sm font-semibold text-gray-900">Limiares de atenção</div>
+                        <div className="mt-1 text-xs text-gray-500">Defina quando a IA deve trazer algo para a fila operacional.</div>
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {AI_THRESHOLD_FIELDS.map((field) => (
+                            <div key={field.key}>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">{field.label}</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={aiConfigForm.thresholds[field.key]}
+                                  onChange={(e) =>
+                                    setAiConfigForm((prev) => ({
+                                      ...prev,
+                                      thresholds: { ...prev.thresholds, [field.key]: e.target.value },
+                                    }))
+                                  }
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm pr-14 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                />
+                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-gray-400">
+                                  {field.suffix}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                        <div className="text-sm font-semibold text-emerald-950">Coaching e equilíbrio do time</div>
+                        <div className="mt-1 text-xs text-emerald-800">
+                          Use metas de apoio e distribuição saudável, sem criar medo ou competição artificial dentro do time.
+                        </div>
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {AI_COACHING_FIELDS.map((field) => (
+                            <div key={field.key}>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">{field.label}</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={aiConfigForm.coaching[field.key]}
+                                  onChange={(e) =>
+                                    setAiConfigForm((prev) => ({
+                                      ...prev,
+                                      coaching: { ...prev.coaching, [field.key]: e.target.value },
+                                    }))
+                                  }
+                                  className="w-full px-3 py-2 border border-emerald-100 rounded-xl text-sm pr-14 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-emerald-500">
+                                  {field.suffix}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <label className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-white px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={aiConfigForm.coaching.alertOnWorkloadImbalance}
+                              onChange={(e) =>
+                                setAiConfigForm((prev) => ({
+                                  ...prev,
+                                  coaching: { ...prev.coaching, alertOnWorkloadImbalance: e.target.checked },
+                                }))
+                              }
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">Sinalizar desequilíbrio de carga</div>
+                              <div className="text-xs text-gray-500">Avise quando a carteira ficar concentrada demais em poucas pessoas.</div>
+                            </div>
+                          </label>
+
+                          <label className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-white px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={aiConfigForm.coaching.autoPrioritizeCriticalItems}
+                              onChange={(e) =>
+                                setAiConfigForm((prev) => ({
+                                  ...prev,
+                                  coaching: { ...prev.coaching, autoPrioritizeCriticalItems: e.target.checked },
+                                }))
+                              }
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">Priorizar itens críticos automaticamente</div>
+                              <div className="text-xs text-gray-500">Empurra casos sensíveis para a fila da IA sem depender de ação manual.</div>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </StatCard>

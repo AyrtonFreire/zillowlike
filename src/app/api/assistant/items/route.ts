@@ -3,13 +3,27 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { createAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
 import { getRealtorAssistantTypesForCategory } from "@/lib/realtor-assistant-ai";
 
-const PostSchema = z
+const RealtorPostSchema = z
   .object({
     leadId: z.string().min(1),
     draft: z.string().min(1).max(2000),
+  })
+  .strict();
+
+const AgencyManualPrioritySchema = z
+  .object({
+    context: z.literal("AGENCY").optional(),
+    teamId: z.string().trim().min(1).optional(),
+    targetType: z.enum(["LEAD", "CLIENT"]),
+    targetId: z.string().trim().min(1),
+    title: z.string().trim().min(3).max(120),
+    message: z.string().trim().min(3).max(1000),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
+    actionUrl: z.string().trim().min(1).max(500).optional(),
   })
   .strict();
 
@@ -235,12 +249,138 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR") {
+    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
-    const parsed = PostSchema.safeParse(body);
+    if (body && typeof body === "object" && "targetType" in (body as Record<string, unknown>)) {
+      if (role !== "ADMIN" && role !== "AGENCY") {
+        return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+      }
+
+      const parsed = AgencyManualPrioritySchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
+      }
+
+      let teamId = parsed.data.teamId ? String(parsed.data.teamId) : "";
+      if (!teamId && role === "AGENCY") {
+        const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+          where: { userId: String(userId) },
+          select: { teamId: true },
+        });
+        teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : "";
+      }
+
+      if (!teamId) {
+        return NextResponse.json({ error: "Time da agência não encontrado." }, { status: 400 });
+      }
+
+      const team: any = await (prisma as any).team.findUnique({
+        where: { id: teamId },
+        select: {
+          id: true,
+          ownerId: true,
+          members: { select: { userId: true } },
+        },
+      });
+
+      if (!team) {
+        return NextResponse.json({ error: "Time não encontrado." }, { status: 404 });
+      }
+
+      if (role !== "ADMIN") {
+        const isOwner = String(team.ownerId || "") === String(userId);
+        const isMember = Array.isArray(team.members)
+          ? team.members.some((member: any) => String(member.userId || "") === String(userId))
+          : false;
+        if (!isOwner && !isMember) {
+          return NextResponse.json({ error: "Você não tem acesso a este time." }, { status: 403 });
+        }
+      }
+
+      const ownerId = String(team.ownerId || userId);
+      const targetId = String(parsed.data.targetId);
+      const targetType = parsed.data.targetType;
+
+      if (targetType === "LEAD") {
+        const lead: any = await (prisma as any).lead.findUnique({
+          where: { id: targetId },
+          select: { id: true, teamId: true },
+        });
+        if (!lead || String(lead.teamId || "") !== String(teamId)) {
+          return NextResponse.json({ error: "Lead não encontrado para este time." }, { status: 404 });
+        }
+      } else {
+        const client: any = await (prisma as any).client.findUnique({
+          where: { id: targetId },
+          select: { id: true, teamId: true },
+        });
+        if (!client || String(client.teamId || "") !== String(teamId)) {
+          return NextResponse.json({ error: "Cliente não encontrado para este time." }, { status: 404 });
+        }
+      }
+
+      const actionUrl = parsed.data.actionUrl
+        ? String(parsed.data.actionUrl)
+        : targetType === "LEAD"
+          ? `/agency/teams/${encodeURIComponent(String(teamId))}/crm?lead=${encodeURIComponent(targetId)}`
+          : `/agency/clients?client=${encodeURIComponent(targetId)}`;
+
+      const dedupeKey = `MANUAL_PRIORITY:${targetType}:${targetId}`;
+      const item = await RealtorAssistantService.upsertFromRule({
+        context: "AGENCY",
+        ownerId,
+        teamId: String(teamId),
+        leadId: targetType === "LEAD" ? targetId : null,
+        clientId: targetType === "CLIENT" ? targetId : null,
+        type: "MANUAL_PRIORITY",
+        priority: parsed.data.priority || "HIGH",
+        title: String(parsed.data.title),
+        message: String(parsed.data.message),
+        dueAt: new Date(),
+        dedupeKey,
+        primaryAction: { type: "OPEN_PAGE", url: actionUrl },
+        secondaryAction: null,
+        metadata: {
+          source: "INLINE",
+          manualPriority: true,
+          targetType,
+          targetId,
+          createdByUserId: String(userId),
+        },
+      });
+
+      try {
+        await RealtorAssistantService.emitItemUpdated(ownerId, item, { context: "AGENCY", teamId: String(teamId) });
+      } catch {
+      }
+
+      await createAuditLog({
+        level: "INFO",
+        action: "AGENCY_ASSISTANT_MANUAL_PRIORITY_CREATE",
+        message: `Priorização manual criada para ${targetType.toLowerCase()}.`,
+        actorId: String(userId),
+        actorRole: String(role || ""),
+        targetType,
+        targetId,
+        metadata: {
+          teamId: String(teamId),
+          ownerId,
+          assistantItemId: String(item.id),
+          priority: item.priority,
+        },
+      });
+
+      return NextResponse.json({ success: true, item });
+    }
+
+    if (role !== "ADMIN" && role !== "REALTOR") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const parsed = RealtorPostSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
     }

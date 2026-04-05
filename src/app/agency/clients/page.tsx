@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import Drawer from "@/components/ui/Drawer";
-import { X, Plus, UserRound, Phone, Mail, MapPin, Trash2 } from "lucide-react";
+import { X, Flag, Plus, Sparkles, UserRound, Phone, Mail, MapPin, Trash2 } from "lucide-react";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import AgencyClientsOnboarding, { resetAgencyClientsOnboarding } from "@/components/onboarding/AgencyClientsOnboarding";
 
@@ -34,6 +34,7 @@ type ClientRow = {
   pipelineStage: ClientPipelineStage;
   notes: string | null;
   nextActionAt: string | null;
+  nextActionNote?: string | null;
   assignedTo?: { id: string; name: string | null; email: string | null } | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -136,6 +137,22 @@ type ClientDetailsResponse = {
   error?: string;
 };
 
+type AgencyProfileResponse = {
+  success: boolean;
+  agencyProfile?: {
+    aiConfig?: {
+      channels?: {
+        whatsapp?: boolean;
+      };
+      automations?: {
+        manualPriorityBoard?: boolean;
+      };
+    };
+  };
+};
+
+type AgencyAiConfig = NonNullable<NonNullable<AgencyProfileResponse["agencyProfile"]>["aiConfig"]>;
+
 function roleFromSession(session: any) {
   return session?.user?.role || session?.role || "USER";
 }
@@ -161,6 +178,14 @@ function stageLabel(value: ClientPipelineStage | string | null | undefined) {
   return "Novo";
 }
 
+function toDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return adjusted.toISOString().slice(0, 16);
+}
+
 export default function AgencyClientsPage() {
   const { data: session, status } = useSession();
 
@@ -172,6 +197,7 @@ export default function AgencyClientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [teamName, setTeamName] = useState<string>("Clientes");
+  const [agencyTeamId, setAgencyTeamId] = useState<string>("");
 
   const [forceTour, setForceTour] = useState(false);
   const [tourSeed, setTourSeed] = useState(0);
@@ -258,6 +284,16 @@ export default function AgencyClientsPage() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editStatus, setEditStatus] = useState<ClientStatus>("ACTIVE");
+  const [editIntent, setEditIntent] = useState<"BUY" | "RENT" | "LIST" | "">("");
+  const [editPipelineStage, setEditPipelineStage] = useState<ClientPipelineStage>("NEW");
+  const [editAssignedUserId, setEditAssignedUserId] = useState("");
+  const [editNextActionAt, setEditNextActionAt] = useState("");
+  const [editNextActionNote, setEditNextActionNote] = useState("");
+  const [selectedSuccess, setSelectedSuccess] = useState<string | null>(null);
+  const [draftingWhatsapp, setDraftingWhatsapp] = useState(false);
+  const [prioritizingClient, setPrioritizingClient] = useState(false);
+  const [agencyAiConfig, setAgencyAiConfig] = useState<AgencyAiConfig | null>(null);
 
   const [editPrefCity, setEditPrefCity] = useState("");
   const [editPrefState, setEditPrefState] = useState("");
@@ -281,6 +317,8 @@ export default function AgencyClientsPage() {
   const [editPrefAreaMin, setEditPrefAreaMin] = useState("");
 
   const canUse = role === "AGENCY" || role === "ADMIN";
+  const whatsappChannelEnabled = agencyAiConfig?.channels?.whatsapp !== false;
+  const manualPriorityEnabled = agencyAiConfig?.automations?.manualPriorityBoard !== false;
 
   const clearClientParam = () => {
     const next = new URLSearchParams(searchParams.toString());
@@ -294,6 +332,7 @@ export default function AgencyClientsPage() {
     setSelectedClientId(null);
     setSelectedLoading(false);
     setSelectedError(null);
+    setSelectedSuccess(null);
 
     setEditing(false);
 
@@ -301,6 +340,12 @@ export default function AgencyClientsPage() {
     setEditEmail("");
     setEditPhone("");
     setEditNotes("");
+    setEditStatus("ACTIVE");
+    setEditIntent("");
+    setEditPipelineStage("NEW");
+    setEditAssignedUserId("");
+    setEditNextActionAt("");
+    setEditNextActionNote("");
 
     setEditPrefCity("");
     setEditPrefState("");
@@ -336,6 +381,7 @@ export default function AgencyClientsPage() {
     setSelectedClientId(id);
     setSelectedOpen(true);
     setSelectedError(null);
+    setSelectedSuccess(null);
 
     if (opts?.pushUrl) {
       const next = new URLSearchParams(searchParams.toString());
@@ -359,6 +405,16 @@ export default function AgencyClientsPage() {
       setEditEmail(String(c.email || ""));
       setEditPhone(String(c.phone || ""));
       setEditNotes(String(c.notes || ""));
+      setEditStatus(c.status === "PAUSED" ? "PAUSED" : "ACTIVE");
+      setEditIntent(c.intent === "BUY" || c.intent === "RENT" || c.intent === "LIST" ? c.intent : "");
+      setEditPipelineStage(
+        ["NEW", "CONTACT", "QUALIFYING", "MATCHING", "VISIT", "NURTURE", "WON", "LOST"].includes(String(c.pipelineStage || "").toUpperCase())
+          ? (String(c.pipelineStage || "NEW").toUpperCase() as ClientPipelineStage)
+          : "NEW"
+      );
+      setEditAssignedUserId(String(c.assignedTo?.id || ""));
+      setEditNextActionAt(toDateTimeLocalValue(c.nextActionAt));
+      setEditNextActionNote(String(c.nextActionNote || ""));
 
       const pref = c.preference || null;
       const city = pref?.city ? String(pref.city) : "";
@@ -413,6 +469,7 @@ export default function AgencyClientsPage() {
       }
 
       setTeamName(json.team?.name ? `Clientes — ${json.team.name}` : "Clientes");
+      setAgencyTeamId(json.team?.id ? String(json.team.id) : "");
       setClients(Array.isArray(json.clients) ? json.clients : []);
       setAssignableMembers(Array.isArray(json.assignableMembers) ? json.assignableMembers : []);
       setSummary(json.summary || {
@@ -486,6 +543,29 @@ export default function AgencyClientsPage() {
     }
     void fetchClients();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, canUse]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (!canUse) return;
+
+    let cancelled = false;
+    const loadAgencyProfile = async () => {
+      try {
+        const response = await fetch(`/api/agency/profile`, { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as AgencyProfileResponse | null;
+        if (!response.ok || !data?.success) return;
+        if (cancelled) return;
+        setAgencyAiConfig(data.agencyProfile?.aiConfig || null);
+      } catch {
+      }
+    };
+
+    void loadAgencyProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [status, canUse]);
 
   useEffect(() => {
@@ -727,6 +807,7 @@ export default function AgencyClientsPage() {
   const submitEdit = async () => {
     try {
       setSelectedError(null);
+      setSelectedSuccess(null);
       const clientId = String(selectedClientId || "").trim();
       if (!clientId) return;
 
@@ -749,6 +830,12 @@ export default function AgencyClientsPage() {
       updatePayload.email = editEmail.trim() ? editEmail.trim() : null;
       updatePayload.phone = editPhone.trim() ? editPhone.trim() : null;
       updatePayload.notes = editNotes.trim() ? editNotes.trim() : null;
+      updatePayload.status = editStatus;
+      updatePayload.intent = editIntent || null;
+      updatePayload.pipelineStage = editPipelineStage;
+      updatePayload.assignedUserId = editAssignedUserId || null;
+      updatePayload.nextActionAt = editNextActionAt ? new Date(editNextActionAt).toISOString() : null;
+      updatePayload.nextActionNote = editNextActionNote.trim() ? editNextActionNote.trim() : null;
 
       const res = await fetch(`/api/agency/clients/${encodeURIComponent(clientId)}`, {
         method: "PATCH",
@@ -785,11 +872,100 @@ export default function AgencyClientsPage() {
       }
 
       await fetchClients({ silent: true });
-      closeSelected();
+      await openSelected(clientId, { pushUrl: false });
+      setSelectedSuccess("Cliente atualizado com sucesso.");
     } catch (e: any) {
       setSelectedError(e?.message || "Não conseguimos salvar o cliente agora.");
     } finally {
       setEditing(false);
+    }
+  };
+
+  const handleGenerateClientWhatsappDraft = async () => {
+    try {
+      const clientId = String(selectedClientId || "").trim();
+      if (!clientId) return;
+      if (!whatsappChannelEnabled) {
+        setSelectedError("O canal de WhatsApp da IA está desativado para esta agência.");
+        return;
+      }
+
+      setDraftingWhatsapp(true);
+      setSelectedError(null);
+      setSelectedSuccess(null);
+
+      const res = await fetch(`/api/agency/clients/${encodeURIComponent(clientId)}/whatsapp-draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !json?.success || !String(json?.draft || "").trim()) {
+        throw new Error(json?.error || "Não conseguimos gerar a mensagem agora.");
+      }
+
+      if (json?.whatsappUrl) {
+        window.open(String(json.whatsappUrl), "_blank", "noopener,noreferrer");
+      } else {
+        try {
+          await navigator.clipboard.writeText(String(json.draft));
+        } catch {
+        }
+      }
+
+      setSelectedSuccess(json?.usedAi ? "Mensagem de WhatsApp gerada com IA." : "Mensagem base pronta para envio.");
+    } catch (e: any) {
+      setSelectedError(e?.message || "Não conseguimos gerar a mensagem agora.");
+    } finally {
+      setDraftingWhatsapp(false);
+    }
+  };
+
+  const handlePrioritizeClient = async () => {
+    try {
+      const clientId = String(selectedClientId || "").trim();
+      if (!clientId) return;
+      if (!manualPriorityEnabled) {
+        setSelectedError("A fila manual da central IA está desativada para esta agência.");
+        return;
+      }
+
+      setPrioritizingClient(true);
+      setSelectedError(null);
+      setSelectedSuccess(null);
+
+      const title = editAssignedUserId
+        ? editNextActionAt
+          ? "Revisar próximo passo do cliente"
+          : "Priorizar follow-up do cliente"
+        : "Distribuir cliente no CRM";
+      const message = editAssignedUserId
+        ? `${editName || "Este cliente"} precisa de acompanhamento${editNextActionAt ? " e revisão do próximo passo" : " com apoio da IA"}.`
+        : `${editName || "Este cliente"} está sem responsável e precisa entrar na fila operacional.`;
+
+      const res = await fetch("/api/assistant/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context: "AGENCY",
+          teamId: agencyTeamId || undefined,
+          targetType: "CLIENT",
+          targetId: clientId,
+          title,
+          message,
+          priority: editAssignedUserId ? "MEDIUM" : "HIGH",
+          actionUrl: `/agency/clients?client=${encodeURIComponent(clientId)}`,
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || "Não conseguimos priorizar este cliente agora.");
+      }
+
+      setSelectedSuccess("Cliente enviado para a fila operacional da IA.");
+    } catch (e: any) {
+      setSelectedError(e?.message || "Não conseguimos priorizar este cliente agora.");
+    } finally {
+      setPrioritizingClient(false);
     }
   };
 
@@ -1582,6 +1758,147 @@ export default function AgencyClientsPage() {
             }}
             className="space-y-4"
           >
+            {selectedSuccess ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                {selectedSuccess}
+              </div>
+            ) : null}
+
+            <div className="rounded-2xl border border-violet-200/70 bg-violet-50/70 backdrop-blur p-4 shadow-soft">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-violet-950">Operação e IA</div>
+                  <p className="mt-1 text-xs text-violet-800">
+                    Ajuste responsável, etapa e próximo passo; depois acione a IA para preparar follow-up ou priorizar na fila.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {whatsappChannelEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleGenerateClientWhatsappDraft()}
+                      disabled={draftingWhatsapp}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-60"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {draftingWhatsapp ? "Gerando..." : "Mensagem WhatsApp"}
+                    </button>
+                  ) : null}
+
+                  {manualPriorityEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => void handlePrioritizeClient()}
+                      disabled={prioritizingClient}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-60"
+                    >
+                      <Flag className="h-4 w-4" />
+                      {prioritizingClient ? "Enviando..." : "Priorizar na IA"}
+                    </button>
+                  ) : null}
+
+                  {!whatsappChannelEnabled && !manualPriorityEnabled ? (
+                    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600">
+                      Os atalhos de IA desta área foram desativados nas configurações da agência.
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => deleteClient(String(selectedClientId || ""))}
+                    disabled={deletingClientId === selectedClientId}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {deletingClientId === selectedClientId ? "Excluindo..." : "Excluir"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
+                  <select
+                    value={editAssignedUserId}
+                    onChange={(e) => setEditAssignedUserId(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  >
+                    <option value="">Sem responsável</option>
+                    {(assignableMembers || []).map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.name || member.email || member.userId}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as ClientStatus)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  >
+                    <option value="ACTIVE">Ativo</option>
+                    <option value="PAUSED">Pausado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Intenção operacional</label>
+                  <select
+                    value={editIntent}
+                    onChange={(e) => setEditIntent(e.target.value as "BUY" | "RENT" | "LIST" | "")}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  >
+                    <option value="">Definir depois</option>
+                    <option value="BUY">Compra</option>
+                    <option value="RENT">Locação</option>
+                    <option value="LIST">Captação</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa do funil</label>
+                  <select
+                    value={editPipelineStage}
+                    onChange={(e) => setEditPipelineStage(e.target.value as ClientPipelineStage)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  >
+                    <option value="NEW">Novo</option>
+                    <option value="CONTACT">Contato</option>
+                    <option value="QUALIFYING">Qualificação</option>
+                    <option value="MATCHING">Matching</option>
+                    <option value="VISIT">Visita</option>
+                    <option value="NURTURE">Nutrição</option>
+                    <option value="WON">Ganho</option>
+                    <option value="LOST">Perdido</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Próxima ação</label>
+                  <input
+                    type="datetime-local"
+                    value={editNextActionAt}
+                    onChange={(e) => setEditNextActionAt(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Nota do próximo passo</label>
+                  <input
+                    value={editNextActionNote}
+                    onChange={(e) => setEditNextActionNote(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    placeholder="Ex: confirmar horário da visita"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
               <div className="text-sm font-semibold text-gray-900">Dados do cliente</div>
               <div className="mt-3 grid grid-cols-1 gap-3">
