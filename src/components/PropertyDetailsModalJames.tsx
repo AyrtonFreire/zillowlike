@@ -922,6 +922,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const truncatedDescription = property.description.length > 400 
     ? property.description.slice(0, 400) + "..." 
     : property.description;
+  const summarySpecs = [
+    property.bedrooms != null ? `${property.bedrooms} ${property.bedrooms === 1 ? "quarto" : "quartos"}` : null,
+    property.bathrooms != null ? `${property.bathrooms} ${property.bathrooms === 1 ? "banheiro" : "banheiros"}` : null,
+    property.areaM2 != null ? `${property.areaM2} m²` : null,
+  ].filter(Boolean) as string[];
 
   return (
     <AnimatePresence>
@@ -1416,11 +1421,10 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0 ${isPublicLike && !isPreview ? "pb-28 md:pb-0" : ""}`}>
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm divide-y divide-gray-200">
-                <div className="pt-0 pb-8">
-                  {/* Price */}
+              <div className="rounded-[28px] border border-stone-200/80 bg-[#fcfbf8] p-6 md:p-8 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
+                <div className="max-w-3xl">
                   <div>
-                    <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
+                    <h2 className="font-serif text-[2.35rem] leading-none tracking-[-0.03em] text-gray-900 md:text-5xl">
                       {typeof property.price === "number" && property.price > 0
                         ? new Intl.NumberFormat("pt-BR", {
                             style: "currency",
@@ -1431,66 +1435,55 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                         : "Sob consulta"}
                     </h2>
                   </div>
-                </div>
 
-                {/* Title */}
-                <div className="mt-2">
-                  <h1 className="text-xl md:text-2xl font-semibold text-gray-900 leading-snug">
-                    {property.title}
-                  </h1>
-                </div>
-
-                {/* Location */}
-                <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                  <span>
-                    {property.neighborhood && `${property.neighborhood}, `}
-                    {property.city}, {property.state}
-                  </span>
-                </div>
-
-                {/* Specs */}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {property.bedrooms != null && (
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                      {property.bedrooms} quartos
-                    </span>
-                  )}
-                  {property.bathrooms != null && (
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                      {property.bathrooms} banheiros
-                    </span>
-                  )}
-                  {property.areaM2 != null && (
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                      {property.areaM2} m²
-                    </span>
-                  )}
-                </div>
-
-                {/* Contact card (mobile) */}
-                {isPublicLike && !isPreview ? (
-                  <div className="md:hidden mt-6">
-                    <PropertyContactCard
-                      propertyId={property.id}
-                      propertyTitle={property.title}
-                      propertyPurpose={property.purpose}
-                      disableActions={isPreview}
-                      variant="compact-showcase"
-                      ownerRole={property.owner?.role || "USER"}
-                      ownerName={property.owner?.name || undefined}
-                      ownerImage={property.owner?.image || undefined}
-                      ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
-                      ownerPublicSlug={property.owner?.publicSlug || null}
-                      ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
-                      hideOwnerContact={!!(property as any)?.hideOwnerContact}
-                    />
+                  <div className="mt-5">
+                    <h1 className="font-serif text-[2rem] leading-[1.08] tracking-[-0.025em] text-gray-900 md:text-[2.65rem]">
+                      {property.title}
+                    </h1>
                   </div>
-                ) : null}
+
+                  <div className="mt-5 flex items-start gap-2 text-[15px] text-teal-800 md:text-base">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-teal-700" />
+                    <span className="leading-relaxed">
+                      {property.neighborhood && `${property.neighborhood}, `}
+                      {property.city}, {property.state}
+                    </span>
+                  </div>
+
+                  {summarySpecs.length > 0 ? (
+                    <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px] text-gray-700 md:text-base">
+                      {summarySpecs.map((spec, index) => (
+                        <div key={spec} className="inline-flex items-center gap-3">
+                          {index > 0 ? <span className="h-1 w-1 rounded-full bg-gray-300" /> : null}
+                          <span>{spec}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {isPublicLike && !isPreview ? (
+                    <div className="md:hidden mt-6">
+                      <PropertyContactCard
+                        propertyId={property.id}
+                        propertyTitle={property.title}
+                        propertyPurpose={property.purpose}
+                        disableActions={isPreview}
+                        variant="compact"
+                        ownerRole={property.owner?.role || "USER"}
+                        ownerName={property.owner?.name || undefined}
+                        ownerImage={property.owner?.image || undefined}
+                        ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+                        ownerPublicSlug={property.owner?.publicSlug || null}
+                        ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
+                        hideOwnerContact={!!(property as any)?.hideOwnerContact}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               {/* About the Property */}
-              <div className="py-8">
+              <div className="rounded-2xl border border-gray-200 bg-white px-6 py-8 md:px-8 shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Sobre o imóvel</h3>
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                   <p>{showMore ? property.description : truncatedDescription}</p>
@@ -1506,7 +1499,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* Property Details Grid */}
-              <div className="py-8">
+              <div className="rounded-2xl border border-gray-200 bg-white px-6 py-8 md:px-8 shadow-sm">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {property.type && (
                   <div>
@@ -1536,7 +1529,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* Features - Sober style with Lucide icons */}
-              <div className="py-8">
+              <div className="rounded-2xl border border-gray-200 bg-white px-6 py-8 md:px-8 shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Características</h3>
                 {(() => {
                   const allFeatures: { icon: React.ReactNode; label: string }[] = [];

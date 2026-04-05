@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { User, Building2, MessageCircle, ExternalLink, Timer, Phone, ChevronRight } from "lucide-react";
+import { User, Building2, MessageCircle, Timer, Phone, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
@@ -30,7 +30,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-type ContactCardVariant = "card" | "compact" | "compact-showcase" | "sticky";
+type ContactCardVariant = "card" | "compact" | "sticky";
 
 type ContactCardProps = {
   propertyId: string;
@@ -107,7 +107,7 @@ export default function PropertyContactCard({
 
   useEffect(() => {
     const slug = String(ownerPublicSlug || "").trim();
-    if ((variant !== "card" && variant !== "compact-showcase") || !isRealtorOrAgency || !slug) {
+    if ((variant !== "card" && variant !== "compact") || !isRealtorOrAgency || !slug) {
       setPublicStats(null);
       return;
     }
@@ -388,50 +388,14 @@ export default function PropertyContactCard({
     );
   };
 
-  const renderCompactOption = (option: "editorial" | "premium" | "trust") => {
-    if (option === "editorial") {
-      return (
-        <div className="rounded-xl bg-neutral-50/80 px-4 py-3 ring-1 ring-black/5">
-          <div className="flex items-center gap-3">
-            {renderIdentityAvatar("h-10 w-10", "h-4 w-4 text-teal", "rounded-xl", true)}
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-gray-400">Anunciado por</p>
-              <p className="mt-1 truncate text-[15px] font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
-              <p className="mt-0.5 text-xs font-medium text-gray-500">{ownerRoleLabel}</p>
-            </div>
-            {profileAction({ label: "Ver perfil" })}
-          </div>
-        </div>
-      );
-    }
-
-    if (option === "premium") {
-      return (
-        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-4 text-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]">
-          <div className="flex items-start gap-3">
-            {renderIdentityAvatar("h-11 w-11", "h-4.5 w-4.5 text-white", "rounded-xl", true)}
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80">
-                  Perfil profissional
-                </span>
-              </div>
-              <p className="mt-3 truncate text-base font-semibold text-white">{ownerName || "Anunciante"}</p>
-              <p className="mt-1 text-sm text-white/70">{ownerRoleLabel}</p>
-              <div className="mt-3">{profileAction({ label: "Conhecer perfil", tone: "inverse" })}</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
+  if (variant === "compact") {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-2xl bg-stone-50/80 px-4 py-3.5 ring-1 ring-black/5">
         <div className="flex items-center gap-3">
-          {renderIdentityAvatar("h-11 w-11", "h-4.5 w-4.5 text-teal", "rounded-2xl")}
+          {renderIdentityAvatar("h-11 w-11", "h-4.5 w-4.5 text-teal", "rounded-2xl", true)}
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Anunciado por</p>
-            <p className="mt-1 truncate text-sm font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-gray-400">Anunciado por</p>
+            <p className="mt-1 truncate text-[15px] font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span>{ownerRoleLabel}</span>
               <span className="h-1 w-1 rounded-full bg-gray-300" />
@@ -444,33 +408,10 @@ export default function PropertyContactCard({
               ) : null}
             </div>
           </div>
-          {profileAction({ label: "Ver", subtle: true })}
+          {profileAction({ label: "Ver perfil", subtle: true })}
         </div>
       </div>
     );
-  };
-
-  if (variant === "compact-showcase") {
-    const options: Array<{ key: "editorial" | "premium" | "trust"; title: string }> = [
-      { key: "editorial", title: "Opção 1 · Editorial minimalista" },
-      { key: "premium", title: "Opção 2 · Premium institucional" },
-      { key: "trust", title: "Opção 3 · Confiança + conversão" },
-    ];
-
-    return (
-      <div className="space-y-3">
-        {options.map((option) => (
-          <div key={option.key} className="space-y-2">
-            <p className="px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400">{option.title}</p>
-            {renderCompactOption(option.key)}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (variant === "compact") {
-    return renderCompactOption("editorial");
   }
 
   if (variant === "sticky") {
@@ -578,10 +519,11 @@ export default function PropertyContactCard({
                 onClick={(e) => {
                   if (disableActions) e.preventDefault();
                 }}
-                className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 title="Ver perfil"
               >
-                <ExternalLink className="w-4 h-4" />
+                <span>Ver perfil</span>
+                <ChevronRight className="w-4 h-4" />
               </Link>
             )}
           </div>
