@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { User, Building2, MessageCircle, ExternalLink, Timer, Phone } from "lucide-react";
+import { User, Building2, MessageCircle, ExternalLink, Timer, Phone, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
@@ -30,7 +30,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-type ContactCardVariant = "card" | "compact" | "sticky";
+type ContactCardVariant = "card" | "compact" | "compact-showcase" | "sticky";
 
 type ContactCardProps = {
   propertyId: string;
@@ -107,7 +107,7 @@ export default function PropertyContactCard({
 
   useEffect(() => {
     const slug = String(ownerPublicSlug || "").trim();
-    if (variant !== "card" || !isRealtorOrAgency || !slug) {
+    if ((variant !== "card" && variant !== "compact-showcase") || !isRealtorOrAgency || !slug) {
       setPublicStats(null);
       return;
     }
@@ -339,58 +339,138 @@ export default function PropertyContactCard({
 
   const ownerRoleLabel = ownerRole === "AGENCY" ? "Imobiliária" : ownerRole === "REALTOR" ? "Corretor" : "Anunciante";
 
-  if (variant === "compact") {
-    const identityContent = (
-      <>
-        {ownerImage ? (
-          <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-teal/15 bg-white shadow-sm">
-            <Image src={ownerImage} alt={ownerName || "Anunciante"} fill className="object-cover" />
-          </div>
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-teal/10 bg-gradient-to-br from-teal/10 to-teal/25">
-            {ownerRole === "AGENCY" ? <Building2 className="h-5 w-5 text-teal" /> : <User className="h-5 w-5 text-teal" />}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Anunciado por</p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
-          <p className="mt-0.5 text-xs text-gray-600">{ownerRoleLabel}</p>
+  const renderIdentityAvatar = (sizeClass: string, iconClass: string, radiusClass: string, framed = false) => {
+    if (ownerImage) {
+      return (
+        <div className={`relative overflow-hidden bg-white ${sizeClass} ${radiusClass} ${framed ? "border border-black/5 shadow-sm" : "border border-teal/15 shadow-sm"}`}>
+          <Image src={ownerImage} alt={ownerName || "Anunciante"} fill className="object-cover" />
         </div>
-      </>
-    );
+      );
+    }
 
     return (
-      <div className="rounded-2xl border border-gray-200/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          {hasPublicProfile && publicProfileHref ? (
-            <Link
-              href={publicProfileHref}
-              onClick={(e) => {
-                if (disableActions) e.preventDefault();
-              }}
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl transition-colors hover:bg-teal/5"
-            >
-              {identityContent}
-            </Link>
-          ) : (
-            <div className="flex min-w-0 flex-1 items-center gap-3">{identityContent}</div>
-          )}
+      <div className={`flex items-center justify-center bg-gradient-to-br from-teal/10 to-teal/25 ${sizeClass} ${radiusClass} ${framed ? "border border-black/5" : "border border-teal/10"}`}>
+        {ownerRole === "AGENCY" ? <Building2 className={iconClass} /> : <User className={iconClass} />}
+      </div>
+    );
+  };
 
-          {hasPublicProfile && publicProfileHref ? (
-            <Link
-              href={publicProfileHref}
-              onClick={(e) => {
-                if (disableActions) e.preventDefault();
-              }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-              title="Ver perfil"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </Link>
-          ) : null}
+  const profileAction = ({
+    label,
+    subtle = false,
+    tone = "default",
+  }: {
+    label: string;
+    subtle?: boolean;
+    tone?: "default" | "inverse";
+  }) => {
+    if (!hasPublicProfile || !publicProfileHref) return null;
+
+    const className = subtle
+      ? tone === "inverse"
+        ? "inline-flex items-center gap-1 text-xs font-medium text-white/75"
+        : "inline-flex items-center gap-1 text-xs font-medium text-gray-500"
+      : tone === "inverse"
+        ? "inline-flex items-center gap-1 text-sm font-medium text-white/85"
+        : "inline-flex items-center gap-1 text-sm font-medium text-gray-700";
+
+    return (
+      <Link
+        href={publicProfileHref}
+        onClick={(e) => {
+          if (disableActions) e.preventDefault();
+        }}
+        className={className}
+      >
+        <span>{label}</span>
+        <ChevronRight className="h-4 w-4" />
+      </Link>
+    );
+  };
+
+  const renderCompactOption = (option: "editorial" | "premium" | "trust") => {
+    if (option === "editorial") {
+      return (
+        <div className="rounded-xl bg-neutral-50/80 px-4 py-3 ring-1 ring-black/5">
+          <div className="flex items-center gap-3">
+            {renderIdentityAvatar("h-10 w-10", "h-4 w-4 text-teal", "rounded-xl", true)}
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-gray-400">Anunciado por</p>
+              <p className="mt-1 truncate text-[15px] font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
+              <p className="mt-0.5 text-xs font-medium text-gray-500">{ownerRoleLabel}</p>
+            </div>
+            {profileAction({ label: "Ver perfil" })}
+          </div>
+        </div>
+      );
+    }
+
+    if (option === "premium") {
+      return (
+        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-4 text-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]">
+          <div className="flex items-start gap-3">
+            {renderIdentityAvatar("h-11 w-11", "h-4.5 w-4.5 text-white", "rounded-xl", true)}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80">
+                  Perfil profissional
+                </span>
+              </div>
+              <p className="mt-3 truncate text-base font-semibold text-white">{ownerName || "Anunciante"}</p>
+              <p className="mt-1 text-sm text-white/70">{ownerRoleLabel}</p>
+              <div className="mt-3">{profileAction({ label: "Conhecer perfil", tone: "inverse" })}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          {renderIdentityAvatar("h-11 w-11", "h-4.5 w-4.5 text-teal", "rounded-2xl")}
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Anunciado por</p>
+            <p className="mt-1 truncate text-sm font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <span>{ownerRoleLabel}</span>
+              <span className="h-1 w-1 rounded-full bg-gray-300" />
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">Perfil profissional</span>
+              {!!responseLabel ? (
+                <>
+                  <span className="h-1 w-1 rounded-full bg-gray-300" />
+                  <span className="font-medium text-gray-600">{responseLabel}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+          {profileAction({ label: "Ver", subtle: true })}
         </div>
       </div>
     );
+  };
+
+  if (variant === "compact-showcase") {
+    const options: Array<{ key: "editorial" | "premium" | "trust"; title: string }> = [
+      { key: "editorial", title: "Opção 1 · Editorial minimalista" },
+      { key: "premium", title: "Opção 2 · Premium institucional" },
+      { key: "trust", title: "Opção 3 · Confiança + conversão" },
+    ];
+
+    return (
+      <div className="space-y-3">
+        {options.map((option) => (
+          <div key={option.key} className="space-y-2">
+            <p className="px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400">{option.title}</p>
+            {renderCompactOption(option.key)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === "compact") {
+    return renderCompactOption("editorial");
   }
 
   if (variant === "sticky") {

@@ -1476,7 +1476,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                       propertyTitle={property.title}
                       propertyPurpose={property.purpose}
                       disableActions={isPreview}
-                      variant="compact"
+                      variant="compact-showcase"
                       ownerRole={property.owner?.role || "USER"}
                       ownerName={property.owner?.name || undefined}
                       ownerImage={property.owner?.image || undefined}
