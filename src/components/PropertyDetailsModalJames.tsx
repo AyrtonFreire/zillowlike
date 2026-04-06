@@ -922,11 +922,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const truncatedDescription = property.description.length > 400 
     ? property.description.slice(0, 400) + "..." 
     : property.description;
-  const summarySpecs = [
-    property.bedrooms != null ? `${property.bedrooms} ${property.bedrooms === 1 ? "quarto" : "quartos"}` : null,
-    property.bathrooms != null ? `${property.bathrooms} ${property.bathrooms === 1 ? "banheiro" : "banheiros"}` : null,
-    property.areaM2 != null ? `${property.areaM2} m²` : null,
+  const summaryMeta = [
+    property.purpose === "SALE" ? "À venda" : property.purpose === "RENT" ? "Para alugar" : null,
+    property.type ? ptBR.type(property.type) : null,
   ].filter(Boolean) as string[];
+  const summaryStats = [
+    property.bedrooms != null ? { value: String(property.bedrooms), label: property.bedrooms === 1 ? "quarto" : "quartos" } : null,
+    property.bathrooms != null ? { value: String(property.bathrooms), label: property.bathrooms === 1 ? "banheiro" : "banheiros" } : null,
+    property.areaM2 != null ? { value: String(property.areaM2), label: "m²" } : null,
+  ].filter(Boolean) as Array<{ value: string; label: string }>;
 
   return (
     <AnimatePresence>
@@ -1421,10 +1425,21 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0 ${isPublicLike && !isPreview ? "pb-28 md:pb-0" : ""}`}>
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              <div className="rounded-[28px] border border-stone-200/80 bg-[#fcfbf8] p-6 md:p-8 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
+              <div className="rounded-[30px] border border-stone-200/80 bg-[#fbf8f3] p-6 md:p-8 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
                 <div className="max-w-3xl">
-                  <div>
-                    <h2 className="font-serif text-[2.35rem] leading-none tracking-[-0.03em] text-gray-900 md:text-5xl">
+                  {summaryMeta.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.16em] text-stone-400">
+                      {summaryMeta.map((item, index) => (
+                        <div key={item} className="inline-flex items-center gap-2">
+                          {index > 0 ? <span className="h-1 w-1 rounded-full bg-stone-300" /> : null}
+                          <span className={index === 0 ? "uppercase" : "normal-case tracking-[0.04em]"}>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-3">
+                    <h2 className="font-serif text-[2.15rem] leading-[0.98] tracking-[-0.035em] text-gray-900 md:text-[4rem]">
                       {typeof property.price === "number" && property.price > 0
                         ? new Intl.NumberFormat("pt-BR", {
                             style: "currency",
@@ -1436,33 +1451,36 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     </h2>
                   </div>
 
-                  <div className="mt-5">
-                    <h1 className="font-serif text-[2rem] leading-[1.08] tracking-[-0.025em] text-gray-900 md:text-[2.65rem]">
+                  <div className="mt-4">
+                    <h1 className="font-serif text-[1.9rem] leading-[1.04] tracking-[-0.03em] text-gray-900 md:text-[2.55rem]">
                       {property.title}
                     </h1>
                   </div>
 
-                  <div className="mt-5 flex items-start gap-2 text-[15px] text-teal-800 md:text-base">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-teal-700" />
+                  <div className="mt-4 flex items-start gap-2 text-[14px] text-stone-600 md:text-[15px]">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
                     <span className="leading-relaxed">
                       {property.neighborhood && `${property.neighborhood}, `}
                       {property.city}, {property.state}
                     </span>
                   </div>
 
-                  {summarySpecs.length > 0 ? (
-                    <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px] text-gray-700 md:text-base">
-                      {summarySpecs.map((spec, index) => (
-                        <div key={spec} className="inline-flex items-center gap-3">
-                          {index > 0 ? <span className="h-1 w-1 rounded-full bg-gray-300" /> : null}
-                          <span>{spec}</span>
+                  {summaryStats.length > 0 ? (
+                    <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-stone-600 md:text-[15px]">
+                      {summaryStats.map((stat, index) => (
+                        <div key={`${stat.label}-${stat.value}`} className="inline-flex items-center gap-3">
+                          {index > 0 ? <span className="h-1 w-1 rounded-full bg-stone-300" /> : null}
+                          <span className="inline-flex items-baseline gap-1.5">
+                            <span className="font-semibold text-gray-900">{stat.value}</span>
+                            <span>{stat.label}</span>
+                          </span>
                         </div>
                       ))}
                     </div>
                   ) : null}
 
                   {isPublicLike && !isPreview ? (
-                    <div className="md:hidden mt-6">
+                    <div className="md:hidden mt-7">
                       <PropertyContactCard
                         propertyId={property.id}
                         propertyTitle={property.title}

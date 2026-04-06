@@ -390,20 +390,20 @@ export default function PropertyContactCard({
 
   if (variant === "compact") {
     return (
-      <div className="rounded-2xl bg-stone-50/80 px-4 py-3.5 ring-1 ring-black/5">
-        <div className="flex items-center gap-3">
-          {renderIdentityAvatar("h-11 w-11", "h-4.5 w-4.5 text-teal", "rounded-2xl", true)}
+      <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)] ring-1 ring-black/5 backdrop-blur">
+        <div className="flex items-center gap-3.5">
+          {renderIdentityAvatar("h-11 w-11", "h-4.5 w-4.5 text-teal", "rounded-[18px]", true)}
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-gray-400">Anunciado por</p>
-            <p className="mt-1 truncate text-[15px] font-semibold text-gray-900">{ownerName || "Anunciante"}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-stone-400">Anunciado por</p>
+            <p className="mt-1 truncate text-[15px] font-semibold tracking-[-0.01em] text-gray-900">{ownerName || "Anunciante"}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px] text-stone-500">
               <span>{ownerRoleLabel}</span>
-              <span className="h-1 w-1 rounded-full bg-gray-300" />
-              <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">Perfil profissional</span>
+              <span className="h-1 w-1 rounded-full bg-stone-300" />
+              <span className="rounded-full bg-stone-100 px-2 py-0.5 font-medium text-stone-700">Perfil profissional</span>
               {!!responseLabel ? (
                 <>
-                  <span className="h-1 w-1 rounded-full bg-gray-300" />
-                  <span className="font-medium text-gray-600">{responseLabel}</span>
+                  <span className="h-1 w-1 rounded-full bg-stone-300" />
+                  <span className="font-medium text-stone-600">{responseLabel}</span>
                 </>
               ) : null}
             </div>
