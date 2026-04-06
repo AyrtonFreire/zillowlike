@@ -1424,8 +1424,8 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           {/* Content Grid */}
           <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0 ${isPublicLike && !isPreview ? "pb-28 md:pb-0" : ""}`}>
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="rounded-[30px] border border-stone-200/80 bg-[#fbf8f3] p-6 md:p-8 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
+            <div className="lg:col-span-2 space-y-0">
+              <div className="border-b border-stone-200/80 pb-8">
                 <div className="max-w-3xl">
                   {summaryMeta.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.16em] text-stone-400">
@@ -1439,7 +1439,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   ) : null}
 
                   <div className="mt-3">
-                    <h2 className="font-serif text-[2.15rem] leading-[0.98] tracking-[-0.035em] text-gray-900 md:text-[4rem]">
+                    <h2 className="font-serif text-[2rem] leading-[1] tracking-[-0.03em] text-gray-900 md:text-[3rem]">
                       {typeof property.price === "number" && property.price > 0
                         ? new Intl.NumberFormat("pt-BR", {
                             style: "currency",
@@ -1452,7 +1452,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   </div>
 
                   <div className="mt-4">
-                    <h1 className="font-serif text-[1.9rem] leading-[1.04] tracking-[-0.03em] text-gray-900 md:text-[2.55rem]">
+                    <h1 className="max-w-3xl font-serif text-[1.7rem] leading-[1.08] tracking-[-0.025em] text-gray-900 md:text-[2.3rem]">
                       {property.title}
                     </h1>
                   </div>
@@ -1501,8 +1501,8 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* About the Property */}
-              <div className="rounded-2xl border border-gray-200 bg-white px-6 py-8 md:px-8 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Sobre o imóvel</h3>
+              <div className="border-b border-stone-200/70 py-8">
+                <h3 className="mb-4 text-[1.9rem] font-serif leading-none tracking-[-0.03em] text-gray-900 md:text-[2.2rem]">Sobre o imóvel</h3>
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                   <p>{showMore ? property.description : truncatedDescription}</p>
                   {property.description.length > 400 && (
@@ -1517,7 +1517,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* Property Details Grid */}
-              <div className="rounded-2xl border border-gray-200 bg-white px-6 py-8 md:px-8 shadow-sm">
+              <div className="border-b border-stone-200/70 py-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {property.type && (
                   <div>
@@ -1547,8 +1547,8 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* Features - Sober style with Lucide icons */}
-              <div className="rounded-2xl border border-gray-200 bg-white px-6 py-8 md:px-8 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Características</h3>
+              <div className="border-b border-stone-200/70 py-8">
+                <h3 className="mb-4 text-[1.9rem] font-serif leading-none tracking-[-0.03em] text-gray-900 md:text-[2.2rem]">Características</h3>
                 {(() => {
                   const allFeatures: { icon: React.ReactNode; label: string }[] = [];
                   
@@ -1587,7 +1587,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   
                   return (
                     <>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
                         {visibleFeatures.map((feature, idx) => (
                           <div key={idx} className="flex items-center gap-3">
                             {feature.icon}

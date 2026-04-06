@@ -21,6 +21,8 @@ import Select from "@/components/ui/Select";
 import Checkbox from "@/components/ui/Checkbox";
 import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
+import EmailChangeModal from "@/components/EmailChangeModal";
+import ContactManagerModal from "@/components/ContactManagerModal";
 
 type ImageInput = {
   url: string;
@@ -491,18 +493,14 @@ export default function NewPropertyPage() {
   const [profilePublicPhoneOptIn, setProfilePublicPhoneOptIn] = useState<boolean>(false);
   const [profilePhone, setProfilePhone] = useState<string | null>(null);
   const [profilePhoneVerified, setProfilePhoneVerified] = useState<boolean>(false);
-  const [phoneConfirmedForListing, setPhoneConfirmedForListing] = useState(false);
   const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
-  const [phoneMode, setPhoneMode] = useState<"existing" | "new">("existing");
-  const [newPhoneInput, setNewPhoneInput] = useState("");
-  const [savingNewPhone, setSavingNewPhone] = useState(false);
+  const [phoneModalStartInEdit, setPhoneModalStartInEdit] = useState(false);
 
   const [profileEmail, setProfileEmail] = useState<string | null>(null);
   const [profileEmailVerified, setProfileEmailVerified] = useState<boolean>(false);
-  const [emailMode, setEmailMode] = useState<"existing" | "new">("existing");
-  const [newEmailInput, setNewEmailInput] = useState("");
-  const [savingNewEmail, setSavingNewEmail] = useState(false);
-  const [emailConfirmedForListing, setEmailConfirmedForListing] = useState(false);
+  const [showEmailChangeModal, setShowEmailChangeModal] = useState(false);
+  const [showContactManagerModal, setShowContactManagerModal] = useState(false);
+  const [contactManagerBusyAction, setContactManagerBusyAction] = useState<"phone" | "email" | "email-resend" | null>(null);
 
   const [fullscreenPreviewOpen, setFullscreenPreviewOpen] = useState(false);
   
@@ -587,33 +585,75 @@ export default function NewPropertyPage() {
     };
   }, []);
 
+  const refreshProfileContacts = async () => {
+    try {
+      const res = await fetch("/api/user/profile", { cache: "no-store" });
+      if (!res.ok) return false;
+      const data = await res.json().catch(() => null);
+      if (!data?.success || !data.user) return false;
+      setUserRole(String(data.user.role || "USER").toUpperCase());
+      setProfileName(data.user.name || null);
+      setProfileImage(data.user.image || null);
+      setProfilePublicSlug(data.user.publicSlug || null);
+      setProfilePublicProfileEnabled(!!data.user.publicProfileEnabled);
+      setProfilePublicPhoneOptIn(!!data.user.publicPhoneOptIn);
+      setProfilePhone(data.user.phone || "");
+      setProfilePhoneVerified(!!data.user.phoneVerifiedAt);
+      setProfileEmail(data.user.email || "");
+      setProfileEmailVerified(!!data.user.emailVerified);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const openContactManager = () => {
+    clearFieldError("contactVerification");
+    setShowContactManagerModal(true);
+  };
+
+  const openPhoneContactFlow = (startInEdit: boolean) => {
+    clearFieldError("contactVerification");
+    setShowContactManagerModal(false);
+    setPhoneModalStartInEdit(startInEdit);
+    setShowPhoneVerificationModal(true);
+  };
+
+  const openEmailContactFlow = () => {
+    clearFieldError("contactVerification");
+    setShowContactManagerModal(false);
+    setShowEmailChangeModal(true);
+  };
+
+  const resendEmailVerification = async () => {
+    if (!profileEmail) {
+      openEmailContactFlow();
+      return;
+    }
+
+    setContactManagerBusyAction("email-resend");
+    try {
+      const r = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: profileEmail }),
+      });
+
+      if (r.ok) {
+        setToast({ message: "Enviamos um link de verificação para seu e-mail.", type: "success" });
+      } else {
+        setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+      }
+    } catch {
+      setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+    } finally {
+      setContactManagerBusyAction(null);
+    }
+  };
+
   // Carrega telefone do usuário para confirmação no fluxo de publicação
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/user/profile");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data?.success || !data.user || cancelled) return;
-        setUserRole(String(data.user.role || "USER").toUpperCase());
-        setProfileName(data.user.name || null);
-        setProfileImage(data.user.image || null);
-        setProfilePublicSlug(data.user.publicSlug || null);
-        setProfilePublicProfileEnabled(!!data.user.publicProfileEnabled);
-        setProfilePublicPhoneOptIn(!!data.user.publicPhoneOptIn);
-        setProfilePhone(data.user.phone || "");
-        setProfilePhoneVerified(!!data.user.phoneVerifiedAt);
-        setProfileEmail(data.user.email || "");
-        setProfileEmailVerified(!!data.user.emailVerified);
-        setNewEmailInput(data.user.email || "");
-      } catch {
-        // Silencia falhas de rede; mantemos estado padrão
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void refreshProfileContacts();
   }, []);
 
   const hasAnyVerifiedContact = useMemo(() => {
@@ -2459,8 +2499,9 @@ export default function NewPropertyPage() {
 
     if (!hasAnyVerifiedContact) {
       openPublishIssues({
-        contactVerification: "Para publicar, verifique seu telefone ou e-mail em Meu Perfil.",
+        contactVerification: "Para publicar, verifique seu telefone ou e-mail em Gerenciar contatos.",
       });
+      setShowContactManagerModal(true);
       return;
     }
 
@@ -3293,11 +3334,21 @@ export default function NewPropertyPage() {
               </span>
             </div>
             <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
-              <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
-              <p>
-                Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Você pode ajustar isso em{' '}
-                <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
-              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
+                  <p>
+                    Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Agora você pode ajustar isso sem sair desta tela.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={openContactManager}
+                  className="shrink-0 rounded-xl bg-teal-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+                >
+                  Gerenciar contatos
+                </button>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -3408,33 +3459,10 @@ export default function NewPropertyPage() {
                         </div>
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (profilePhone && !profilePhoneVerified) {
-                              setShowPhoneVerificationModal(true);
-                              return;
-                            }
-                            if (profileEmail && !profileEmailVerified) {
-                              try {
-                                const r = await fetch("/api/auth/resend-verification", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ email: profileEmail }),
-                                });
-                                if (r.ok) {
-                                  setToast({ message: "Enviamos um link de verificação para seu e-mail.", type: "success" });
-                                } else {
-                                  setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
-                                }
-                              } catch {
-                                setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
-                              }
-                              return;
-                            }
-                            window.location.href = "/profile";
-                          }}
+                          onClick={openContactManager}
                           className="shrink-0 px-3 py-2 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700"
                         >
-                          Verificar agora
+                          Gerenciar contatos
                         </button>
                       </div>
                     </div>
@@ -4387,7 +4415,7 @@ export default function NewPropertyPage() {
                   )}
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="lg:col-span-8 space-y-4">
+                    <div className="lg:col-span-12 space-y-4">
                       {/* Área de upload */}
                       <div
                         className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
@@ -4606,7 +4634,7 @@ export default function NewPropertyPage() {
                       )}
                     </div>
 
-                    <div className="lg:col-span-4 space-y-4">
+                    <div className="hidden">
                       {/* Dica de qualidade */}
                       {images.filter((img) => typeof img.url === "string" && /^https?:\/\//.test(img.url)).length > 0 &&
                         images.filter((img) => typeof img.url === "string" && /^https?:\/\//.test(img.url)).length < 5 && (
@@ -4881,199 +4909,58 @@ export default function NewPropertyPage() {
                           </div>
                         )}
 
-                        {hasAnyVerifiedContact ? (
-                          <div className="space-y-3">
-                            <p className="text-sm text-gray-600">
-                              Você já tem pelo menos um contato verificado. Você pode publicar seu anúncio.
+                        <div className="space-y-4">
+                          <div className={`rounded-2xl border px-4 py-3 ${hasAnyVerifiedContact ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                            <p className={`text-sm font-semibold ${hasAnyVerifiedContact ? "text-emerald-900" : "text-amber-900"}`}>
+                              {hasAnyVerifiedContact
+                                ? "Você já tem pelo menos um contato verificado."
+                                : "Você ainda precisa verificar telefone ou e-mail para publicar."}
                             </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
-                              <div className="p-3 bg-white rounded-lg border border-gray-200">
-                                <div className="flex items-center gap-2">
-                                  <Phone className="w-4 h-4 text-teal-700" />
-                                  <p className="font-medium text-gray-900">Telefone</p>
-                                </div>
-                                <p className="text-sm text-gray-700 mt-1">{profilePhone || "Não cadastrado"}</p>
-                                <p className={`text-xs mt-1 ${profilePhoneVerified ? "text-green-600" : "text-amber-600"}`}>
-                                  {profilePhoneVerified ? "Verificado" : "Não verificado"}
-                                </p>
-                              </div>
-                              <div className="p-3 bg-white rounded-lg border border-gray-200">
-                                <div className="flex items-center gap-2">
-                                  <Mail className="w-4 h-4 text-teal-700" />
-                                  <p className="font-medium text-gray-900">E-mail</p>
-                                </div>
-                                <p className="text-sm text-gray-700 mt-1">{profileEmail || "Não cadastrado"}</p>
-                                <p className={`text-xs mt-1 ${profileEmailVerified ? "text-green-600" : "text-amber-600"}`}>
-                                  {profileEmailVerified ? "Verificado" : "Não verificado"}
-                                </p>
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              Se quiser alterar ou verificar outros contatos, vá em <Link href="/profile" className="text-teal-700 hover:underline">Meu Perfil</Link>.
+                            <p className={`mt-1 text-xs ${hasAnyVerifiedContact ? "text-emerald-800" : "text-amber-800"}`}>
+                              Abra o gerenciador para cadastrar, verificar ou alterar seus contatos sem sair desta tela.
                             </p>
                           </div>
-                        ) : (
-                          <>
 
-                            <div className="space-y-3">
-                              <p className="text-sm text-gray-600">
-                                Para publicar, verifique pelo menos um canal de contato (telefone ou e-mail).
-                              </p>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
-                                <div className="p-3 bg-white rounded-lg border border-gray-200">
-                                  <div className="flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-teal-700" />
-                                    <p className="font-medium text-gray-900">Telefone</p>
-                                  </div>
-
-                                  {profilePhone ? (
-                                    <div className="mt-2">
-                                      <p className="text-sm text-gray-700">{profilePhone}</p>
-                                      <p className="text-xs text-amber-600 mt-1">Não verificado</p>
-                                      <button
-                                        type="button"
-                                        onClick={() => setShowPhoneVerificationModal(true)}
-                                        className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
-                                      >
-                                        Verificar por SMS →
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="mt-2">
-                                      <p className="text-sm text-gray-500">Você não tem telefone cadastrado.</p>
-                                      <div className="mt-2 flex gap-2">
-                                        <input
-                                          type="tel"
-                                          value={newPhoneInput}
-                                          onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
-                                          placeholder="11999999999"
-                                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                                        />
-                                        <button
-                                          type="button"
-                                          disabled={!newPhoneInput.trim() || savingNewPhone}
-                                          onClick={async () => {
-                                            if (!newPhoneInput.trim()) return;
-                                            setSavingNewPhone(true);
-                                            try {
-                                              const res = await fetch("/api/user/profile", {
-                                                method: "PATCH",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify({ phone: newPhoneInput }),
-                                              });
-                                              if (res.ok) {
-                                                setProfilePhone(newPhoneInput);
-                                                setProfilePhoneVerified(false);
-                                                setShowPhoneVerificationModal(true);
-                                              } else {
-                                                setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                              }
-                                            } catch {
-                                              setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                            } finally {
-                                              setSavingNewPhone(false);
-                                            }
-                                          }}
-                                          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                          {savingNewPhone ? "Salvando..." : "Salvar"}
-                                        </button>
-                                      </div>
-                                      <p className="text-xs text-gray-500 mt-1">Digite apenas números (DDD + número)</p>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="p-3 bg-white rounded-lg border border-gray-200">
-                                  <div className="flex items-center gap-2">
-                                    <Mail className="w-4 h-4 text-teal-700" />
-                                    <p className="font-medium text-gray-900">E-mail</p>
-                                  </div>
-
-                                  {profileEmail ? (
-                                    <div className="mt-2">
-                                      <p className="text-sm text-gray-700">{profileEmail}</p>
-                                      <p className="text-xs text-amber-600 mt-1">Não verificado</p>
-                                      <button
-                                        type="button"
-                                        onClick={async () => {
-                                          try {
-                                            const r = await fetch("/api/auth/resend-verification", {
-                                              method: "POST",
-                                              headers: { "Content-Type": "application/json" },
-                                              body: JSON.stringify({ email: profileEmail }),
-                                            });
-                                            if (r.ok) {
-                                              setToast({ message: "Enviamos um link de verificação para seu e-mail.", type: "success" });
-                                            } else {
-                                              setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
-                                            }
-                                          } catch {
-                                            setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
-                                          }
-                                        }}
-                                        className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
-                                      >
-                                        Reenviar verificação →
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="mt-2">
-                                      <p className="text-sm text-gray-500">Você não tem e-mail cadastrado.</p>
-                                      <div className="mt-2 flex gap-2">
-                                        <input
-                                          type="email"
-                                          value={newEmailInput}
-                                          onChange={(e) => setNewEmailInput(e.target.value)}
-                                          placeholder="seuemail@exemplo.com"
-                                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                                        />
-                                        <button
-                                          type="button"
-                                          disabled={!newEmailInput.trim() || savingNewEmail}
-                                          onClick={async () => {
-                                            if (!newEmailInput.trim()) return;
-                                            setSavingNewEmail(true);
-                                            try {
-                                              const res = await fetch("/api/user/profile", {
-                                                method: "PATCH",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify({ email: newEmailInput.trim() }),
-                                              });
-                                              const j = await res.json().catch(() => null);
-                                              if (res.ok && j?.success && j.user) {
-                                                setProfileEmail(j.user.email || newEmailInput.trim());
-                                                setProfileEmailVerified(!!j.user.emailVerified);
-                                                setEmailConfirmedForListing(false);
-                                                setEmailMode("existing");
-                                                setToast({ message: "Enviamos um link de verificação para o seu e-mail.", type: "success" });
-                                              } else {
-                                                setToast({ message: j?.error || "Erro ao salvar e-mail", type: "error" });
-                                              }
-                                            } catch {
-                                              setToast({ message: "Erro ao salvar e-mail", type: "error" });
-                                            } finally {
-                                              setSavingNewEmail(false);
-                                            }
-                                          }}
-                                          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                          {savingNewEmail ? "Salvando..." : "Salvar"}
-                                        </button>
-                                      </div>
-                                      <p className="text-xs text-gray-500 mt-1">Você precisará clicar no link enviado para confirmar.</p>
-                                    </div>
-                                  )}
-                                </div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                            <div className="rounded-xl border border-gray-200 bg-white p-3">
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-teal-700" />
+                                <p className="font-medium text-gray-900">Telefone</p>
                               </div>
-
-                              <p className="text-xs text-gray-500">
-                                Depois de verificar, volte aqui e atualize a página (ou aguarde alguns segundos) para liberar a publicação.
+                              <p className="mt-2 text-sm text-gray-700 break-words">{profilePhone || "Não cadastrado"}</p>
+                              <p className={`text-xs mt-1 ${profilePhoneVerified ? "text-green-600" : profilePhone ? "text-amber-600" : "text-gray-500"}`}>
+                                {profilePhoneVerified ? "Verificado" : profilePhone ? "Pendente de verificação" : "Ainda não cadastrado"}
                               </p>
                             </div>
-                          </>
-                        )}
+
+                            <div className="rounded-xl border border-gray-200 bg-white p-3">
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-teal-700" />
+                                <p className="font-medium text-gray-900">E-mail</p>
+                              </div>
+                              <p className="mt-2 text-sm text-gray-700 break-all">{profileEmail || "Não cadastrado"}</p>
+                              <p className={`text-xs mt-1 ${profileEmailVerified ? "text-green-600" : profileEmail ? "text-amber-600" : "text-gray-500"}`}>
+                                {profileEmailVerified ? "Verificado" : profileEmail ? "Pendente de verificação" : "Ainda não cadastrado"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <button
+                              type="button"
+                              onClick={openContactManager}
+                              className="inline-flex items-center justify-center rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+                            >
+                              Gerenciar contatos
+                            </button>
+                            <Link
+                              href="/profile"
+                              className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                            >
+                              Abrir Meu Perfil
+                            </Link>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -5192,9 +5079,11 @@ export default function NewPropertyPage() {
       <PhoneVerificationModal
         isOpen={showPhoneVerificationModal}
         onClose={() => setShowPhoneVerificationModal(false)}
-        onVerified={() => {
+        startInEdit={phoneModalStartInEdit}
+        onVerified={async () => {
           setProfilePhoneVerified(true);
-          setPhoneConfirmedForListing(true);
+          clearFieldError("contactVerification");
+          await refreshProfileContacts();
           setToast({ message: "Telefone verificado! Agora você pode publicar seu anúncio.", type: "success" });
         }}
         phone={profilePhone || ""}
@@ -5203,6 +5092,33 @@ export default function NewPropertyPage() {
           setProfilePhone(newPhone);
           setProfilePhoneVerified(false);
         }}
+      />
+
+      <EmailChangeModal
+        isOpen={showEmailChangeModal}
+        onClose={() => setShowEmailChangeModal(false)}
+        currentEmail={String(profileEmail || "")}
+        onVerified={async (newEmail) => {
+          setProfileEmail(newEmail || "");
+          setProfileEmailVerified(true);
+          clearFieldError("contactVerification");
+          await refreshProfileContacts();
+          setToast({ message: "E-mail atualizado e verificado com sucesso.", type: "success" });
+        }}
+      />
+
+      <ContactManagerModal
+        isOpen={showContactManagerModal}
+        onClose={() => setShowContactManagerModal(false)}
+        hasAnyVerifiedContact={hasAnyVerifiedContact}
+        phone={profilePhone}
+        phoneVerified={profilePhoneVerified}
+        email={profileEmail}
+        emailVerified={profileEmailVerified}
+        busyAction={contactManagerBusyAction}
+        onManagePhone={() => openPhoneContactFlow(!profilePhone || profilePhoneVerified)}
+        onManageEmail={openEmailContactFlow}
+        onResendEmailVerification={resendEmailVerification}
       />
     </DashboardLayout>
   );
