@@ -358,10 +358,6 @@ export default function AgencyDashboardPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    if (role !== "AGENCY" && role !== "ADMIN") {
-      setLoading(false);
-      return;
-    }
 
     const load = async () => {
       try {

@@ -12,6 +12,7 @@ import {
   upsertAgencyProfileConfig,
   upsertAgencyPublicLeadConfig,
 } from "@/lib/agency-profile";
+import { resolveAgencyWorkspaceForUser } from "@/lib/agency-workspace";
 import { getPublicProfilePathByRole } from "@/lib/public-profile";
 import { generateUniquePublicSlug } from "@/lib/public-profile-slug";
 
@@ -28,9 +29,22 @@ async function getSessionContext() {
   return { userId, role };
 }
 
-async function buildAgencyProfileResponse(userId: string) {
+function statusForWorkspaceError(reason: string | undefined) {
+  if (reason === "PROFILE_NOT_FOUND" || reason === "TEAM_NOT_FOUND") return 404;
+  if (reason === "NOT_AUTHENTICATED") return 401;
+  return 403;
+}
+
+async function buildAgencyProfileResponse(input: {
+  agencyUserId: string;
+  viewerUserId: string;
+  viewerWorkspaceRole: string | null;
+  canManageWorkspace: boolean;
+  canTransferOwner: boolean;
+}) {
+  const agencyUserId = String(input.agencyUserId);
   const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-    where: { userId },
+    where: { userId: agencyUserId },
     select: {
       id: true,
       name: true,
@@ -49,7 +63,7 @@ async function buildAgencyProfileResponse(userId: string) {
   if (!agencyProfile) return null;
 
   const user = await (prisma as any).user.findUnique({
-    where: { id: userId },
+    where: { id: agencyUserId },
     select: {
       id: true,
       role: true,
@@ -77,7 +91,7 @@ async function buildAgencyProfileResponse(userId: string) {
     (prisma as any).teamMember.findMany({
       where: {
         teamId: String(agencyProfile.teamId),
-        role: { in: ["OWNER", "AGENT"] },
+        role: { in: ["OWNER", "ASSISTANT", "AGENT"] },
       },
       include: {
         user: {
@@ -103,6 +117,13 @@ async function buildAgencyProfileResponse(userId: string) {
     .map((member) => ({
       id: String(member.user.id),
       name: String(member.user.name || "Corretor"),
+      teamRole: String(member.role || "AGENT"),
+      roleLabel:
+        String(member.role || "AGENT") === "OWNER"
+          ? "Owner"
+          : String(member.role || "AGENT") === "ASSISTANT"
+            ? "Assistant"
+            : "Corretor",
       image: member.user.image ? String(member.user.image) : null,
       headline: member.user.publicHeadline ? String(member.user.publicHeadline) : null,
       publicSlug: member.user.publicSlug ? String(member.user.publicSlug) : null,
@@ -167,6 +188,12 @@ async function buildAgencyProfileResponse(userId: string) {
     verifiedPhoneVisible,
     completion,
     teamMembers: publicTeamMembers,
+    workspace: {
+      viewerUserId: String(input.viewerUserId),
+      viewerWorkspaceRole: input.viewerWorkspaceRole ? String(input.viewerWorkspaceRole) : null,
+      canManageWorkspace: Boolean(input.canManageWorkspace),
+      canTransferOwner: Boolean(input.canTransferOwner),
+    },
   };
 }
 
@@ -178,11 +205,21 @@ export async function GET() {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "AGENCY" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    const workspace = await resolveAgencyWorkspaceForUser({ userId: String(userId), authRole: role ? String(role) : null });
+    if (!workspace.allowed || !workspace.agencyProfileUserId) {
+      return NextResponse.json(
+        { error: workspace.reason === "PROFILE_NOT_FOUND" ? "Perfil de agência não encontrado" : "Acesso negado" },
+        { status: statusForWorkspaceError(workspace.reason) }
+      );
     }
 
-    const agencyProfile = await buildAgencyProfileResponse(String(userId));
+    const agencyProfile = await buildAgencyProfileResponse({
+      agencyUserId: String(workspace.agencyProfileUserId),
+      viewerUserId: String(workspace.userId || userId),
+      viewerWorkspaceRole: workspace.workspaceRole,
+      canManageWorkspace: workspace.canManageWorkspace,
+      canTransferOwner: workspace.canTransferOwner,
+    });
 
     if (!agencyProfile) {
       return NextResponse.json({ error: "Perfil de agência não encontrado" }, { status: 404 });
@@ -203,8 +240,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "AGENCY" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    const workspace = await resolveAgencyWorkspaceForUser({ userId: String(userId), authRole: role ? String(role) : null });
+    if (!workspace.allowed || !workspace.agencyProfileUserId) {
+      return NextResponse.json(
+        { error: workspace.reason === "PROFILE_NOT_FOUND" ? "Perfil de agência não encontrado" : "Acesso negado" },
+        { status: statusForWorkspaceError(workspace.reason) }
+      );
     }
 
     const json = await req.json().catch(() => null);
@@ -214,9 +255,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
     }
 
+    const agencyActorUserId = String(workspace.agencyProfileUserId);
     const [existingAgencyProfile, existingUser] = await Promise.all([
       (prisma as any).agencyProfile.findUnique({
-        where: { userId },
+        where: { userId: agencyActorUserId },
         select: {
           id: true,
           teamId: true,
@@ -225,11 +267,12 @@ export async function PATCH(req: NextRequest) {
         },
       }),
       (prisma as any).user.findUnique({
-        where: { id: userId },
+        where: { id: agencyActorUserId },
         select: {
           id: true,
           role: true,
           name: true,
+          image: true,
           phone: true,
           phoneVerifiedAt: true,
           publicSlug: true,
@@ -320,7 +363,7 @@ export async function PATCH(req: NextRequest) {
 
     if (!existingUser.publicSlug) {
       userUpdateData.publicSlug = await generateUniquePublicSlug(
-        String(userId),
+        agencyActorUserId,
         (payload.name ?? existingAgencyProfile.name ?? existingUser.name ?? "agencia") as string,
         "agencia"
       );
@@ -413,7 +456,7 @@ export async function PATCH(req: NextRequest) {
       }
 
       await tx.user.update({
-        where: { id: userId },
+        where: { id: agencyActorUserId },
         data: userUpdateData,
         select: { id: true },
       });
@@ -431,7 +474,14 @@ export async function PATCH(req: NextRequest) {
       }
     });
 
-    const agencyProfile = await buildAgencyProfileResponse(String(userId));
+    const agencyProfile = await buildAgencyProfileResponse({
+      agencyUserId: agencyActorUserId,
+      viewerUserId: String(workspace.userId || userId),
+      viewerWorkspaceRole: workspace.workspaceRole,
+      canManageWorkspace: workspace.canManageWorkspace,
+      canTransferOwner: workspace.canTransferOwner,
+    });
+
     return NextResponse.json({ success: true, agencyProfile });
   } catch (error) {
     console.error("Error updating agency profile:", error);

@@ -4,6 +4,7 @@ import { Prisma, LeadPipelineStage, LeadStatus } from "@prisma/client";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { DEFAULT_AGENCY_AI_CONFIG, getAgencyAiConfig } from "@/lib/agency-profile";
+import { getAgencyWorkspaceErrorStatus, resolveAgencyWorkspaceForTeam, resolveAgencyWorkspaceForUser } from "@/lib/agency-workspace";
 import { prisma } from "@/lib/prisma";
 import { captureException } from "@/lib/sentry";
 import { logger } from "@/lib/logger";
@@ -78,41 +79,28 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "AGENCY" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
-
     const url = new URL(req.url);
     const parsedQuery = QuerySchema.safeParse({ teamId: url.searchParams.get("teamId") || undefined });
     if (!parsedQuery.success) {
       return NextResponse.json({ error: "Parâmetros inválidos", issues: parsedQuery.error.issues }, { status: 400 });
     }
 
-    let teamId = parsedQuery.data.teamId || null;
+    const workspace = parsedQuery.data.teamId
+      ? await resolveAgencyWorkspaceForTeam({
+          userId: String(userId),
+          authRole: role ? String(role) : null,
+          teamId: String(parsedQuery.data.teamId),
+        })
+      : await resolveAgencyWorkspaceForUser({
+          userId: String(userId),
+          authRole: role ? String(role) : null,
+        });
 
-    if (role === "AGENCY") {
-      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      const agencyTeamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
-      if (!agencyTeamId) {
-        return NextResponse.json({ error: "Perfil de agência sem time associado." }, { status: 403 });
-      }
-      if (teamId && String(teamId) !== String(agencyTeamId)) {
-        return NextResponse.json({ error: "Você só pode acessar insights do seu time." }, { status: 403 });
-      }
-      teamId = agencyTeamId;
+    if (!workspace.allowed || !workspace.teamId) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: getAgencyWorkspaceErrorStatus(workspace.reason) });
     }
 
-    if (!teamId && role === "ADMIN") {
-      const membership = await (prisma as any).teamMember.findFirst({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-        orderBy: { createdAt: "asc" },
-      });
-      teamId = membership?.teamId ? String(membership.teamId) : null;
-    }
+    const teamId = String(workspace.teamId);
 
     if (!teamId) {
       return NextResponse.json({
@@ -180,14 +168,6 @@ export async function GET(req: NextRequest) {
     }
 
     const aiConfig = await getAgencyAiConfig(String(teamId));
-
-    if (role !== "ADMIN") {
-      const isMember = (team.members as any[]).some((m) => String(m.userId) === String(userId));
-      const isOwner = String(team.ownerId) === String(userId);
-      if (!isMember && !isOwner) {
-        return NextResponse.json({ error: "Você não tem acesso a este time." }, { status: 403 });
-      }
-    }
 
     const members = Array.isArray(team.members) ? (team.members as any[]) : [];
     const memberIds = members.map((m) => String(m.userId));

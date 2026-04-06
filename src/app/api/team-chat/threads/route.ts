@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveAgencyWorkspaceForTeam } from "@/lib/agency-workspace";
 
 export const runtime = "nodejs";
 
@@ -59,34 +60,41 @@ async function assertTeamAccess(input: { userId: string; role: string | null; te
   });
 
   if (!team) {
-    return { team: null, error: NextResponse.json({ success: false, error: "Time não encontrado" }, { status: 404 }) };
+    return { team: null, error: NextResponse.json({ success: false, error: "Time não encontrado" }, { status: 404 }), managerView: false };
   }
 
-  if (role !== "ADMIN") {
-    if (role === "AGENCY") {
-      if (String(team.ownerId) !== String(userId)) {
-        return {
-          team: null,
-          error: NextResponse.json({ success: false, error: "Você não tem acesso a este time." }, { status: 403 }),
-        };
-      }
-    } else if (role === "REALTOR") {
-      const isMember = (team.members as any[]).some((m) => String(m.userId) === String(userId));
-      if (!isMember) {
-        return {
-          team: null,
-          error: NextResponse.json({ success: false, error: "Você não tem acesso a este time." }, { status: 403 }),
-        };
-      }
-    } else {
+  if (role === "ADMIN") {
+    return { team, error: null as NextResponse | null, managerView: true };
+  }
+
+  const workspace = await resolveAgencyWorkspaceForTeam({
+    userId: String(userId),
+    authRole: role ? String(role) : null,
+    teamId: String(teamId),
+  });
+
+  if (workspace.allowed) {
+    return { team, error: null as NextResponse | null, managerView: true };
+  }
+
+  if (role === "REALTOR") {
+    const isMember = (team.members as any[]).some((m) => String(m.userId) === String(userId));
+    if (!isMember) {
       return {
         team: null,
         error: NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 }),
+        managerView: false,
       };
     }
+
+    return { team, error: null as NextResponse | null, managerView: false };
   }
 
-  return { team, error: null as NextResponse | null };
+  return {
+    team: null,
+    error: NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 }),
+    managerView: false,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -117,10 +125,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, team: null, threads: [] });
     }
 
-    const { team, error } = await assertTeamAccess({ userId, role, teamId });
+    const { team, error, managerView } = await assertTeamAccess({ userId, role, teamId });
     if (error) return error;
 
-    const isRealtor = role === "REALTOR";
+    const isRealtor = role === "REALTOR" && !managerView;
     const teamMembers = (team.members as any[]).filter((m) => m?.user?.role === "REALTOR");
 
     if (isRealtor) {

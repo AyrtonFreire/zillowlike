@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAgencyWorkspaceErrorStatus, resolveAssistantScope } from "@/lib/agency-workspace";
 
 export const runtime = "nodejs";
 
@@ -58,40 +59,26 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
+    const { id } = await context.params;
 
     const url = new URL(req.url);
-    const reqContext = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
-      .trim()
-      .toUpperCase();
+    const scope = await resolveAssistantScope({
+      userId: String(userId),
+      authRole: role ? String(role) : null,
+      requestedContext: url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"),
+      requestedTeamId: url.searchParams.get("teamId") || null,
+    });
 
-    let teamId: string | null = url.searchParams.get("teamId") || null;
-    if (!teamId && role === "AGENCY" && reqContext === "AGENCY") {
-      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    if (!scope.allowed || !scope.ownerId) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: getAgencyWorkspaceErrorStatus(scope.reason) });
     }
-
-    if (role === "AGENCY" && reqContext !== "AGENCY") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
-
-    if (reqContext === "AGENCY" && !teamId) {
-      return NextResponse.json({ error: "Não foi possível identificar o time da agência." }, { status: 400 });
-    }
-
-    const { id } = await context.params;
 
     const item = await (prisma as any).assistantItem.findFirst({
       where: {
         id: String(id),
-        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-        ownerId: String(userId),
-        ...(reqContext === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
+        context: scope.context,
+        ownerId: String(scope.ownerId),
+        ...(scope.context === "AGENCY" && scope.teamId ? { teamId: String(scope.teamId) } : {}),
       },
       select: {
         id: true,
@@ -118,7 +105,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const until = new Date(Math.min(now.getTime(), weekStart.getTime() + 7 * 24 * 60 * 60 * 1000));
 
     const whereBase: any =
-      reqContext === "AGENCY" ? { teamId: String(teamId || "") } : { realtorId: String(userId) };
+      scope.context === "AGENCY" ? { teamId: String(scope.teamId || "") } : { realtorId: String(userId) };
 
     const leads = await prisma.lead.findMany({
       where: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAgencyWorkspaceErrorStatus, resolveAssistantScope } from "@/lib/agency-workspace";
 import { getRealtorAssistantCategory } from "@/lib/realtor-assistant-ai";
 
 type Counts = {
@@ -27,32 +28,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
-
     const url = new URL(req.url);
     const leadId = url.searchParams.get("leadId") || null;
-    const context = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
-      .trim()
-      .toUpperCase();
-    let teamId = url.searchParams.get("teamId") || null;
+    const scope = await resolveAssistantScope({
+      userId: String(userId),
+      authRole: role ? String(role) : null,
+      requestedContext: url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"),
+      requestedTeamId: url.searchParams.get("teamId") || null,
+    });
 
-    if (!teamId && role === "AGENCY" && context === "AGENCY") {
-      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    if (!scope.allowed || !scope.ownerId) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: getAgencyWorkspaceErrorStatus(scope.reason) });
     }
 
     const now = new Date();
 
     const baseWhere: any = {
-      context: context === "AGENCY" ? "AGENCY" : "REALTOR",
-      ownerId: String(userId),
+      context: scope.context,
+      ownerId: String(scope.ownerId),
       ...(leadId ? { leadId } : {}),
-      ...(context === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
+      ...(scope.context === "AGENCY" && scope.teamId ? { teamId: String(scope.teamId) } : {}),
     };
 
     const activeWhere: any = {
@@ -118,7 +113,7 @@ export async function GET(req: NextRequest) {
 
     const newestMs = agg?._max?.updatedAt ? new Date(agg._max.updatedAt).getTime() : 0;
     const total = Number(agg?._count?._all || 0);
-    const key = `${String(userId)}:${context === "AGENCY" ? "AGENCY" : "REALTOR"}:${teamId || "-"}:${leadId || "all"}`;
+    const key = `${String(scope.ownerId)}:${scope.context}:${scope.teamId || "-"}:${leadId || "all"}`;
     const etag = `W/\"assistant-stats:${key}:${newestMs}:${total}:${counts.ALL}:${counts.Leads}:${counts.Visitas}:${counts.Lembretes}:${counts.Outros}:${Number(snoozedCount || 0)}\"`;
 
     const ifNoneMatch = req.headers.get("if-none-match");

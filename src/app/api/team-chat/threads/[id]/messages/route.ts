@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-log";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
+import { resolveAgencyWorkspaceForTeam } from "@/lib/agency-workspace";
 
 export const runtime = "nodejs";
 
@@ -18,18 +19,6 @@ async function getSessionContext() {
   const userId = (session.userId || session.user?.id || null) as string | null;
   const role = (session.role || session.user?.role || null) as string | null;
   return { userId: userId ? String(userId) : null, role: role ? String(role) : null };
-}
-
-function canAccessThread(params: {
-  userId: string;
-  role: string | null;
-  thread: { ownerId: string; realtorId: string };
-}) {
-  const { userId, role, thread } = params;
-  if (role === "ADMIN") return true;
-  if (role === "AGENCY") return String(thread.ownerId) === String(userId);
-  if (role === "REALTOR") return String(thread.realtorId) === String(userId);
-  return false;
 }
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -54,7 +43,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ success: false, error: "Conversa não encontrada" }, { status: 404 });
     }
 
-    if (!canAccessThread({ userId, role, thread })) {
+    let canAccessThread = role === "ADMIN" || String(thread.ownerId) === String(userId) || String(thread.realtorId) === String(userId);
+
+    if (!canAccessThread && thread.teamId) {
+      const workspace = await resolveAgencyWorkspaceForTeam({
+        userId: String(userId),
+        authRole: role ? String(role) : null,
+        teamId: String(thread.teamId),
+      });
+      canAccessThread = workspace.allowed;
+    }
+
+    if (!canAccessThread) {
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
 

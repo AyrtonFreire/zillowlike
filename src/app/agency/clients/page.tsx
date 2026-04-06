@@ -316,7 +316,7 @@ export default function AgencyClientsPage() {
   const [editPrefBathroomsMin, setEditPrefBathroomsMin] = useState("");
   const [editPrefAreaMin, setEditPrefAreaMin] = useState("");
 
-  const canUse = role === "AGENCY" || role === "ADMIN";
+  const canUse = role === "AGENCY" || role === "ADMIN" || role === "REALTOR";
   const whatsappChannelEnabled = agencyAiConfig?.channels?.whatsapp !== false;
   const manualPriorityEnabled = agencyAiConfig?.automations?.manualPriorityBoard !== false;
 

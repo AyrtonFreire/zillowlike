@@ -3,6 +3,7 @@ import { getPusherServer } from "@/lib/pusher-server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveAgencyWorkspaceForTeam } from "@/lib/agency-workspace";
 
 export const runtime = "nodejs";
 
@@ -42,12 +43,12 @@ export async function POST(request: NextRequest) {
       const channelTeamId = channel.replace("private-agency-", "");
 
       if (!isAdmin) {
-        const agencyProfile: any = await (prisma as any).agencyProfile.findUnique({
-          where: { userId: String(userId) },
-          select: { teamId: true },
+        const workspace = await resolveAgencyWorkspaceForTeam({
+          userId: String(userId),
+          authRole: role ? String(role) : null,
+          teamId: String(channelTeamId),
         });
-        const teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
-        if (!teamId || String(teamId) !== String(channelTeamId)) {
+        if (!workspace.allowed) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
       }
@@ -56,17 +57,26 @@ export async function POST(request: NextRequest) {
 
       const thread: any = await (prisma as any).teamChatThread.findUnique({
         where: { id: String(threadId) },
-        select: { id: true, ownerId: true, realtorId: true },
+        select: { id: true, ownerId: true, realtorId: true, teamId: true },
       });
 
       if (!thread) {
         return NextResponse.json({ error: "Thread not found" }, { status: 404 });
       }
 
-      const canAccessThread =
+      let canAccessThread =
         isAdmin ||
         String(thread.ownerId) === String(userId) ||
         String(thread.realtorId) === String(userId);
+
+      if (!canAccessThread && thread.teamId) {
+        const workspace = await resolveAgencyWorkspaceForTeam({
+          userId: String(userId),
+          authRole: role ? String(role) : null,
+          teamId: String(thread.teamId),
+        });
+        canAccessThread = workspace.allowed;
+      }
 
       if (!canAccessThread) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -83,7 +93,7 @@ export async function POST(request: NextRequest) {
           realtorId: true,
           userId: true,
           property: { select: { ownerId: true } },
-          team: { select: { ownerId: true } },
+          team: { select: { id: true, ownerId: true } },
         },
       });
 
@@ -91,12 +101,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Lead not found" }, { status: 404 });
       }
 
-      const canAccessLead =
+      let canAccessLead =
         isAdmin ||
         (lead.realtorId && lead.realtorId === userId) ||
         (lead.userId && lead.userId === userId) ||
         (lead.property?.ownerId && lead.property.ownerId === userId) ||
         (lead.team?.ownerId && lead.team.ownerId === userId);
+
+      if (!canAccessLead && lead.team?.id) {
+        const workspace = await resolveAgencyWorkspaceForTeam({
+          userId: String(userId),
+          authRole: role ? String(role) : null,
+          teamId: String(lead.team.id),
+        });
+        canAccessLead = workspace.allowed;
+      }
 
       if (!canAccessLead) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-log";
+import { getAgencyWorkspaceErrorStatus, resolveAgencyWorkspaceForTeam } from "@/lib/agency-workspace";
 import { captureException } from "@/lib/sentry";
 import { logger } from "@/lib/logger";
 import { normalizePublicCodeInput } from "@/lib/public-code";
@@ -30,11 +31,17 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Usuário não encontrado na sessão" }, { status: 400 });
     }
 
-    if (role !== "AGENCY" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
-
     const { id } = await context.params;
+
+    const workspace = await resolveAgencyWorkspaceForTeam({
+      userId: String(userId),
+      authRole: role ? String(role) : null,
+      teamId: String(id),
+    });
+
+    if (!workspace.allowed) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: getAgencyWorkspaceErrorStatus(workspace.reason) });
+    }
 
     const url = new URL(req.url);
     const q = (url.searchParams.get("q") || "").trim();
@@ -45,17 +52,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const cursor = (url.searchParams.get("cursor") || "").trim();
     const limitRaw = parseInt((url.searchParams.get("limit") || "50").trim(), 10);
     const limit = Number.isFinite(limitRaw) ? Math.max(10, Math.min(200, limitRaw)) : 50;
-
-    if (role === "AGENCY") {
-      const profile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      const agencyTeamId = profile?.teamId ? String(profile.teamId) : null;
-      if (!agencyTeamId || agencyTeamId !== String(id)) {
-        return NextResponse.json({ error: "Você só pode acessar o funil do seu time." }, { status: 403 });
-      }
-    }
 
     const team = await (prisma as any).team.findUnique({
       where: { id },
@@ -84,16 +80,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     if (!team) {
       return NextResponse.json({ error: "Time não encontrado" }, { status: 404 });
-    }
-
-    const isMember = (team.members as any[]).some((m) => m.userId === userId);
-    const isOwner = team.ownerId === userId;
-
-    if (!isMember && !isOwner && role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Você não tem acesso ao funil deste time." },
-        { status: 403 }
-      );
     }
 
     const sortedMembers = (team.members as any[]).slice().sort((a, b) => {

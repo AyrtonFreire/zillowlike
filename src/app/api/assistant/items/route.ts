@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { createAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
+import { getAgencyWorkspaceErrorStatus, resolveAssistantScope } from "@/lib/agency-workspace";
 import { getRealtorAssistantTypesForCategory } from "@/lib/realtor-assistant-ai";
 
 const RealtorPostSchema = z
@@ -42,16 +43,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
-
     const url = new URL(req.url);
     const leadId = url.searchParams.get("leadId");
-    const context = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
-      .trim()
-      .toUpperCase();
-    const teamIdParam = url.searchParams.get("teamId");
+    const requestedContext = url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR");
+    const teamIdParam = url.searchParams.get("teamId") || null;
     const limitRaw = url.searchParams.get("limit");
     const cursor = url.searchParams.get("cursor");
     const orderRaw = url.searchParams.get("order");
@@ -93,20 +88,22 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
 
-    let teamId: string | null = teamIdParam ? String(teamIdParam) : null;
-    if (!teamId && role === "AGENCY") {
-      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    const scope = await resolveAssistantScope({
+      userId: String(userId),
+      authRole: role ? String(role) : null,
+      requestedContext,
+      requestedTeamId: teamIdParam,
+    });
+
+    if (!scope.allowed || !scope.ownerId) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: getAgencyWorkspaceErrorStatus(scope.reason) });
     }
 
     const baseWhere: any = {
-      context: context === "AGENCY" ? "AGENCY" : "REALTOR",
-      ownerId: String(userId),
+      context: scope.context,
+      ownerId: String(scope.ownerId),
       ...(leadId ? { leadId } : {}),
-      ...(context === "AGENCY" && teamId ? { teamId } : {}),
+      ...(scope.context === "AGENCY" && scope.teamId ? { teamId: String(scope.teamId) } : {}),
     };
 
     baseWhere.status = includeSnoozed ? { in: ["ACTIVE", "SNOOZED"] } : "ACTIVE";
@@ -179,7 +176,7 @@ export async function GET(req: NextRequest) {
       : 0;
 
     const ETAG_VERSION = 2;
-    const key = `${ETAG_VERSION}:${String(userId)}:${leadId || "all"}:${limit}:${order}:${cursor || ""}:${qq || ""}:${priority || ""}:${category || ""}:${includeSnoozed ? "1" : "0"}`;
+    const key = `${ETAG_VERSION}:${String(scope.ownerId)}:${scope.context}:${scope.teamId || "-"}:${leadId || "all"}:${limit}:${order}:${cursor || ""}:${qq || ""}:${priority || ""}:${category || ""}:${includeSnoozed ? "1" : "0"}`;
     const etag = `W/\"assistant-items:${key}:${maxUpdatedAt}:${totalCount}:${effectiveActiveCount}:${snoozedFutureCount}:${nextWakeAtMs}\"`;
 
     const ifNoneMatch = req.headers.get("if-none-match");
@@ -193,9 +190,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const items = await RealtorAssistantService.list(String(userId), {
-      context: context === "AGENCY" ? "AGENCY" : "REALTOR",
-      teamId: context === "AGENCY" ? teamId || undefined : undefined,
+    const items = await RealtorAssistantService.list(String(scope.ownerId), {
+      context: scope.context,
+      teamId: scope.context === "AGENCY" ? scope.teamId || undefined : undefined,
       leadId: leadId || undefined,
       limit,
       order,
@@ -255,34 +252,29 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     if (body && typeof body === "object" && "targetType" in (body as Record<string, unknown>)) {
-      if (role !== "ADMIN" && role !== "AGENCY") {
-        return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-      }
-
       const parsed = AgencyManualPrioritySchema.safeParse(body);
       if (!parsed.success) {
         return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
       }
 
-      let teamId = parsed.data.teamId ? String(parsed.data.teamId) : "";
-      if (!teamId && role === "AGENCY") {
-        const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-          where: { userId: String(userId) },
-          select: { teamId: true },
-        });
-        teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : "";
+      const scope = await resolveAssistantScope({
+        userId: String(userId),
+        authRole: role ? String(role) : null,
+        requestedContext: parsed.data.context || "AGENCY",
+        requestedTeamId: parsed.data.teamId || null,
+      });
+
+      if (!scope.allowed || scope.context !== "AGENCY" || !scope.ownerId || !scope.teamId) {
+        return NextResponse.json({ error: "Acesso negado" }, { status: getAgencyWorkspaceErrorStatus(scope.reason) });
       }
 
-      if (!teamId) {
-        return NextResponse.json({ error: "Time da agência não encontrado." }, { status: 400 });
-      }
+      const teamId = String(scope.teamId);
 
       const team: any = await (prisma as any).team.findUnique({
         where: { id: teamId },
         select: {
           id: true,
           ownerId: true,
-          members: { select: { userId: true } },
         },
       });
 
@@ -290,17 +282,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Time não encontrado." }, { status: 404 });
       }
 
-      if (role !== "ADMIN") {
-        const isOwner = String(team.ownerId || "") === String(userId);
-        const isMember = Array.isArray(team.members)
-          ? team.members.some((member: any) => String(member.userId || "") === String(userId))
-          : false;
-        if (!isOwner && !isMember) {
-          return NextResponse.json({ error: "Você não tem acesso a este time." }, { status: 403 });
-        }
-      }
-
-      const ownerId = String(team.ownerId || userId);
+      const ownerId = String(scope.ownerId);
       const targetId = String(parsed.data.targetId);
       const targetType = parsed.data.targetType;
 

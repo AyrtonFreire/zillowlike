@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAgencyWorkspaceErrorStatus, resolveAssistantScope } from "@/lib/agency-workspace";
 
 export const runtime = "nodejs";
 
@@ -48,10 +49,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
-      return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
-    }
-
     const url = new URL(req.url);
     const daysParam = parseInt(url.searchParams.get("days") || "7", 10);
     const allowedDays = [1, 7, 30, 90];
@@ -59,16 +56,18 @@ export async function GET(req: NextRequest) {
 
     const period = String(url.searchParams.get("period") || "").trim().toLowerCase();
 
-    const contextParam = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR")).trim().toUpperCase();
-    const context = contextParam === "AGENCY" ? "AGENCY" : "REALTOR";
+    const scope = await resolveAssistantScope({
+      userId: String(userId),
+      authRole: role ? String(role) : null,
+      requestedContext: url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"),
+      requestedTeamId: url.searchParams.get("teamId") || null,
+    });
 
-    let teamId: string | null = url.searchParams.get("teamId") || null;
-    if (!teamId && role === "AGENCY" && context === "AGENCY") {
-      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    if (!scope.allowed || !scope.ownerId) {
+      return NextResponse.json(
+        { success: false, error: "Acesso negado" },
+        { status: getAgencyWorkspaceErrorStatus(scope.reason) }
+      );
     }
 
     const now = new Date();
@@ -108,11 +107,11 @@ export async function GET(req: NextRequest) {
     const logs = (Array.isArray(rawLogs) ? rawLogs : []).filter((log: any) => {
       const meta = log?.metadata && typeof log.metadata === "object" ? (log.metadata as any) : null;
       const metaContext = meta?.context ? String(meta.context).toUpperCase() : "";
-      if (context === "AGENCY") {
+      if (scope.context === "AGENCY") {
         if (metaContext !== "AGENCY") return false;
-        if (teamId) {
+        if (scope.teamId) {
           const metaTeamId = meta?.teamId ? String(meta.teamId) : "";
-          if (metaTeamId !== String(teamId)) return false;
+          if (metaTeamId !== String(scope.teamId)) return false;
         }
       } else {
         if (metaContext !== "REALTOR") return false;
@@ -145,10 +144,10 @@ export async function GET(req: NextRequest) {
         .filter((log: any) => draftActions.has(String(log?.action || "")))
         .length;
 
-      const defaultLimit = context === "AGENCY" ? 500 : 200;
-      const limit = context === "AGENCY" && teamId
-        ? await getSystemIntSetting(`team:${String(teamId)}:assistantAiMonthlyLimit`, await getSystemIntSetting("assistantAiMonthlyLimitAgency", defaultLimit))
-        : context === "AGENCY"
+      const defaultLimit = scope.context === "AGENCY" ? 500 : 200;
+      const limit = scope.context === "AGENCY" && scope.teamId
+        ? await getSystemIntSetting(`team:${String(scope.teamId)}:assistantAiMonthlyLimit`, await getSystemIntSetting("assistantAiMonthlyLimitAgency", defaultLimit))
+        : scope.context === "AGENCY"
           ? await getSystemIntSetting("assistantAiMonthlyLimitAgency", defaultLimit)
           : await getSystemIntSetting("assistantAiMonthlyLimitRealtor", defaultLimit);
 
@@ -166,8 +165,8 @@ export async function GET(req: NextRequest) {
       success: true,
       days,
       actorId,
-      context,
-      teamId: context === "AGENCY" ? teamId : null,
+      context: scope.context,
+      teamId: scope.context === "AGENCY" ? scope.teamId : null,
       total: logs.length,
       newestAt: newestAt ? newestAt.toISOString() : null,
       counts,

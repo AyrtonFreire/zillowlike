@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-log";
+import { getAgencyWorkspaceErrorStatus, resolveAssistantScope } from "@/lib/agency-workspace";
 
 export const runtime = "nodejs";
 
@@ -35,10 +36,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
-      return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
-    }
-
     const body = await req.json().catch(() => ({}));
     const parsed = BodySchema.safeParse(body);
     if (!parsed.success) {
@@ -46,30 +43,26 @@ export async function POST(req: NextRequest) {
     }
 
     const url = new URL(req.url);
-    const ctxRaw = (parsed.data.context || url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
-      .trim()
-      .toUpperCase();
-    const context = ctxRaw === "AGENCY" ? "AGENCY" : "REALTOR";
+    const scope = await resolveAssistantScope({
+      userId: String(userId),
+      authRole: role ? String(role) : null,
+      requestedContext: parsed.data.context || url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"),
+      requestedTeamId: parsed.data.teamId ? String(parsed.data.teamId) : url.searchParams.get("teamId") || null,
+    });
 
-    let teamId: string | null = parsed.data.teamId ? String(parsed.data.teamId) : url.searchParams.get("teamId") || null;
-    if (!teamId && role === "AGENCY" && context === "AGENCY") {
-      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
-    }
-
-    if (role === "AGENCY" && context !== "AGENCY") {
-      return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
+    if (!scope.allowed || !scope.ownerId) {
+      return NextResponse.json(
+        { success: false, error: "Acesso negado" },
+        { status: getAgencyWorkspaceErrorStatus(scope.reason) }
+      );
     }
 
     const item = await (prisma as any).assistantItem.findFirst({
       where: {
         id: String(parsed.data.itemId),
-        context,
-        ownerId: String(userId),
-        ...(context === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
+        context: scope.context,
+        ownerId: String(scope.ownerId),
+        ...(scope.context === "AGENCY" && scope.teamId ? { teamId: String(scope.teamId) } : {}),
       },
       select: {
         id: true,
@@ -99,8 +92,8 @@ export async function POST(req: NextRequest) {
       targetType: "AssistantItem",
       targetId: String(item.id),
       metadata: {
-        context,
-        teamId: context === "AGENCY" ? String(teamId || "") || null : null,
+        context: scope.context,
+        teamId: scope.context === "AGENCY" ? String(scope.teamId || "") || null : null,
         leadId: parsed.data.leadId ? String(parsed.data.leadId) : item.leadId ? String(item.leadId) : null,
         itemType: parsed.data.itemType ? String(parsed.data.itemType) : item.type ? String(item.type) : null,
         event: parsed.data.event,

@@ -8,6 +8,7 @@ import { withRateLimit } from "@/lib/rate-limiter";
 import { getRealtorAssistantAiSpec } from "@/lib/realtor-assistant-ai";
 import { sanitizeDraft, sanitizeReason, sanitizeSummary } from "@/lib/ai-guardrails";
 import { createAuditLog } from "@/lib/audit-log";
+import { getAgencyWorkspaceErrorStatus, resolveAssistantScope } from "@/lib/agency-workspace";
 
 export const runtime = "nodejs";
 
@@ -573,36 +574,22 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
     // ignore
   }
 
-  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
-    return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
-  }
-
   const url = new URL(req.url);
-  const reqContext = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
-    .trim()
-    .toUpperCase();
+  const scope = await resolveAssistantScope({
+    userId: String(userId),
+    authRole: role ? String(role) : null,
+    requestedContext: url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"),
+    requestedTeamId: url.searchParams.get("teamId") || null,
+  });
 
-  let teamId: string | null = url.searchParams.get("teamId") || null;
-  if (!teamId && role === "AGENCY" && reqContext === "AGENCY") {
-    const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-      where: { userId: String(userId) },
-      select: { teamId: true },
-    });
-    teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
-  }
-
-  if (role === "AGENCY" && reqContext !== "AGENCY") {
-    return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
-  }
-
-  if (reqContext === "AGENCY" && !teamId) {
-    return errorResponse("Não foi possível identificar o time da agência.", 400, null, "TEAM_ID_MISSING");
+  if (!scope.allowed || !scope.ownerId) {
+    return errorResponse("Acesso negado", getAgencyWorkspaceErrorStatus(scope.reason), null, "FORBIDDEN");
   }
 
   const quota = await checkAssistantAiQuota({
     actorId: String(userId),
-    context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-    teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+    context: scope.context,
+    teamId: scope.context === "AGENCY" ? String(scope.teamId || "") || null : null,
   });
   if (!quota.ok) {
     return errorResponse(
@@ -623,9 +610,9 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   const item = await (prisma as any).assistantItem.findFirst({
     where: {
       id: String(id),
-      context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-      ownerId: String(userId),
-      ...(reqContext === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
+      context: scope.context,
+      ownerId: String(scope.ownerId),
+      ...(scope.context === "AGENCY" && scope.teamId ? { teamId: String(scope.teamId) } : {}),
     },
     select: {
       id: true,
@@ -651,8 +638,8 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   if (item.leadId) {
     lead = await prisma.lead.findFirst({
       where:
-        reqContext === "AGENCY"
-          ? { id: String(item.leadId), teamId: String(teamId) }
+        scope.context === "AGENCY"
+          ? { id: String(item.leadId), teamId: String(scope.teamId) }
           : { id: String(item.leadId), realtorId: String(userId) },
       select: {
         id: true,
@@ -681,8 +668,8 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   if (item.clientId) {
     client = await (prisma as any).client.findFirst({
       where:
-        reqContext === "AGENCY"
-          ? { id: String(item.clientId), teamId: String(teamId) }
+        scope.context === "AGENCY"
+          ? { id: String(item.clientId), teamId: String(scope.teamId) }
           : { id: String(item.clientId), assignedUserId: String(userId) },
       select: {
         id: true,
@@ -738,8 +725,8 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
           const until = new Date(Math.min(nowForContext.getTime(), weekStart.getTime() + 7 * 24 * 60 * 60 * 1000));
           return buildWeeklyContext({
             userId: String(userId),
-            context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-            teamId: reqContext === "AGENCY" ? String(teamId || "") : null,
+            context: scope.context,
+            teamId: scope.context === "AGENCY" ? String(scope.teamId || "") : null,
             since: weekStart,
             until,
           });
@@ -814,8 +801,8 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
       targetType: "AssistantItem",
       targetId: String(item.id),
       metadata: {
-        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-        teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+        context: scope.context,
+        teamId: scope.context === "AGENCY" ? String(scope.teamId || "") || null : null,
         leadId: item.leadId ? String(item.leadId) : null,
         clientId: item.clientId ? String(item.clientId) : null,
         itemType: String(item.type || ""),
@@ -954,8 +941,8 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
     targetType: "AssistantItem",
     targetId: String(item.id),
     metadata: {
-      context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-      teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+      context: scope.context,
+      teamId: scope.context === "AGENCY" ? String(scope.teamId || "") || null : null,
       leadId: item.leadId ? String(item.leadId) : null,
       clientId: item.clientId ? String(item.clientId) : null,
       itemType: String(item.type || ""),

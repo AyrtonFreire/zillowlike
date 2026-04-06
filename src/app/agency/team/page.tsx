@@ -539,10 +539,6 @@ export default function AgencyTeamPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    if (role !== "AGENCY" && role !== "ADMIN") {
-      setLoading(false);
-      return;
-    }
 
     const load = async () => {
       setLoading(true);
@@ -585,7 +581,6 @@ export default function AgencyTeamPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    if (role !== "AGENCY" && role !== "ADMIN") return;
 
     const run = async () => {
       try {
@@ -607,7 +602,6 @@ export default function AgencyTeamPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    if (role !== "AGENCY" && role !== "ADMIN") return;
 
     const id = team?.id;
     if (!id) {
@@ -922,7 +916,7 @@ export default function AgencyTeamPage() {
     return <InlineSpinner message="Carregando..." />;
   }
 
-  if (role !== "AGENCY" && role !== "ADMIN") {
+  if (!team && !agencyProfile) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-700">
         Acesso negado.

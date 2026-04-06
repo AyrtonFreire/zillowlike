@@ -6,6 +6,7 @@ import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { createAuditLog } from "@/lib/audit-log";
+import { getAgencyWorkspaceErrorStatus, resolveAssistantScope } from "@/lib/agency-workspace";
 
 const PatchSchema = z
   .object({
@@ -30,25 +31,19 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
-
     const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
     const url = new URL(req.url);
-    const reqContext = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
-      .trim()
-      .toUpperCase();
+    const scope = await resolveAssistantScope({
+      userId: String(userId),
+      authRole: role ? String(role) : null,
+      requestedContext: url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"),
+      requestedTeamId: url.searchParams.get("teamId") || null,
+    });
 
-    let teamId: string | null = url.searchParams.get("teamId") || null;
-    if (!teamId && role === "AGENCY") {
-      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    if (!scope.allowed || !scope.ownerId) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: getAgencyWorkspaceErrorStatus(scope.reason) });
     }
 
     const parsed = PatchSchema.safeParse(body);
@@ -62,9 +57,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const previous: any = await (prisma as any).assistantItem.findFirst({
       where: {
         id: String(id),
-        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-        ownerId: String(userId),
-        ...(reqContext === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
+        context: scope.context,
+        ownerId: String(scope.ownerId),
+        ...(scope.context === "AGENCY" && scope.teamId ? { teamId: String(scope.teamId) } : {}),
       },
       select: {
         id: true,
@@ -82,9 +77,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     let item;
     if (parsed.data.action === "resolve") {
-      item = await RealtorAssistantService.resolve(String(userId), id, {
-        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-        teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      item = await RealtorAssistantService.resolve(String(scope.ownerId), id, {
+        context: scope.context,
+        teamId: scope.context === "AGENCY" ? scope.teamId || undefined : undefined,
       });
 
       void createAuditLog({
@@ -97,8 +92,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         targetType: "AssistantItem",
         targetId: String(previous.id),
         metadata: {
-          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-          teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+          context: scope.context,
+          teamId: scope.context === "AGENCY" ? String(scope.teamId || "") || null : null,
           leadId: previous.leadId ? String(previous.leadId) : null,
           itemType: String(previous.type || ""),
           previousStatus: String(previous.status || ""),
@@ -111,8 +106,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         const leadId = (previous as any)?.leadId ? String((previous as any).leadId) : "";
         const source = String((meta as any)?.source || "").toUpperCase();
 
-        // Agency assistant: no side-effects on lead stage here.
-        if (role !== "AGENCY" && source === "WHATSAPP" && leadId) {
+        if (scope.context !== "AGENCY" && source === "WHATSAPP" && leadId) {
           const lead: any = await (prisma as any).lead.findFirst({
             where: {
               id: leadId,
@@ -160,12 +154,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
           }
         }
       } catch {
-        // ignore
       }
     } else if (parsed.data.action === "dismiss") {
-      item = await RealtorAssistantService.dismiss(String(userId), id, {
-        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-        teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      item = await RealtorAssistantService.dismiss(String(scope.ownerId), id, {
+        context: scope.context,
+        teamId: scope.context === "AGENCY" ? scope.teamId || undefined : undefined,
       });
 
       void createAuditLog({
@@ -178,8 +171,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         targetType: "AssistantItem",
         targetId: String(previous.id),
         metadata: {
-          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-          teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+          context: scope.context,
+          teamId: scope.context === "AGENCY" ? String(scope.teamId || "") || null : null,
           leadId: previous.leadId ? String(previous.leadId) : null,
           itemType: String(previous.type || ""),
           previousStatus: String(previous.status || ""),
@@ -188,9 +181,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       });
     } else {
       const minutes = parsed.data.minutes ?? 60;
-      item = await RealtorAssistantService.snooze(String(userId), id, minutes, {
-        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-        teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      item = await RealtorAssistantService.snooze(String(scope.ownerId), id, minutes, {
+        context: scope.context,
+        teamId: scope.context === "AGENCY" ? scope.teamId || undefined : undefined,
       });
 
       void createAuditLog({
@@ -203,8 +196,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         targetType: "AssistantItem",
         targetId: String(previous.id),
         metadata: {
-          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-          teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+          context: scope.context,
+          teamId: scope.context === "AGENCY" ? String(scope.teamId || "") || null : null,
           leadId: previous.leadId ? String(previous.leadId) : null,
           itemType: String(previous.type || ""),
           previousStatus: String(previous.status || ""),

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { resolveAgencyWorkspaceForUser } from "@/lib/agency-workspace";
 
 export default async function AgencyLeadsIndexPage() {
   const session: any = await getServerSession(authOptions);
@@ -17,28 +17,16 @@ export default async function AgencyLeadsIndexPage() {
     redirect("/api/auth/signin");
   }
 
-  if (role !== "AGENCY" && role !== "ADMIN") {
+  const workspace = await resolveAgencyWorkspaceForUser({
+    userId: String(userId),
+    authRole: role ? String(role) : null,
+  });
+
+  if (!workspace.allowed || !workspace.teamId) {
     redirect("/");
   }
 
-  let teamId: string | null = null;
-
-  if (role === "AGENCY") {
-    const profile = await (prisma as any).agencyProfile.findUnique({
-      where: { userId: String(userId) },
-      select: { teamId: true },
-    });
-    teamId = profile?.teamId ? String(profile.teamId) : null;
-  }
-
-  if (!teamId) {
-    const membership = await (prisma as any).teamMember.findFirst({
-      where: { userId: String(userId) },
-      select: { teamId: true },
-      orderBy: { createdAt: "asc" },
-    });
-    teamId = membership?.teamId ? String(membership.teamId) : null;
-  }
+  const teamId = String(workspace.teamId);
 
   if (!teamId) {
     redirect("/agency/team");

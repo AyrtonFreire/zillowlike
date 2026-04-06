@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-log";
 import { captureException } from "@/lib/sentry";
 import { logger } from "@/lib/logger";
+import { resolveAgencyWorkspaceForTeam } from "@/lib/agency-workspace";
 
 const auditThrottle = new Map<string, number>();
 
@@ -30,19 +31,6 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    let agencyTeamId: string | null = null;
-    if (role === "AGENCY") {
-      const profile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      agencyTeamId = profile?.teamId ? String(profile.teamId) : null;
-
-      if (!agencyTeamId) {
-        return NextResponse.json({ error: "Perfil de agência sem time associado." }, { status: 403 });
-      }
-    }
-
     // Verificar se o usuário pode ver este lead (mesma lógica de /api/leads/[id] e /notes)
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id },
@@ -63,26 +51,18 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     }
 
     const isTeamOwner = !!lead.team && lead.team.ownerId === userId;
+    const agencyWorkspace = lead.teamId
+      ? await resolveAgencyWorkspaceForTeam({
+          userId: String(userId),
+          authRole: role ? String(role) : null,
+          teamId: String(lead.teamId),
+        })
+      : null;
+    const hasAgencyWorkspaceAccess = Boolean(agencyWorkspace?.allowed);
 
-    if (role === "AGENCY") {
-      const sameTeam = !!lead.teamId && String(lead.teamId) === String(agencyTeamId);
-      let realtorIsTeamMember = false;
-
-      if (!sameTeam && lead.realtorId) {
-        const membership = await (prisma as any).teamMember.findFirst({
-          where: {
-            teamId: String(agencyTeamId),
-            userId: String(lead.realtorId),
-          },
-          select: { id: true },
-        });
-        realtorIsTeamMember = !!membership?.id;
-      }
-
-      if (!sameTeam && !realtorIsTeamMember) {
+    if (role === "AGENCY" && !hasAgencyWorkspaceAccess) {
         return NextResponse.json({ error: "Você só pode ver o histórico de atividades dos leads do seu time." }, { status: 403 });
-      }
-    } else if (role !== "ADMIN" && lead.realtorId !== userId && !isTeamOwner) {
+    } else if (role !== "ADMIN" && lead.realtorId !== userId && !isTeamOwner && !hasAgencyWorkspaceAccess) {
       return NextResponse.json(
         { error: "Você só pode ver o histórico de atividades dos leads que está atendendo ou dos times que lidera." },
         { status: 403 }

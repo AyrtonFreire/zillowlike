@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveAgencyWorkspaceForTeam } from "@/lib/agency-workspace";
 
 const teamSettingsSchema = z.object({
   leadDistributionMode: z.enum(["ROUND_ROBIN", "CAPTURER_FIRST", "MANUAL"]),
@@ -50,12 +51,13 @@ async function assertCanManageTeam(teamId: string, userId: string, role: string 
     return { ok: false as const, response: NextResponse.json({ error: "Time não encontrado" }, { status: 404 }) };
   }
 
-  const membership = await (prisma as any).teamMember.findFirst({
-    where: { teamId, userId },
-    select: { role: true },
+  const workspace = await resolveAgencyWorkspaceForTeam({
+    userId: String(userId),
+    authRole: role ? String(role) : null,
+    teamId: String(teamId),
   });
 
-  const canManage = role === "ADMIN" || team.ownerId === userId || membership?.role === "OWNER";
+  const canManage = role === "ADMIN" || team.ownerId === userId || workspace.allowed;
   if (!canManage) {
     return {
       ok: false as const,
