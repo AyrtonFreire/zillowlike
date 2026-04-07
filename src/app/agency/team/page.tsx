@@ -6,7 +6,8 @@ import { useSession } from "next-auth/react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import Tabs from "@/components/ui/Tabs";
-import { Activity, AlertTriangle, KeyRound, Plus, Settings, Trash2, Users } from "lucide-react";
+import { AgencyAssistantFeed } from "@/components/crm/AgencyAssistantFeed";
+import { Activity, AlertTriangle, BellRing, Bot, Building2, ClipboardList, KeyRound, MessageSquare, Plus, Settings, Shield, Trash2, UserRound, Users, X } from "lucide-react";
 
 type TeamMember = {
   id: string;
@@ -88,6 +89,12 @@ type AgencyProfile = {
   team?: {
     id: string;
     name: string;
+  };
+  workspace?: {
+    viewerUserId: string;
+    viewerWorkspaceRole: string | null;
+    canManageWorkspace: boolean;
+    canTransferOwner: boolean;
   };
 };
 
@@ -421,6 +428,28 @@ type AgencyInsights = {
   }>;
 };
 
+type PipelineMember = {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  username?: string | null;
+  role: string;
+  queuePosition?: number;
+  publicWhatsApp?: string | null;
+  phoneNormalized?: string | null;
+  phone?: string | null;
+};
+
+type PipelineLead = {
+  id: string;
+  status: string;
+  pipelineStage: string;
+  createdAt: string;
+  contact?: { name?: string | null; phone?: string | null } | null;
+  property?: { title?: string | null } | null;
+  realtor?: { id: string; name: string | null; email: string | null } | null;
+};
+
 function InlineSpinner({ message }: { message: string }) {
   return (
     <div className="py-16 flex items-center justify-center">
@@ -430,6 +459,18 @@ function InlineSpinner({ message }: { message: string }) {
       </div>
     </div>
   );
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 export default function AgencyTeamPage() {
@@ -515,6 +556,17 @@ export default function AgencyTeamPage() {
       queuePosition?: number;
     }>
   >([]);
+  const [pipelineMembers, setPipelineMembers] = useState<PipelineMember[]>([]);
+  const [pipelineLeads, setPipelineLeads] = useState<PipelineLead[]>([]);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const [noticeLoading, setNoticeLoading] = useState(false);
+  const [noticeError, setNoticeError] = useState<string | null>(null);
+  const [noticeSuccess, setNoticeSuccess] = useState<string | null>(null);
+  const [selectedRealtorId, setSelectedRealtorId] = useState<string>("");
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [noticeTitle, setNoticeTitle] = useState<string>("Aviso da agência");
+  const [noticeMessage, setNoticeMessage] = useState<string>("");
+  const [sendingNotice, setSendingNotice] = useState(false);
 
   const routingOptions = useMemo(() => {
     const fromQueue = queueMembers.map((member) => ({
@@ -606,6 +658,8 @@ export default function AgencyTeamPage() {
     const id = team?.id;
     if (!id) {
       setQueueMembers([]);
+      setPipelineMembers([]);
+      setPipelineLeads([]);
       return;
     }
 
@@ -614,6 +668,7 @@ export default function AgencyTeamPage() {
         const r = await fetch(`/api/teams/${id}/pipeline`, { cache: "no-store" });
         const j = await r.json().catch(() => null);
         const members = Array.isArray(j?.members) ? j.members : [];
+        const leads = Array.isArray(j?.leads) ? j.leads : [];
 
         const normalized = (members as any[])
           .map((m) => ({
@@ -632,13 +687,164 @@ export default function AgencyTeamPage() {
           });
 
         setQueueMembers(normalized);
+        setPipelineMembers(Array.isArray(members) ? (members as PipelineMember[]) : []);
+        setPipelineLeads(Array.isArray(leads) ? (leads as PipelineLead[]) : []);
       } catch {
         setQueueMembers([]);
+        setPipelineMembers([]);
+        setPipelineLeads([]);
       }
     };
 
     run();
   }, [role, status, team?.id]);
+
+  const selectedLeadIdSet = useMemo(() => new Set(selectedLeadIds.map(String)), [selectedLeadIds]);
+
+  const realtorOptions = useMemo(() => {
+    return (Array.isArray(pipelineMembers) ? pipelineMembers : [])
+      .filter((member) => String(member.role || "").toUpperCase() === "AGENT")
+      .slice()
+      .sort((a, b) => String(a.name || a.email || "").localeCompare(String(b.name || b.email || "")));
+  }, [pipelineMembers]);
+
+  const selectedRealtor = useMemo(() => {
+    return realtorOptions.find((member) => String(member.userId) === String(selectedRealtorId)) || null;
+  }, [realtorOptions, selectedRealtorId]);
+
+  const leadsForSelectedRealtor = useMemo(() => {
+    const realtorId = String(selectedRealtorId || "").trim();
+    if (!realtorId) return [];
+    return (Array.isArray(pipelineLeads) ? pipelineLeads : []).filter((lead) => String(lead.realtor?.id || "") === realtorId);
+  }, [pipelineLeads, selectedRealtorId]);
+
+  const teamAttentionMembers = useMemo(() => {
+    return (Array.isArray(insights?.members) ? insights.members : [])
+      .slice()
+      .sort((a, b) => {
+        const aLoad = Number(a.pendingReply || 0) + Number(a.clientPendingReply || 0) + Number(a.clientNoFirstContact || 0);
+        const bLoad = Number(b.pendingReply || 0) + Number(b.clientPendingReply || 0) + Number(b.clientNoFirstContact || 0);
+        if (bLoad !== aLoad) return bLoad - aLoad;
+        return Number(b.activeLeads || 0) - Number(a.activeLeads || 0);
+      })
+      .slice(0, 4);
+  }, [insights?.members]);
+
+  const quickLeadAttention = useMemo(() => {
+    return Array.isArray(insights?.sla?.pendingReplyLeads) ? insights.sla.pendingReplyLeads.slice(0, 4) : [];
+  }, [insights?.sla?.pendingReplyLeads]);
+
+  const quickClientAttention = useMemo(() => {
+    return Array.isArray(insights?.sla?.pendingReplyClients) ? insights.sla.pendingReplyClients.slice(0, 3) : [];
+  }, [insights?.sla?.pendingReplyClients]);
+
+  const openNoticeModal = async () => {
+    setNoticeOpen(true);
+    setNoticeError(null);
+    setNoticeSuccess(null);
+    setSelectedLeadIds([]);
+    setNoticeTitle("Aviso da agência");
+    setNoticeMessage("");
+
+    if (!team?.id) {
+      setNoticeError("Não foi possível identificar o time.");
+      return;
+    }
+
+    try {
+      setNoticeLoading(true);
+      const response = await fetch(`/api/teams/${encodeURIComponent(team.id)}/pipeline`, { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos carregar os dados do time agora.");
+      }
+
+      const nextMembers = Array.isArray(data?.members) ? (data.members as PipelineMember[]) : [];
+      const nextLeads = Array.isArray(data?.leads) ? (data.leads as PipelineLead[]) : [];
+      setPipelineMembers(nextMembers);
+      setPipelineLeads(nextLeads);
+
+      const agents = nextMembers
+        .filter((member) => String(member.role || "").toUpperCase() === "AGENT")
+        .slice()
+        .sort((a, b) => String(a.name || a.email || "").localeCompare(String(b.name || b.email || "")));
+
+      setSelectedRealtorId((prev) => {
+        if (prev && agents.some((member) => String(member.userId) === String(prev))) return prev;
+        return agents[0]?.userId ? String(agents[0].userId) : "";
+      });
+    } catch (err: any) {
+      setNoticeError(err?.message || "Não conseguimos carregar os dados do time agora.");
+    } finally {
+      setNoticeLoading(false);
+    }
+  };
+
+  const closeNoticeModal = () => {
+    if (sendingNotice) return;
+    setNoticeOpen(false);
+  };
+
+  const toggleLead = (leadId: string, selected: boolean) => {
+    const id = String(leadId || "").trim();
+    if (!id) return;
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev.map(String));
+      if (selected) {
+        if (next.size >= 50) return prev;
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return Array.from(next);
+    });
+  };
+
+  async function sendNotice() {
+    if (!team?.id) {
+      setNoticeError("Não foi possível identificar o time.");
+      return;
+    }
+    const realtorId = String(selectedRealtorId || "").trim();
+    if (!realtorId) {
+      setNoticeError("Selecione um corretor.");
+      return;
+    }
+    if (!Array.isArray(selectedLeadIds) || selectedLeadIds.length === 0) {
+      setNoticeError("Selecione pelo menos 1 lead.");
+      return;
+    }
+
+    try {
+      setSendingNotice(true);
+      setNoticeError(null);
+      setNoticeSuccess(null);
+
+      const response = await fetch("/api/agency/notices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: String(team.id),
+          realtorId,
+          leadIds: selectedLeadIds.map(String),
+          title: String(noticeTitle || "Aviso da agência").trim(),
+          message: String(noticeMessage || "").trim(),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos enviar o aviso agora.");
+      }
+
+      setNoticeSuccess("Aviso enviado.");
+      setSelectedLeadIds([]);
+    } catch (err: any) {
+      setNoticeError(err?.message || "Não conseguimos enviar o aviso agora.");
+    } finally {
+      setSendingNotice(false);
+    }
+  }
 
   async function refreshTeam(teamId: string) {
     const teamRes = await fetch("/api/teams");
@@ -924,7 +1130,14 @@ export default function AgencyTeamPage() {
     );
   }
 
-  const canManageTeam = role === "ADMIN" || team?.role === "OWNER";
+  const canManageTeam = Boolean(role === "ADMIN" || agencyProfile?.workspace?.canManageWorkspace || team?.role === "OWNER");
+  const canTransferOwner = Boolean(role === "ADMIN" || agencyProfile?.workspace?.canTransferOwner);
+  const workspaceRoleLabel = agencyProfile?.workspace?.viewerWorkspaceRole || team?.role || null;
+  const currentTeamId = insights?.team?.id || team?.id || agencyProfile?.teamId || "";
+  const teamCrmHref = currentTeamId ? `/agency/teams/${encodeURIComponent(currentTeamId)}/crm` : "/agency/leads";
+  const profileCompletionPending = agencyProfile?.completion?.checklist?.filter((item) => !item.done).length || 0;
+  const enabledAutomationCount = AI_AUTOMATION_FIELDS.filter((field) => aiConfigForm.automations[field.key]).length;
+  const enabledChannelsCount = AI_CHANNEL_FIELDS.filter((field) => aiConfigForm.channels[field.key]).length;
 
   const distributionLabel = (mode: TeamLeadDistributionMode) => {
     if (mode === "CAPTURER_FIRST") return "Prioridade do captador";
@@ -973,165 +1186,222 @@ export default function AgencyTeamPage() {
         items={[
           {
             key: "general",
-            label: "Geral",
+            label: "Command Center",
             content: (
               <div className="space-y-6">
-                <StatCard
-                  title="Workspace"
-                >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-white p-5 shadow-sm">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{team?.name || "Time"}</p>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1 text-[11px] font-semibold text-sky-700">
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        Command Center
+                      </div>
+                      <h2 className="mt-3 text-xl font-semibold text-gray-900">Supervisão unificada da agência</h2>
                       <p className="mt-1 text-sm text-gray-600">
-                        {team?.owner?.name || team?.owner?.email
-                          ? `Titular: ${team.owner.name || team.owner.email}`
-                          : "Defina um titular para gerenciar o time."}
+                        Concentre aqui as decisões operacionais do time, os atalhos de execução e a ligação entre CRM, clientes, chat interno e IA.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <a
-                        href="#distribution"
-                        className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Distribuição
-                      </a>
-                      <a
-                        href="#invites"
-                        className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
-                      >
-                        <KeyRound className="w-4 h-4 mr-2" />
-                        Acessos
-                      </a>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={teamCrmHref} className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white hover:bg-neutral-800">
+                        <Users className="mr-2 h-4 w-4" />
+                        Abrir leads
+                      </Link>
+                      <button type="button" onClick={() => void openNoticeModal()} className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                        <BellRing className="mr-2 h-4 w-4" />
+                        Avisar corretor
+                      </button>
+                      <Link href="/agency/assistant" className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                        <Bot className="mr-2 h-4 w-4" />
+                        Abrir IA
+                      </Link>
                     </div>
                   </div>
-                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500">
-                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                      Distribuição: {distributionLabel(leadDistributionMode)}
-                    </span>
-                    <span className="text-[11px]">{distributionHint(leadDistributionMode)}</span>
-                  </div>
-                </StatCard>
 
-                {insights?.team && (
+                  <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Workspace</div>
+                      <div className="mt-1 text-sm font-semibold text-gray-900">{team?.name || agencyProfile?.name || "Agência"}</div>
+                      <div className="text-xs text-gray-500">Papel atual: {workspaceRoleLabel || "OWNER"}</div>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Distribuição</div>
+                      <div className="mt-1 text-sm font-semibold text-gray-900">{distributionLabel(leadDistributionMode)}</div>
+                      <div className="text-xs text-gray-500">{distributionHint(leadDistributionMode)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">IA ativa</div>
+                      <div className="mt-1 text-sm font-semibold text-gray-900">{enabledChannelsCount} canais • {enabledAutomationCount} regras</div>
+                      <div className="text-xs text-gray-500">Guardrails ajustáveis em Perfil & IA</div>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Perfil público</div>
+                      <div className="mt-1 text-sm font-semibold text-gray-900">{agencyProfile?.completion?.score ?? 0}% completo</div>
+                      <div className="text-xs text-gray-500">{profileCompletionPending} item(ns) pendente(s)</div>
+                    </div>
+                  </div>
+                </div>
+
+                {insights?.team ? (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
-                      <MetricCard
-                        title="Leads ativos"
-                        value={insights.funnel.activeTotal}
-                        icon={Activity}
-                        subtitle="Em andamento"
-                        iconColor="text-teal-700"
-                        iconBgColor="bg-teal-50"
-                      />
-                      <MetricCard
-                        title="Sem responsável"
-                        value={insights.funnel.unassigned}
-                        icon={Users}
-                        subtitle="Atribuir nos leads"
-                        iconColor="text-amber-700"
-                        iconBgColor="bg-amber-50"
-                      />
-                      <MetricCard
-                        title="Pendentes (SLA)"
-                        value={insights.sla.pendingReplyTotal}
-                        icon={AlertTriangle}
-                        subtitle="Cliente aguardando"
-                        iconColor="text-rose-700"
-                        iconBgColor="bg-rose-50"
-                      />
-                      <MetricCard
-                        title="Clientes ativos"
-                        value={insights.clients.activeTotal}
-                        icon={Users}
-                        subtitle="Carteira institucional"
-                        iconColor="text-violet-700"
-                        iconBgColor="bg-violet-50"
-                      />
-                      <MetricCard
-                        title="Clientes pendentes"
-                        value={insights.sla.clientPendingReplyTotal}
-                        icon={AlertTriangle}
-                        subtitle="Inbound sem retorno"
-                        iconColor="text-orange-700"
-                        iconBgColor="bg-orange-50"
-                      />
-                      <MetricCard
-                        title="Novos 24h"
-                        value={insights.funnel.newLast24h}
-                        icon={Plus}
-                        subtitle="Entradas recentes"
-                        iconColor="text-blue-700"
-                        iconBgColor="bg-blue-50"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-6">
+                      <MetricCard title="Leads ativos" value={insights.funnel.activeTotal} icon={Activity} subtitle="Em andamento" iconColor="text-teal-700" iconBgColor="bg-teal-50" />
+                      <MetricCard title="Sem responsável" value={insights.funnel.unassigned} icon={Users} subtitle="Atribuir no CRM" iconColor="text-amber-700" iconBgColor="bg-amber-50" />
+                      <MetricCard title="Pendentes (SLA)" value={insights.sla.pendingReplyTotal} icon={AlertTriangle} subtitle="Cliente aguardando" iconColor="text-rose-700" iconBgColor="bg-rose-50" />
+                      <MetricCard title="Clientes ativos" value={insights.clients.activeTotal} icon={UserRound} subtitle="Carteira institucional" iconColor="text-violet-700" iconBgColor="bg-violet-50" />
+                      <MetricCard title="Clientes pendentes" value={insights.sla.clientPendingReplyTotal} icon={MessageSquare} subtitle="Inbound sem retorno" iconColor="text-orange-700" iconBgColor="bg-orange-50" />
+                      <MetricCard title="Novos 24h" value={insights.funnel.newLast24h} icon={Plus} subtitle="Entradas recentes" iconColor="text-blue-700" iconBgColor="bg-blue-50" />
                     </div>
 
-                    <StatCard
-                      title="Qualidade do time"
-                    >
-                      <p className="text-sm text-gray-600">{insights.summary}</p>
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                      <div className="xl:col-span-2">
+                        <StatCard
+                          title="Ações prioritárias"
+                          action={<Link href={teamCrmHref} className="text-sm font-medium text-blue-600 hover:text-blue-700">Abrir CRM</Link>}
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <Link href={`${teamCrmHref}?realtorId=unassigned`} className="rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-4 hover:bg-amber-50 transition-colors">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Distribuição</div>
+                              <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.funnel.unassigned}</div>
+                              <div className="mt-1 text-sm text-gray-600">lead(s) sem responsável</div>
+                            </Link>
+                            <Link href={`${teamCrmHref}?onlyPendingReply=1`} className="rounded-2xl border border-rose-200 bg-rose-50/70 px-4 py-4 hover:bg-rose-50 transition-colors">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">SLA de leads</div>
+                              <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
+                              <div className="mt-1 text-sm text-gray-600">cliente(s) aguardando resposta</div>
+                            </Link>
+                            <Link href="/agency/clients?sla=PENDING_REPLY" className="rounded-2xl border border-violet-200 bg-violet-50/70 px-4 py-4 hover:bg-violet-50 transition-colors">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">SLA de clientes</div>
+                              <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.sla.clientPendingReplyTotal}</div>
+                              <div className="mt-1 text-sm text-gray-600">cliente(s) sem retorno</div>
+                            </Link>
+                            <Link href="/agency/assistant" className="rounded-2xl border border-sky-200 bg-sky-50/70 px-4 py-4 hover:bg-sky-50 transition-colors">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">Fila da IA</div>
+                              <div className="mt-1 text-2xl font-semibold text-gray-900">Central dedicada</div>
+                              <div className="mt-1 text-sm text-gray-600">revise coaching, alertas e automações</div>
+                            </Link>
+                          </div>
 
-                      {Array.isArray(insights.members) && insights.members.length > 0 ? (
-                        <div className="mt-4 space-y-2">
-                          {insights.members.map((m) => (
-                            <div
-                              key={m.userId}
-                              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4"
-                            >
-                              <div className="min-w-0">
-                                <p className="font-semibold text-gray-900 truncate">{m.name || m.username || m.email || "Membro"}</p>
-                                <p className="text-xs text-gray-500 truncate">{m.username || m.email || ""}</p>
-                                <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
-                                    Ativos: <span className="ml-1 tabular-nums text-gray-900">{m.activeLeads}</span>
-                                  </span>
-                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 font-semibold text-violet-700">
-                                    Clientes: <span className="ml-1 tabular-nums">{m.activeClients ?? 0}</span>
-                                  </span>
-                                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
-                                    Pendentes: <span className="ml-1 tabular-nums">{m.pendingReply}</span>
-                                  </span>
-                                  <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 font-semibold text-orange-700">
-                                    SLA clientes: <span className="ml-1 tabular-nums">{m.clientPendingReply ?? 0}</span>
-                                  </span>
-                                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
-                                    Parados: <span className="ml-1 tabular-nums">{m.stalledLeads}</span>
-                                  </span>
+                          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                              <div className="text-sm font-semibold text-gray-900">Leads pedindo ação</div>
+                              <div className="mt-3 space-y-3">
+                                {quickLeadAttention.length > 0 ? quickLeadAttention.map((lead) => (
+                                  <div key={lead.leadId} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{lead.contactName || lead.propertyTitle || `Lead ${lead.leadId}`}</p>
+                                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{lead.realtorName || "Sem corretor definido"} • {formatDateTime(lead.lastClientAt)}</p>
+                                      </div>
+                                      <Link href={`${teamCrmHref}?lead=${encodeURIComponent(lead.leadId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Abrir</Link>
+                                    </div>
+                                  </div>
+                                )) : <div className="text-sm text-gray-600">Nenhum lead crítico agora.</div>}
+                              </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                              <div className="text-sm font-semibold text-gray-900">Clientes pedindo ação</div>
+                              <div className="mt-3 space-y-3">
+                                {quickClientAttention.length > 0 ? quickClientAttention.map((client) => (
+                                  <div key={client.clientId} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{client.name || `Cliente ${client.clientId}`}</p>
+                                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{client.assignedUserName || "Sem responsável definido"} • {formatDateTime(client.lastInboundAt)}</p>
+                                      </div>
+                                      <Link href={`/agency/clients?client=${encodeURIComponent(client.clientId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Abrir</Link>
+                                    </div>
+                                  </div>
+                                )) : <div className="text-sm text-gray-600">Nenhum cliente crítico agora.</div>}
+                              </div>
+                            </div>
+                          </div>
+                        </StatCard>
+                      </div>
+
+                      <div className="xl:col-span-1">
+                        <StatCard title="Supervisão do time">
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resumo</div>
+                              <div className="mt-1 text-sm font-semibold text-gray-900">{insights.summary}</div>
+                            </div>
+                            {teamAttentionMembers.length > 0 ? teamAttentionMembers.map((member) => (
+                              <div key={member.userId} className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.username || member.email || "Membro"}</p>
+                                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
+                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-700">{member.activeLeads} leads</span>
+                                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">{member.pendingReply} pendentes</span>
+                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-violet-700">{member.activeClients ?? 0} clientes</span>
+                                </div>
+                                <div className="mt-3">
+                                  <Link href={`${teamCrmHref}?realtorId=${encodeURIComponent(member.userId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Ver carteira</Link>
                                 </div>
                               </div>
+                            )) : <div className="text-sm text-gray-600">Sem dados por membro ainda.</div>}
+                          </div>
+                        </StatCard>
+                      </div>
+                    </div>
 
-                              <Link
-                                href={`/agency/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
-                                className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                              >
-                                Ver leads
-                              </Link>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="mt-4 text-sm text-gray-600">Sem dados por membro ainda.</div>
-                      )}
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                      <div className="xl:col-span-2">
+                        <StatCard
+                          title="Fila operacional da IA"
+                          action={<Link href="/agency/assistant" className="text-sm font-medium text-blue-600 hover:text-blue-700">Abrir área IA</Link>}
+                        >
+                          {currentTeamId ? <AgencyAssistantFeed teamId={currentTeamId} embedded /> : <div className="text-sm text-gray-600">Conecte um time para usar a fila operacional.</div>}
+                        </StatCard>
+                      </div>
 
-                      {insights.funnel.unassigned > 0 && (
-                        <div className="mt-4">
-                          <Link
-                            href={`/agency/teams/${insights.team.id}/crm?realtorId=unassigned`}
-                            className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700"
-                          >
-                            Ver leads sem responsável
-                          </Link>
-                        </div>
-                      )}
-                    </StatCard>
+                      <div className="xl:col-span-1">
+                        <StatCard title="Atalhos de gestão">
+                          <div className="space-y-3">
+                            <Link href="/agency/team-chat" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                              <MessageSquare className="mt-0.5 h-4 w-4 text-gray-700" />
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">Chat do time</div>
+                                <div className="mt-1 text-sm text-gray-600">Acompanhe comunicação interna e destrave respostas.</div>
+                              </div>
+                            </Link>
+                            <a href="#distribution" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                              <Settings className="mt-0.5 h-4 w-4 text-gray-700" />
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">Distribuição e fila</div>
+                                <div className="mt-1 text-sm text-gray-600">Revise roteamento, round-robin e ordem do time.</div>
+                              </div>
+                            </a>
+                            <a href="#advanced" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                              <Building2 className="mt-0.5 h-4 w-4 text-gray-700" />
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">Perfil institucional</div>
+                                <div className="mt-1 text-sm text-gray-600">Atualize página pública, roteamento e playbooks.</div>
+                              </div>
+                            </a>
+                            <a href="#invites" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                              <KeyRound className="mt-0.5 h-4 w-4 text-gray-700" />
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">Acessos do time</div>
+                                <div className="mt-1 text-sm text-gray-600">Crie logins e mantenha permissões sob controle.</div>
+                              </div>
+                            </a>
+                          </div>
+                        </StatCard>
+                      </div>
+                    </div>
                   </div>
+                ) : (
+                  <StatCard title="Conecte o time da agência">
+                    <div className="text-sm text-gray-600">Vincule um time para liberar o Command Center, o CRM, a fila da IA e as ações de supervisão.</div>
+                  </StatCard>
                 )}
               </div>
             ),
           },
           {
             key: "members",
-            label: "Membros",
+            label: "Time",
             content: (
               <div id="members" className="space-y-6">
                 <StatCard
@@ -1201,7 +1471,7 @@ export default function AgencyTeamPage() {
                         </div>
                       ))}
 
-                      {canManageTeam && (
+                      {canTransferOwner && (
                         <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4">
                           <div className="text-sm font-semibold text-gray-900">Transferir titularidade</div>
                           <div className="mt-1 text-xs text-gray-500">Escolha um membro (não assistente) para virar titular do time.</div>
@@ -1414,9 +1684,81 @@ export default function AgencyTeamPage() {
           },
           {
             key: "advanced",
-            label: "Avançado",
+            label: "Perfil & IA",
             content: (
               <div id="advanced" className="space-y-6">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2 rounded-2xl border border-gray-200 bg-white p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                        <Building2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">Perfil institucional e operação pública</div>
+                        <div className="mt-1 text-sm text-gray-600">
+                          Mantenha a imagem pública da imobiliária, o roteamento dos contatos e os playbooks institucionais alinhados com a operação real.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Checklist público</div>
+                        <div className="mt-1 text-xl font-semibold text-gray-900">{agencyProfile?.completion?.score ?? 0}%</div>
+                        <div className="text-xs text-gray-500">{profileCompletionPending} pendência(s) restante(s)</div>
+                      </div>
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Corretor principal</div>
+                        <div className="mt-1 text-sm font-semibold text-gray-900">
+                          {routingOptions.find((member) => String(member.userId) === String(profileForm.primaryAgentUserId || ""))?.name || "Não definido"}
+                        </div>
+                        <div className="text-xs text-gray-500">Base para intenções sem regra específica</div>
+                      </div>
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Workspace</div>
+                        <div className="mt-1 text-sm font-semibold text-gray-900">{workspaceRoleLabel || "OWNER"}</div>
+                        <div className="text-xs text-gray-500">Gestão liberada: {canManageTeam ? "sim" : "não"}</div>
+                      </div>
+                    </div>
+
+                    {agencyProfile?.completion?.checklist?.length ? (
+                      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {agencyProfile.completion.checklist.slice(0, 6).map((item) => (
+                          <div key={item.key} className={`rounded-xl border px-4 py-3 text-sm ${item.done ? "border-emerald-200 bg-emerald-50/70 text-emerald-800" : "border-amber-200 bg-amber-50/70 text-amber-800"}`}>
+                            {item.label}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-emerald-700">
+                        <Shield className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-emerald-950">Guardrails em vigor</div>
+                        <div className="mt-1 text-sm text-emerald-800">
+                          {enabledChannelsCount} canal(is) ativo(s), {enabledAutomationCount} regra(s) operacional(is) e coaching configurado para equilíbrio do time.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 space-y-3 text-sm text-emerald-900">
+                      <div className="rounded-xl border border-emerald-100 bg-white px-4 py-3">
+                        Score mínimo esperado: <span className="font-semibold">{aiConfigForm.coaching.minExecutionScore || "-"}%</span>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-white px-4 py-3">
+                        Pendências por corretor antes de alertar: <span className="font-semibold">{aiConfigForm.coaching.maxPendingReplyPerAgent || "-"}</span>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-white px-4 py-3">
+                        Priorização automática crítica: <span className="font-semibold">{aiConfigForm.coaching.autoPrioritizeCriticalItems ? "ativada" : "desativada"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <StatCard title="Perfil da agência">
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1856,6 +2198,144 @@ export default function AgencyTeamPage() {
           },
         ]}
       />
+
+      {noticeOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+          <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold text-sky-700">
+                  <BellRing className="h-3.5 w-3.5" />
+                  Aviso operacional
+                </div>
+                <h3 className="mt-3 text-lg font-semibold text-gray-900">Enviar aviso para um corretor</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Selecione um corretor, marque os leads já atribuídos a ele e gere um aviso que também entra na fila do assistente.
+                </p>
+              </div>
+              <button type="button" onClick={closeNoticeModal} className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 text-gray-500 hover:bg-gray-50" disabled={sendingNotice}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[80vh] overflow-y-auto px-6 py-5">
+              {noticeError ? <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{noticeError}</div> : null}
+              {noticeSuccess ? <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{noticeSuccess}</div> : null}
+
+              <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-gray-700">Corretor</label>
+                    <select
+                      value={selectedRealtorId}
+                      onChange={(e) => {
+                        setSelectedRealtorId(e.target.value);
+                        setSelectedLeadIds([]);
+                        setNoticeSuccess(null);
+                        setNoticeError(null);
+                      }}
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      disabled={noticeLoading || sendingNotice}
+                    >
+                      <option value="">Selecione um corretor</option>
+                      {realtorOptions.map((member) => (
+                        <option key={`notice-realtor-${member.userId}`} value={member.userId}>
+                          {member.name || member.email || member.userId}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                    <div className="text-sm font-semibold text-gray-900">Resumo do destinatário</div>
+                    <div className="mt-3 space-y-2 text-sm text-gray-600">
+                      <div>Nome: <span className="font-medium text-gray-900">{selectedRealtor?.name || "-"}</span></div>
+                      <div>Contato: <span className="font-medium text-gray-900">{selectedRealtor?.email || selectedRealtor?.phone || "-"}</span></div>
+                      <div>Leads atribuídos: <span className="font-medium text-gray-900">{leadsForSelectedRealtor.length}</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-gray-700">Título</label>
+                    <input
+                      value={noticeTitle}
+                      onChange={(e) => setNoticeTitle(e.target.value)}
+                      maxLength={140}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      disabled={sendingNotice}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-gray-700">Mensagem</label>
+                    <textarea
+                      value={noticeMessage}
+                      onChange={(e) => setNoticeMessage(e.target.value)}
+                      rows={6}
+                      maxLength={1200}
+                      placeholder="Explique o contexto e o próximo passo esperado do corretor."
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      disabled={sendingNotice}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">Leads do corretor</div>
+                      <div className="text-xs text-gray-500">Selecione até 50 leads que devem aparecer junto do aviso.</div>
+                    </div>
+                    <div className="text-xs font-semibold text-gray-500">{selectedLeadIds.length} selecionado(s)</div>
+                  </div>
+
+                  <div className="max-h-[420px] space-y-3 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                    {noticeLoading ? (
+                      <div className="py-10 text-center text-sm text-gray-500">Carregando leads do time...</div>
+                    ) : !selectedRealtorId ? (
+                      <div className="py-10 text-center text-sm text-gray-500">Escolha um corretor para ver os leads atribuídos.</div>
+                    ) : leadsForSelectedRealtor.length === 0 ? (
+                      <div className="py-10 text-center text-sm text-gray-500">Esse corretor ainda não possui leads atribuídos.</div>
+                    ) : (
+                      leadsForSelectedRealtor.map((lead) => (
+                        <label key={`notice-lead-${lead.id}`} className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedLeadIdSet.has(String(lead.id))}
+                            onChange={(e) => toggleLead(String(lead.id), e.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            disabled={sendingNotice}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold text-gray-900 line-clamp-1">{lead.contact?.name || lead.property?.title || `Lead ${lead.id}`}</div>
+                            <div className="mt-1 text-xs text-gray-500 line-clamp-2">{lead.property?.title || "Sem imóvel vinculado"}</div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold text-gray-600">
+                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">{lead.pipelineStage || lead.status || "Sem etapa"}</span>
+                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">Criado em {formatDateTime(lead.createdAt)}</span>
+                            </div>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-gray-500">O aviso vira item de alta prioridade para o corretor e aparece na fila da IA.</div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={closeNoticeModal} className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50" disabled={sendingNotice}>
+                  Cancelar
+                </button>
+                <button type="button" onClick={() => void sendNotice()} className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60" disabled={sendingNotice || noticeLoading || !selectedRealtorId || selectedLeadIds.length === 0 || String(noticeTitle || "").trim().length < 3 || String(noticeMessage || "").trim().length < 1}>
+                  {sendingNotice ? "Enviando..." : "Enviar aviso"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

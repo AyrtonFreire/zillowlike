@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
-import { AgencyAssistantWidget } from "@/components/crm/AgencyAssistantWidget";
+import { Bot, LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 
 type NavItem = {
@@ -20,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/agency/leads", label: "Leads", icon: Kanban },
   { href: "/agency/clients", label: "Clientes", icon: UserRound },
   { href: "/agency/properties", label: "Imóveis", icon: Home },
+  { href: "/agency/assistant", label: "IA", icon: Bot },
   { href: "/agency/team-chat", label: "Chat do time", icon: MessageSquare },
 ];
 
@@ -80,6 +80,14 @@ function sectionFromPath(pathname: string) {
       title: "Chat do time",
       description: "Converse com cada integrante do time em canais dedicados.",
       crumb: "Chat do time",
+    };
+  }
+
+  if (p === "/agency/assistant") {
+    return {
+      title: "IA da Agência",
+      description: "Fila operacional, coaching, automações e guardrails em uma área dedicada.",
+      crumb: "IA",
     };
   }
 
@@ -176,7 +184,6 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </div>
-      <AgencyAssistantWidget />
     </div>
   );
 }

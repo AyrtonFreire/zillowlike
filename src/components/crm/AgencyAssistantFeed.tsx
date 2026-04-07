@@ -151,7 +151,12 @@ export function AgencyAssistantFeed(props: {
       const headers: any = {};
       if (etagRef.current) headers["if-none-match"] = etagRef.current;
 
-      const response = await fetch(`/api/assistant/items?context=AGENCY`, { headers });
+      const query = new URLSearchParams({
+        context: "AGENCY",
+        teamId: String(props.teamId),
+      });
+
+      const response = await fetch(`/api/assistant/items?${query.toString()}`, { headers });
       if (response.status === 304) {
         setLoading(false);
         return;
@@ -171,7 +176,7 @@ export function AgencyAssistantFeed(props: {
       setLoading(false);
       setError(err?.message || "Não conseguimos carregar o Assistente agora.");
     }
-  }, []);
+  }, [props.teamId]);
 
   useEffect(() => {
     void fetchItems();
@@ -278,7 +283,12 @@ export function AgencyAssistantFeed(props: {
       setActingId(itemId);
       setError(null);
 
-      const response = await fetch(`/api/assistant/items/${encodeURIComponent(itemId)}?context=AGENCY`, {
+      const query = new URLSearchParams({
+        context: "AGENCY",
+        teamId: String(props.teamId),
+      });
+
+      const response = await fetch(`/api/assistant/items/${encodeURIComponent(itemId)}?${query.toString()}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

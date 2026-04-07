@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Activity, AlertTriangle, Bot, MessageCircle, Settings, Sparkles, Users, X } from "lucide-react";
+import { Activity, AlertTriangle, Home, MessageCircle, Settings, Users, X } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
-import { AgencyAssistantFeed } from "@/components/crm/AgencyAssistantFeed";
 
 type Team = {
   id: string;
@@ -142,6 +141,14 @@ type PipelineLead = {
   realtor?: { id: string; name: string | null; email: string | null } | null;
 };
 
+type AgencyPropertiesResponse = {
+  success: boolean;
+  properties?: Array<{
+    id: string;
+    status: "ACTIVE" | "PAUSED" | "DRAFT";
+  }>;
+};
+
 function InlineSpinner({ message }: { message: string }) {
   return (
     <div className="py-16 flex items-center justify-center">
@@ -153,12 +160,25 @@ function InlineSpinner({ message }: { message: string }) {
   );
 }
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export default function AgencyDashboardPage() {
   const { data: session, status } = useSession();
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState<AgencyInsightsResponse | null>(null);
   const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [propertySummary, setPropertySummary] = useState({ total: 0, active: 0, paused: 0, draft: 0 });
 
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [noticeLoading, setNoticeLoading] = useState(false);
@@ -200,45 +220,7 @@ export default function AgencyDashboardPage() {
   }, [pipelineLeads, selectedRealtorId]);
 
   const selectedLeadIdSet = useMemo(() => new Set(selectedLeadIds.map(String)), [selectedLeadIds]);
-
-  const aiChannelsSummary = useMemo(() => {
-    const channels = insights?.aiConfig?.channels || {};
-    return Object.entries(channels)
-      .filter(([, enabled]) => Boolean(enabled))
-      .map(([key]) => {
-        if (key === "dashboard") return "Dashboard";
-        if (key === "teamChat") return "Chat do time";
-        if (key === "whatsapp") return "WhatsApp";
-        if (key === "email") return "Email";
-        return key;
-      });
-  }, [insights?.aiConfig?.channels]);
-
-  const aiDashboardEnabled = insights?.aiConfig?.channels?.dashboard !== false;
-  const aiTeamChatEnabled = insights?.aiConfig?.channels?.teamChat !== false;
   const aiWhatsappEnabled = insights?.aiConfig?.channels?.whatsapp !== false;
-  const aiEmailEnabled = insights?.aiConfig?.channels?.email === true;
-
-  const automationCoveragePercent = useMemo(() => {
-    const enabledRules = Number(insights?.coaching?.automationCoverage?.enabledRules || 0);
-    const totalRules = Number(insights?.coaching?.automationCoverage?.totalRules || 0);
-    if (!totalRules) return 0;
-    return Math.round((enabledRules / totalRules) * 100);
-  }, [insights?.coaching?.automationCoverage]);
-
-  const coachingAlerts = useMemo(() => {
-    return Array.isArray(insights?.coaching?.alerts) ? insights.coaching.alerts : [];
-  }, [insights?.coaching?.alerts]);
-
-  const coachingTopMembers = useMemo(() => {
-    return Array.isArray(insights?.coaching?.members) ? insights.coaching.members.slice(0, 3) : [];
-  }, [insights?.coaching?.members]);
-
-  const workloadBadgeClass = (status: "balanced" | "attention" | "overloaded") => {
-    if (status === "overloaded") return "border-rose-200 bg-rose-50 text-rose-700";
-    if (status === "attention") return "border-amber-200 bg-amber-50 text-amber-700";
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  };
 
   const getRealtorWhatsAppUrl = useMemo(() => {
     const raw =
@@ -363,16 +345,30 @@ export default function AgencyDashboardPage() {
       try {
         setLoading(true);
         setInsightsError(null);
-        const r = await fetch("/api/agency/insights", { cache: "no-store" });
-        const j = (await r.json().catch(() => null)) as AgencyInsightsResponse | null;
-        if (!r.ok || !j?.success) {
+        const [insightsResponse, propertiesResponse] = await Promise.all([
+          fetch("/api/agency/insights", { cache: "no-store" }),
+          fetch("/api/agency/properties", { cache: "no-store" }),
+        ]);
+        const j = (await insightsResponse.json().catch(() => null)) as AgencyInsightsResponse | null;
+        const propertiesJson = (await propertiesResponse.json().catch(() => null)) as AgencyPropertiesResponse | null;
+
+        if (!insightsResponse.ok || !j?.success) {
           throw new Error((j as any)?.error || "Não conseguimos carregar o briefing agora.");
         }
+
+        const nextProperties = Array.isArray(propertiesJson?.properties) ? propertiesJson.properties : [];
+        setPropertySummary({
+          total: nextProperties.length,
+          active: nextProperties.filter((property) => property.status === "ACTIVE").length,
+          paused: nextProperties.filter((property) => property.status === "PAUSED").length,
+          draft: nextProperties.filter((property) => property.status === "DRAFT").length,
+        });
         setInsights(j);
         setTeam(j.team || null);
       } catch (e: any) {
         setInsights(null);
         setTeam(null);
+        setPropertySummary({ total: 0, active: 0, paused: 0, draft: 0 });
         setInsightsError(e?.message || "Não conseguimos carregar o briefing agora.");
       } finally {
         setLoading(false);
@@ -403,6 +399,28 @@ export default function AgencyDashboardPage() {
       label: "Info",
     };
   };
+
+  const teamActivityMembers = useMemo(() => {
+    return (Array.isArray(insights?.members) ? insights.members : [])
+      .slice()
+      .sort((a, b) => {
+        const aPending = Number(a.pendingReply || 0) + Number(a.clientPendingReply || 0) + Number(a.clientNoFirstContact || 0);
+        const bPending = Number(b.pendingReply || 0) + Number(b.clientPendingReply || 0) + Number(b.clientNoFirstContact || 0);
+        if (bPending !== aPending) return bPending - aPending;
+        return Number(b.activeLeads || 0) - Number(a.activeLeads || 0);
+      })
+      .slice(0, 6);
+  }, [insights?.members]);
+
+  const leadAttentionList = useMemo(() => {
+    return Array.isArray(insights?.sla?.pendingReplyLeads) ? insights.sla.pendingReplyLeads.slice(0, 6) : [];
+  }, [insights?.sla?.pendingReplyLeads]);
+
+  const clientAttentionList = useMemo(() => {
+    return Array.isArray(insights?.sla?.pendingReplyClients) ? insights.sla.pendingReplyClients.slice(0, 6) : [];
+  }, [insights?.sla?.pendingReplyClients]);
+
+  const dashboardTeamId = insights?.team?.id ? String(insights.team.id) : "";
 
   if (status === "loading" || loading) {
     return <InlineSpinner message="Carregando painel..." />;
@@ -459,7 +477,7 @@ export default function AgencyDashboardPage() {
 
       {insights?.team ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-6">
             <MetricCard
               title="Leads ativos"
               value={insights.funnel.activeTotal}
@@ -485,6 +503,14 @@ export default function AgencyDashboardPage() {
               iconBgColor="bg-rose-50"
             />
             <MetricCard
+              title="Imóveis ativos"
+              value={propertySummary.active}
+              icon={Home}
+              subtitle={`${propertySummary.total} no estoque do time`}
+              iconColor="text-sky-700"
+              iconBgColor="bg-sky-50"
+            />
+            <MetricCard
               title="Clientes ativos"
               value={insights.clients.activeTotal}
               icon={Users}
@@ -502,224 +528,143 @@ export default function AgencyDashboardPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
-              {aiDashboardEnabled ? (
-                <>
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                        <Bot className="h-3.5 w-3.5" />
-                        Central operacional IA
-                      </div>
-                      <h2 className="mt-3 text-xl font-semibold text-gray-900">Prioridades do time, coaching e automações em um lugar</h2>
-                      <p className="mt-1 text-sm text-gray-600">
-                        A IA monitora SLAs, gargalos do time e próximos passos. Você continua no controle das decisões.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 min-w-[240px]">
-                      <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Score do time</div>
-                        <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.teamExecutionScore}</div>
-                        <div className="text-xs text-gray-500">Meta {insights.coaching.minExecutionScoreTarget}</div>
-                      </div>
-                      <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Automações ativas</div>
-                        <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.automationCoverage.enabledRules}</div>
-                        <div className="text-xs text-gray-500">de {insights.coaching.automationCoverage.totalRules} regras</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Canais</div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {aiChannelsSummary.length > 0 ? (
-                          aiChannelsSummary.map((channel) => (
-                            <span key={channel} className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700">
-                              {channel}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-500">Nenhum canal ativo.</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resposta média</div>
-                      <div className="mt-1 text-2xl font-semibold text-gray-900">
-                        {typeof insights.coaching.avgFirstResponseMinutes === "number" ? `${insights.coaching.avgFirstResponseMinutes} min` : "-"}
-                      </div>
-                      <div className="text-xs text-gray-500">Primeiro retorno do time</div>
-                    </div>
-
-                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Desequilíbrio</div>
-                      <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.workloadImbalanceIndex}</div>
-                      <div className="text-xs text-gray-500">Diferença entre carteiras</div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-amber-200 bg-white p-5">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
-                    <Settings className="h-3.5 w-3.5" />
-                    Central IA desativada no dashboard
-                  </div>
-                  <h2 className="mt-3 text-xl font-semibold text-gray-900">Os guardrails continuam salvos, mas a central operacional está oculta</h2>
-                  <p className="mt-1 text-sm text-gray-600">
-                    Reative o canal de dashboard para voltar a exibir fila da IA, coaching prioritário e atalhos operacionais nesta home.
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Link
-                      href="/agency/team#advanced"
-                      className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
-                    >
-                      Abrir configuração da IA
-                    </Link>
-                    <div className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">
-                      Canais ativos: {aiChannelsSummary.join(" • ") || "nenhum"}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">Coaching prioritário</p>
-                  <p className="mt-1 text-xs text-gray-500">Quem precisa de atenção primeiro</p>
-                </div>
-                <Sparkles className="h-5 w-5 text-emerald-600" />
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {coachingTopMembers.length > 0 ? (
-                  coachingTopMembers.map((member) => (
-                    <div key={member.userId} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.email || "Corretor"}</p>
-                          <p className="text-xs text-gray-500">
-                            {member.totalPending} pendência(s) • {member.activeLeads} leads ativos
-                          </p>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 ${workloadBadgeClass(member.workloadStatus)}`}>
-                              {member.workloadStatus === "overloaded"
-                                ? "Sobrecarregado"
-                                : member.workloadStatus === "attention"
-                                  ? "Atenção"
-                                  : "Equilibrado"}
-                            </span>
-                            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
-                              Resp. média: {typeof member.avgFirstResponseMinutes === "number" ? `${member.avgFirstResponseMinutes} min` : "-"}
-                            </span>
-                          </div>
-                        </div>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${member.executionScore < insights.coaching.minExecutionScoreTarget ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>
-                          {member.executionScore}/100
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-gray-600">A IA ainda não detectou gargalos individuais relevantes.</div>
-                )}
-              </div>
-
-              {coachingAlerts.length > 0 ? (
-                <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Alertas de coaching</div>
-                  {coachingAlerts.slice(0, 3).map((alert, idx) => {
-                    const styles = severityStyles(alert.severity);
-                    return (
-                      <div key={`${alert.title}-${idx}`} className="rounded-xl border border-gray-200 bg-white px-3 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${styles.badge}`}>
-                                {styles.label}
-                              </span>
-                              <p className="text-sm font-semibold text-gray-900 line-clamp-1">{alert.title}</p>
-                            </div>
-                            <p className="mt-1 text-xs text-gray-600">{alert.detail}</p>
-                          </div>
-                          {alert.href ? (
-                            <Link href={alert.href} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                              {alert.hrefLabel || "Abrir"}
-                            </Link>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <StatCard
-                title="Fila operacional da IA"
+                title="Prioridades operacionais"
                 action={
-                  <Link href="/agency/team#advanced" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    Ajustar regras
+                  <div className="flex items-center gap-2">
+                    <Link href={`/agency/teams/${dashboardTeamId}/crm`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                      Abrir leads
+                    </Link>
+                    <Link href="/agency/clients" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                      Abrir clientes
+                    </Link>
+                  </div>
+                }
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Distribuição</div>
+                    <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.funnel.unassigned}</div>
+                    <div className="mt-1 text-sm text-gray-600">lead(s) sem responsável no time</div>
+                  </div>
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/60 px-4 py-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">SLA de leads</div>
+                    <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
+                    <div className="mt-1 text-sm text-gray-600">cliente(s) esperando resposta</div>
+                  </div>
+                  <div className="rounded-2xl border border-violet-200 bg-violet-50/60 px-4 py-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">Carteira de clientes</div>
+                    <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.clients.activeTotal}</div>
+                    <div className="mt-1 text-sm text-gray-600">cliente(s) ativos na agência</div>
+                  </div>
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50/60 px-4 py-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">Estoque do time</div>
+                    <div className="mt-1 text-2xl font-semibold text-gray-900">{propertySummary.total}</div>
+                    <div className="mt-1 text-sm text-gray-600">{propertySummary.active} ativo(s), {propertySummary.paused} pausado(s) e {propertySummary.draft} rascunho(s)</div>
+                  </div>
+                </div>
+              </StatCard>
+            </div>
+
+            <div className="lg:col-span-1">
+              <StatCard title="Atualizações do time">
+                <div className="space-y-3">
+                  {teamActivityMembers.length > 0 ? (
+                    teamActivityMembers.map((member) => (
+                      <div key={member.userId} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.email || "Corretor"}</p>
+                            <p className="mt-1 text-xs text-gray-500">{member.activeLeads} lead(s) ativos • {member.activeClients || 0} cliente(s) ativos</p>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
+                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
+                                {member.pendingReply} lead(s) pendente(s)
+                              </span>
+                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
+                                {member.clientPendingReply || 0} cliente(s) aguardando retorno
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-600">Assim que o time começar a operar, as atualizações dos corretores aparecem aqui.</div>
+                  )}
+                </div>
+              </StatCard>
+            </div>
+
+            <div className="lg:col-span-2">
+              <StatCard
+                title="Leads que pedem ação"
+                action={
+                  <Link href={`/agency/teams/${dashboardTeamId}/crm`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Ver CRM
                   </Link>
                 }
               >
-                {aiDashboardEnabled ? (
-                  <AgencyAssistantFeed teamId={insights.team.id} embedded />
-                ) : (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
-                    A fila operacional está desativada para o canal de dashboard desta agência.
+                {leadAttentionList.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {leadAttentionList.map((lead) => (
+                      <div key={lead.leadId} className="py-3 flex items-start gap-3">
+                        <span className="mt-0.5 inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                          SLA
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 line-clamp-1">{lead.contactName || lead.propertyTitle || `Lead ${lead.leadId}`}</p>
+                          <p className="mt-0.5 text-sm text-gray-600 line-clamp-2">
+                            {lead.propertyTitle ? `${lead.propertyTitle} • ` : ""}
+                            {lead.realtorName || "Sem corretor definido"}
+                          </p>
+                          <p className="mt-1 text-[11px] font-medium text-gray-500">Última entrada do cliente em {formatDateTime(lead.lastClientAt)}</p>
+                        </div>
+                        <Link href={`/agency/teams/${dashboardTeamId}/crm?lead=${encodeURIComponent(lead.leadId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                          Abrir
+                        </Link>
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  <div className="text-sm text-gray-600">Nenhum lead aguardando resposta neste momento.</div>
                 )}
               </StatCard>
             </div>
 
             <div className="lg:col-span-1">
-              <StatCard title="Automações e guardrails">
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Cobertura</div>
-                    <div className="mt-1 text-sm font-semibold text-gray-900">{automationCoveragePercent}% das regras ativas</div>
-                    <div className="text-xs text-gray-500">
-                      {insights.coaching.automationCoverage.enabledRules} de {insights.coaching.automationCoverage.totalRules} regras
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Canais operacionais</div>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiDashboardEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
-                        Dashboard {aiDashboardEnabled ? "ativo" : "off"}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiTeamChatEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
-                        Chat {aiTeamChatEnabled ? "ativo" : "off"}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiWhatsappEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
-                        WhatsApp {aiWhatsappEnabled ? "ativo" : "off"}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${aiEmailEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-500"}`}>
-                        E-mail {aiEmailEnabled ? "ativo" : "off"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Guardrails principais</div>
-                    <div className="mt-1 text-sm font-semibold text-gray-900">{insights.aiConfig.thresholds.clientFirstContactGraceMinutes} min para 1º contato</div>
-                    <div className="text-xs text-gray-500">Lead parado após {insights.aiConfig.thresholds.staleLeadDays} dia(s) sem avanço</div>
-                  </div>
-                  <Link
-                    href="/agency/team#advanced"
-                    className="inline-flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                  >
-                    Abrir configuração da IA
+              <StatCard
+                title="Clientes que pedem ação"
+                action={
+                  <Link href="/agency/clients" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Ver clientes
                   </Link>
+                }
+              >
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sem 1º contato</div>
+                      <div className="mt-1 text-xl font-semibold text-gray-900">{insights.sla.clientNoFirstContact}</div>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Ação vencida</div>
+                      <div className="mt-1 text-xl font-semibold text-gray-900">{insights.sla.clientOverdueNextAction}</div>
+                    </div>
+                  </div>
+
+                  {clientAttentionList.length > 0 ? (
+                    clientAttentionList.map((client) => (
+                      <div key={client.clientId} className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{client.name || `Cliente ${client.clientId}`}</p>
+                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{client.assignedUserName || "Sem responsável definido"}</p>
+                        <p className="mt-1 text-[11px] font-medium text-gray-500">Última entrada em {formatDateTime(client.lastInboundAt)}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-600">Nenhum cliente com pendência crítica agora.</div>
+                  )}
                 </div>
               </StatCard>
             </div>
@@ -737,7 +682,7 @@ export default function AgencyDashboardPage() {
                       Avisar corretor
                     </button>
                     <Link
-                      href={`/agency/teams/${insights.team.id}/crm`}
+                      href={`/agency/teams/${dashboardTeamId}/crm`}
                       className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
                       Abrir leads

@@ -169,7 +169,7 @@ export default function PropertyContactCard({
   }, [hideOwnerContact, isRealtorOrAgency, ownerPublicPhoneOptIn]);
 
   useEffect(() => {
-    if (variant !== "sticky") {
+    if (variant !== "sticky" && variant !== "card") {
       setContactAvailability(null);
       return;
     }
@@ -200,6 +200,7 @@ export default function PropertyContactCard({
 
   const canUseWhatsAppAction = !disableActions && (contactAvailability ? contactAvailability.whatsapp : canShowWhatsApp);
   const canUsePhoneAction = !disableActions && (contactAvailability ? contactAvailability.phone : canShowPhone);
+  const showDesktopWhatsApp = contactAvailability ? contactAvailability.whatsapp : canShowWhatsApp;
 
   const fetchContactTargets = async (method: "GET" | "POST") => {
     const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method });
@@ -614,23 +615,27 @@ export default function PropertyContactCard({
       <div className="p-6">
         <h3 className="text-base font-semibold text-gray-900">Fale com o anunciante</h3>
 
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={handleWhatsAppClick}
-            disabled={!canUseWhatsAppAction || whatsAppLoading}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
-          >
-            <WhatsAppIcon className="w-5 h-5" />
-            {whatsAppLoading ? "Abrindo..." : "WhatsApp"}
-          </button>
-        </div>
+        {showDesktopWhatsApp && (
+          <>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={handleWhatsAppClick}
+                disabled={!canUseWhatsAppAction || whatsAppLoading}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+              >
+                <WhatsAppIcon className="w-5 h-5" />
+                {whatsAppLoading ? "Abrindo..." : "WhatsApp"}
+              </button>
+            </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span className="text-xs font-semibold text-gray-500">Ou</span>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-semibold text-gray-500">Ou</span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+          </>
+        )}
 
         <div className="mt-4">
           <p className="text-sm font-semibold text-gray-900">Use nosso chat</p>
