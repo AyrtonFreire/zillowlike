@@ -20,6 +20,24 @@ const Map = dynamic(() => import("@/components/GoogleMap"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
 const PropertyContactCard = dynamic(() => import("@/components/PropertyContactCard"), { ssr: false });
 
+function createEmptyNearbyPlaces() {
+  return {
+    schools: [],
+    markets: [],
+    pharmacies: [],
+    restaurants: [],
+    hospitals: [],
+    malls: [],
+    parks: [],
+    gyms: [],
+    fuel: [],
+    bakeries: [],
+    banks: [],
+  };
+}
+
+type NearbyPlacesState = ReturnType<typeof createEmptyNearbyPlaces>;
+
 type PropertyDetailsModalProps = {
   propertyId: string | null;
   open: boolean;
@@ -235,7 +253,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const relatedSectionRef = useRef<HTMLDivElement | null>(null);
   const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
   const [similarProperties, setSimilarProperties] = useState<any[]>([]);
-  const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; malls: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlacesState>(createEmptyNearbyPlaces);
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
   const [poiOpen, setPoiOpen] = useState(false);
@@ -296,6 +314,23 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     if (shouldLoadRelated) return;
     setShouldLoadRelated(true);
   }, [isOpen, mode, isPreview, shouldLoadRelated]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (mode !== "public") return;
+
+    setNearbyProperties([]);
+    setSimilarProperties([]);
+    setNearbyPlaces(createEmptyNearbyPlaces());
+    setPoiLoading(false);
+    setPoiOpen(false);
+    setPoiSource(null);
+    setActivePOITab("schools");
+    setRelatedRequested(false);
+    setShouldLoadArea(false);
+    setShouldLoadRelated(false);
+    poiFetchedKeyRef.current = null;
+  }, [activePropertyId, isOpen, mode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -602,21 +637,35 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     setRelatedRequested(true);
     const id = property.id;
 
-    fetch(`/api/properties/nearby?id=${id}&radius=3&limit=8`)
-      .then((r) => r.json())
-      .then((d) => {
-        const arr = d?.properties || d?.items || [];
-        setNearbyProperties(arr);
-      })
-      .catch(() => setNearbyProperties([]));
+    const controller = new AbortController();
+    let ignore = false;
 
-    fetch(`/api/properties/similar?id=${id}&limit=8`)
+    fetch(`/api/properties/nearby?id=${id}&radius=3&limit=8`, { signal: controller.signal, cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
+        if (ignore) return;
         const arr = d?.properties || d?.items || [];
-        setSimilarProperties(arr);
+        setNearbyProperties(Array.isArray(arr) ? arr : []);
       })
-      .catch(() => setSimilarProperties([]));
+      .catch(() => {
+        if (!ignore) setNearbyProperties([]);
+      });
+
+    fetch(`/api/properties/similar?id=${id}&limit=8`, { signal: controller.signal, cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (ignore) return;
+        const arr = d?.properties || d?.items || [];
+        setSimilarProperties(Array.isArray(arr) ? arr : []);
+      })
+      .catch(() => {
+        if (!ignore) setSimilarProperties([]);
+      });
+
+    return () => {
+      ignore = true;
+      controller.abort();
+    };
   }, [isOpen, shouldLoadRelated, property, relatedRequested, mode]);
 
   useEffect(() => {
@@ -636,7 +685,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setProperty(null);
       setNearbyProperties([]);
       setSimilarProperties([]);
-      setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+      setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
       setPoiOpen(false);
       setRelatedRequested(false);
@@ -714,7 +763,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         console.warn('POIs load failed (silent):', err);
         if (!ignore) {
           setPoiSource(null);
-          setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+          setNearbyPlaces(createEmptyNearbyPlaces());
         }
       } finally {
         if (!ignore) setPoiLoading(false);
@@ -736,7 +785,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setShowThumbGrid(false);
       setNearbyProperties([]);
       setSimilarProperties([]);
-      setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+      setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
       setRelatedRequested(false);
       setShouldLoadArea(false);

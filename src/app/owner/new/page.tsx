@@ -2112,6 +2112,21 @@ export default function NewPropertyPage() {
     ];
   }, [city, description, finalTitle.length, geo, hasAnyVerifiedContact, images, purpose, state, street]);
 
+  const ownerOccupancyLabel =
+    privateOccupied === true ? "Ocupado" : privateOccupied === false ? "Desocupado" : "Não informado";
+  const ownerCommissionLabel = privateBrokerFeePercent.trim()
+    ? `${privateBrokerFeePercent.replace(".", ",")}% de corretagem`
+    : privateBrokerFeeFixedBRL.trim()
+      ? `Taxa fixa de ${privateBrokerFeeFixedBRL}`
+      : "Percentual ou taxa fixa não definidos";
+  const ownerPrivacySelections = [
+    hidePrice ? "Preço oculto" : null,
+    hideExactAddress ? "Endereço exato oculto" : null,
+    hideOwnerContact ? "Contato do anúncio oculto" : null,
+    hideCondoFee ? "Condomínio oculto" : null,
+    hideIPTU ? "IPTU oculto" : null,
+  ].filter(Boolean) as string[];
+
   const jumpToStep = (step: number) => {
     setCurrentStep(step);
     window.setTimeout(() => {
@@ -4653,18 +4668,48 @@ export default function NewPropertyPage() {
 
               {currentStep === 5 && (
                 <div className="space-y-6">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Dados do Proprietário e Privacidade do Anúncio</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Informações internas para seu controle. Esses dados <strong>não aparecem no anúncio</strong> e só você pode ver.
-                    </p>
+                  <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-5 py-5 text-white shadow-sm">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="max-w-2xl">
+                        <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90">
+                          Área interna e privacidade
+                        </span>
+                        <h2 className="mt-3 text-xl font-semibold text-white">Dados do Proprietário e Privacidade do Anúncio</h2>
+                        <p className="mt-2 text-sm leading-relaxed text-white/75">
+                          Organize informações do proprietário, negociação e acesso ao imóvel sem expor dados sensíveis ao público.
+                          Tudo desta etapa fica restrito à sua operação.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:min-w-[320px]">
+                        <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Situação</div>
+                          <div className="mt-2 text-sm font-semibold text-white">{ownerOccupancyLabel}</div>
+                          <div className="mt-1 text-xs text-white/65">
+                            {privateExclusive ? "Com exclusividade ativa" : "Sem exclusividade ativa"}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Privacidade pública</div>
+                          <div className="mt-2 text-sm font-semibold text-white">
+                            {ownerPrivacySelections.length > 0 ? `${ownerPrivacySelections.length} ajuste(s) ativo(s)` : "Sem ocultações extras"}
+                          </div>
+                          <div className="mt-1 text-xs text-white/65">Você controla o que fica visível no anúncio.</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div className="lg:col-span-7 space-y-6">
                       {/* Informações de contato do proprietário */}
-                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        <h3 className="font-medium text-gray-900 mb-3">Contato do proprietário</h3>
+                      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="mb-4 flex flex-col gap-1">
+                          <h3 className="font-semibold text-gray-900">Contato do proprietário</h3>
+                          <p className="text-sm text-gray-600">
+                            Guarde aqui os dados de contato e correspondência sem impactar a apresentação pública do imóvel.
+                          </p>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <Input
                             label="Nome do proprietário"
@@ -4694,8 +4739,13 @@ export default function NewPropertyPage() {
                       </div>
 
                       {/* Informações financeiras */}
-                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        <h3 className="font-medium text-gray-900 mb-3">Valores e comissão</h3>
+                      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="mb-4 flex flex-col gap-1">
+                          <h3 className="font-semibold text-gray-900">Negociação, comissão e acordo</h3>
+                          <p className="text-sm text-gray-600">
+                            Registre o valor esperado, sua remuneração e se a captação está protegida por exclusividade.
+                          </p>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <Input
                             label="Valor desejado pelo proprietário (R$)"
@@ -4719,56 +4769,156 @@ export default function NewPropertyPage() {
                             inputMode="numeric"
                           />
                         </div>
+
+                        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                          Preencha a comissão por <strong>percentual</strong> ou por <strong>taxa fixa</strong>, conforme o acordo.
+                          Se quiser, você pode usar só um dos dois campos.
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-end">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">Exclusividade</p>
+                            <p className="mt-1 text-xs text-gray-600">
+                              Marque quando o proprietário autorizou apenas você ou sua operação a conduzir a venda.
+                            </p>
+                            <label className="mt-3 inline-flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 shadow-sm">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                checked={privateExclusive}
+                                onChange={(e) => setPrivateExclusive(e.target.checked)}
+                              />
+                              Imóvel exclusivo
+                            </label>
+                          </div>
+
+                          <Input
+                            label="Exclusividade até"
+                            type="date"
+                            value={privateExclusiveUntil}
+                            onChange={(e) => setPrivateExclusiveUntil(e.target.value)}
+                            disabled={!privateExclusive}
+                          />
+                        </div>
                       </div>
 
                       {/* Notas internas */}
-                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        <Textarea
-                          label="Observações internas"
-                          value={privateNotes}
-                          onChange={(e) => setPrivateNotes(e.target.value)}
-                          rows={3}
-                          className="resize-y"
-                          placeholder="Anotações particulares sobre este imóvel ou negociação..."
-                        />
+                      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="mb-4 flex flex-col gap-1">
+                          <h3 className="font-semibold text-gray-900">Observações internas e acesso</h3>
+                          <p className="text-sm text-gray-600">
+                            Centralize orientações de visita, chaves e notas operacionais para facilitar o acompanhamento depois.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                          <Input
+                            label="Onde está a chave"
+                            value={privateKeyLocation}
+                            onChange={(e) => setPrivateKeyLocation(e.target.value)}
+                            placeholder="Ex: Com o porteiro, na recepção ou com a equipe"
+                          />
+                          <Textarea
+                            label="Observações internas"
+                            value={privateNotes}
+                            onChange={(e) => setPrivateNotes(e.target.value)}
+                            rows={4}
+                            className="resize-y"
+                            placeholder="Anotações particulares sobre este imóvel, negociação, visitas, restrições ou próximos passos..."
+                          />
+                        </div>
                       </div>
                     </div>
 
                     <div className="lg:col-span-5 space-y-6">
-                      {/* Exclusividade */}
-                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        <h3 className="font-medium text-gray-900 mb-3">Exclusividade</h3>
-                        <div className="space-y-4">
-                          <Checkbox
-                            label="Imóvel exclusivo (só você pode vender)"
-                            checked={privateExclusive}
-                            onChange={(e) => setPrivateExclusive(e.target.checked)}
-                          />
-                          {privateExclusive && (
-                            <Input
-                              label="Exclusividade até"
-                              type="date"
-                              value={privateExclusiveUntil}
-                              onChange={(e) => setPrivateExclusiveUntil(e.target.value)}
-                            />
-                          )}
+                      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">Resumo operacional</h3>
+                            <p className="mt-1 text-sm text-gray-600">Tenha uma leitura rápida do status interno antes de publicar.</p>
+                          </div>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                            Interno
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Proprietário</div>
+                            <div className="mt-2 text-sm font-semibold text-gray-900">{privateOwnerName || "Não informado"}</div>
+                            <div className="mt-1 text-xs text-gray-600">{privateOwnerPhone || privateOwnerEmail || "Sem contato definido"}</div>
+                          </div>
+                          <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Negociação</div>
+                            <div className="mt-2 text-sm font-semibold text-gray-900">{privateOwnerPriceBRL || "Valor não informado"}</div>
+                            <div className="mt-1 text-xs text-gray-600">{ownerCommissionLabel}</div>
+                          </div>
+                          <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Situação</div>
+                            <div className="mt-2 text-sm font-semibold text-gray-900">{ownerOccupancyLabel}</div>
+                            <div className="mt-1 text-xs text-gray-600">
+                              {privateExclusive
+                                ? privateExclusiveUntil
+                                  ? `Exclusivo até ${new Date(`${privateExclusiveUntil}T12:00:00`).toLocaleDateString("pt-BR")}`
+                                  : "Exclusividade ativa"
+                                : "Sem exclusividade definida"}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Privacidade pública</div>
+                            <div className="mt-2 text-sm font-semibold text-gray-900">
+                              {ownerPrivacySelections.length > 0 ? `${ownerPrivacySelections.length} regra(s) ativa(s)` : "Sem regras extras"}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-600">
+                              {ownerPrivacySelections.length > 0 ? ownerPrivacySelections.join(" • ") : "O anúncio exibirá todas as informações permitidas."}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
                       {/* Situação do imóvel */}
-                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        <h3 className="font-medium text-gray-900 mb-3">Situação do imóvel</h3>
-                        <div className="space-y-4">
-                          <Checkbox
-                            label="Imóvel está ocupado"
-                            checked={privateOccupied === true}
-                            onChange={(e) => setPrivateOccupied(e.target.checked ? true : null)}
-                          />
-                          <Checkbox
-                            label="Imóvel desocupado"
-                            checked={privateOccupied === false}
-                            onChange={(e) => setPrivateOccupied(e.target.checked ? false : null)}
-                          />
+                      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <h3 className="font-semibold text-gray-900">Situação do imóvel</h3>
+                        <p className="mt-1 text-sm text-gray-600">
+                          Defina o cenário atual para orientar visitas, chaves e negociação com mais clareza.
+                        </p>
+
+                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <button
+                            type="button"
+                            onClick={() => setPrivateOccupied((current) => (current === true ? null : true))}
+                            className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                              privateOccupied === true
+                                ? "border-teal-500 bg-teal-50 text-teal-900"
+                                : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            Ocupado
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPrivateOccupied((current) => (current === false ? null : false))}
+                            className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                              privateOccupied === false
+                                ? "border-teal-500 bg-teal-50 text-teal-900"
+                                : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            Desocupado
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPrivateOccupied(null)}
+                            className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                              privateOccupied === null
+                                ? "border-teal-500 bg-teal-50 text-teal-900"
+                                : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            Não informado
+                          </button>
+                        </div>
+
+                        <div className="mt-4 space-y-4">
                           {privateOccupied === true && (
                             <Input
                               label="Quem mora / informações do contrato"
@@ -4777,38 +4927,40 @@ export default function NewPropertyPage() {
                               placeholder="Ex: Inquilino até dezembro, contrato de 12 meses"
                             />
                           )}
-                          <Input
-                            label="Onde está a chave"
-                            value={privateKeyLocation}
-                            onChange={(e) => setPrivateKeyLocation(e.target.value)}
-                            placeholder="Ex: Com o porteiro, ou na imobiliária X"
-                          />
+
+                          {privateOccupied !== true ? (
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                              {privateOccupied === false
+                                ? "Ótimo: imóvel marcado como desocupado, o que tende a simplificar agendamentos e visitas."
+                                : "Se você ainda não souber a ocupação, pode deixar em aberto e ajustar depois sem impactar a publicação."}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
                       {/* Seção de visibilidade */}
-                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        <h3 className="font-semibold text-gray-900 mb-2">Privacidade do anúncio</h3>
-                        <p className="text-sm text-gray-500 mb-4">
+                      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <h3 className="font-semibold text-gray-900">Privacidade do anúncio</h3>
+                        <p className="mt-1 text-sm text-gray-500 mb-4">
                           Escolha quais informações devem ficar ocultas no anúncio público. Clientes interessados precisarão entrar em contato para saber.
                         </p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className={`rounded-2xl border p-4 transition-colors ${hidePrice ? "border-teal-200 bg-teal-50" : "border-gray-200 bg-gray-50"}`}>
                             <Checkbox
                               label="Ocultar preço (mostrar 'Consulte')"
                               checked={hidePrice}
                               onChange={(e) => setHidePrice(e.target.checked)}
                             />
                           </div>
-                          <div className="p-3 bg-gray-50 rounded-lg">
+                          <div className={`rounded-2xl border p-4 transition-colors ${hideExactAddress ? "border-teal-200 bg-teal-50" : "border-gray-200 bg-gray-50"}`}>
                             <Checkbox
                               label="Ocultar endereço exato (só bairro)"
                               checked={hideExactAddress}
                               onChange={(e) => setHideExactAddress(e.target.checked)}
                             />
                           </div>
-                          <div className="p-3 bg-gray-50 rounded-lg">
+                          <div className={`rounded-2xl border p-4 transition-colors ${hideOwnerContact ? "border-teal-200 bg-teal-50" : "border-gray-200 bg-gray-50"}`}>
                             <Checkbox
                               label="Ocultar WhatsApp/telefone do anúncio (somente chat)"
                               checked={hideOwnerContact}
@@ -4818,14 +4970,14 @@ export default function NewPropertyPage() {
                               Se desmarcado, o botão de WhatsApp ficará disponível apenas para usuários logados e com e-mail verificado.
                             </p>
                           </div>
-                          <div className="p-3 bg-gray-50 rounded-lg">
+                          <div className={`rounded-2xl border p-4 transition-colors ${hideCondoFee ? "border-teal-200 bg-teal-50" : "border-gray-200 bg-gray-50"}`}>
                             <Checkbox
                               label="Ocultar taxa de condomínio"
                               checked={hideCondoFee}
                               onChange={(e) => setHideCondoFee(e.target.checked)}
                             />
                           </div>
-                          <div className="p-3 bg-gray-50 rounded-lg">
+                          <div className={`rounded-2xl border p-4 transition-colors ${hideIPTU ? "border-teal-200 bg-teal-50" : "border-gray-200 bg-gray-50"}`}>
                             <Checkbox
                               label="Ocultar IPTU"
                               checked={hideIPTU}
@@ -4840,9 +4992,16 @@ export default function NewPropertyPage() {
                         {/* Campo de IPTU */}
                       </div>
 
-                      <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-                        💡 Esses campos são opcionais e salvos junto com o imóvel. Você poderá editá-los depois na página do imóvel.
-                      </p>
+                      <div className={`rounded-3xl border px-4 py-4 ${hasAnyVerifiedContact ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                        <p className={`text-sm font-semibold ${hasAnyVerifiedContact ? "text-emerald-900" : "text-amber-900"}`}>
+                          {hasAnyVerifiedContact
+                            ? "Você já tem um contato verificado para publicar."
+                            : "Antes de publicar, verifique telefone ou e-mail."}
+                        </p>
+                        <p className={`mt-1 text-xs leading-relaxed ${hasAnyVerifiedContact ? "text-emerald-800" : "text-amber-800"}`}>
+                          Esses dados internos são opcionais e podem ser refinados depois. O ponto crítico para publicação continua sendo ter pelo menos um contato validado.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

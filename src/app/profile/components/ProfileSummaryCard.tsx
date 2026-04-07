@@ -107,10 +107,10 @@ export function ProfileSummaryCard({
         </div>
 
         <div className="grid w-full grid-cols-2 gap-3 lg:max-w-sm">
-          <StatTile label="Imóveis" value={String(profile.stats.properties || 0)} helper="Ativos ou em gestão" />
-          <StatTile label="Favoritos" value={String(profile.stats.favorites || 0)} helper="Itens salvos" />
-          <StatTile label="Leads recebidos" value={String(profile.stats.leadsReceived || 0)} helper="Entradas da plataforma" />
-          <StatTile label="Leads enviados" value={String(profile.stats.leadsSent || 0)} helper="Conversas iniciadas" />
+          <StatTile label="Imóveis" value={String(profile.stats?.properties ?? 0)} helper="Ativos ou em gestão" />
+          <StatTile label="Favoritos" value={String(profile.stats?.favorites ?? 0)} helper="Itens salvos" />
+          <StatTile label="Leads recebidos" value={String(profile.stats?.leadsReceived ?? 0)} helper="Entradas da plataforma" />
+          <StatTile label="Leads enviados" value={String(profile.stats?.leadsSent ?? 0)} helper="Conversas iniciadas" />
         </div>
       </div>
 

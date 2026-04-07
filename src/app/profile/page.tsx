@@ -351,7 +351,7 @@ function LegacyProfilePage() {
                       <span className="text-sm">Imóveis</span>
                     </div>
                     <span className="font-semibold text-gray-900">
-                      {profile.stats.properties}
+                      {profile.stats?.properties ?? 0}
                     </span>
                   </div>
                 )}
@@ -362,7 +362,7 @@ function LegacyProfilePage() {
                     <span className="text-sm">Favoritos</span>
                   </div>
                   <span className="font-semibold text-gray-900">
-                    {profile.stats.favorites}
+                    {profile.stats?.favorites ?? 0}
                   </span>
                 </div>
 
@@ -373,7 +373,7 @@ function LegacyProfilePage() {
                       <span className="text-sm">Leads</span>
                     </div>
                     <span className="font-semibold text-gray-900">
-                      {profile.stats.leadsSent}
+                      {profile.stats?.leadsSent ?? 0}
                     </span>
                   </div>
                 )}

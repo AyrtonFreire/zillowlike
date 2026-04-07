@@ -353,7 +353,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const cacheKey = `plcnb:v6:${round(lat, 3)}:${round(lng, 3)}:${radius}:${perCat}`;
+    const cacheKey = `plcnb:v7:${round(lat, 5)}:${round(lng, 5)}:${radius}:${perCat}`;
 
     const cachedRedis = await redisGet(cacheKey);
     if (cachedRedis) {

@@ -102,6 +102,79 @@ async function generateUniquePublicSlug(userId: string, baseValue: string | null
   return `${base}-${Date.now().toString(36)}`;
 }
 
+async function buildProfileUserPayload(userId: string) {
+  const user = await (prisma as any).user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      role: true,
+      emailVerified: true,
+      passwordHash: true,
+      phone: true,
+      phoneVerifiedAt: true,
+      recoveryEmail: true,
+      recoveryEmailVerifiedAt: true,
+      publicSlug: true,
+      publicProfileEnabled: true,
+      publicHeadline: true,
+      publicBio: true,
+      publicCity: true,
+      publicState: true,
+      publicPhoneOptIn: true,
+      realtorCreci: true,
+      realtorCreciState: true,
+      realtorType: true,
+      _count: {
+        select: {
+          leads: true,
+          realtorLeads: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  let propertyCount = 0;
+  if (user.role === "OWNER") {
+    propertyCount = await prisma.property.count({
+      where: { ownerId: userId },
+    });
+  }
+
+  const favoritesCount = await prisma.favorite.count({
+    where: { userId },
+  });
+
+  const backupCodesTotal = await (prisma as any).backupRecoveryCode.count({
+    where: { userId },
+  });
+  const backupCodesUnused = await (prisma as any).backupRecoveryCode.count({
+    where: { userId, usedAt: null },
+  });
+
+  return {
+    ...user,
+    hasPassword: Boolean((user as any).passwordHash),
+    passwordHash: undefined,
+    backupCodes: {
+      total: backupCodesTotal,
+      unused: backupCodesUnused,
+    },
+    stats: {
+      properties: propertyCount,
+      favorites: favoritesCount,
+      leadsReceived: user._count.leads,
+      leadsSent: user._count.realtorLeads,
+    },
+  };
+}
+
 /**
  * GET /api/user/profile
  * Get current user profile with stats
@@ -115,81 +188,15 @@ export async function GET() {
     }
 
     const userId = (session as any)?.userId || (session as any)?.user?.id;
-    
-    const user = await (prisma as any).user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        role: true,
-        emailVerified: true,
-        passwordHash: true,
-        phone: true,
-        phoneVerifiedAt: true,
-        recoveryEmail: true,
-        recoveryEmailVerifiedAt: true,
-        publicSlug: true,
-        publicProfileEnabled: true,
-        publicHeadline: true,
-        publicBio: true,
-        publicCity: true,
-        publicState: true,
-        publicPhoneOptIn: true,
-        realtorCreci: true,
-        realtorCreciState: true,
-        realtorType: true,
-        _count: {
-          select: {
-            leads: true,
-            realtorLeads: true,
-          },
-        },
-      },
-    });
+    const user = userId ? await buildProfileUserPayload(String(userId)) : null;
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get property count if owner
-    let propertyCount = 0;
-    if (user.role === "OWNER") {
-      propertyCount = await prisma.property.count({
-        where: { ownerId: userId },
-      });
-    }
-
-    // Get favorites count
-    const favoritesCount = await prisma.favorite.count({
-      where: { userId },
-    });
-
-    const backupCodesTotal = await (prisma as any).backupRecoveryCode.count({
-      where: { userId },
-    });
-    const backupCodesUnused = await (prisma as any).backupRecoveryCode.count({
-      where: { userId, usedAt: null },
-    });
-
     return NextResponse.json({
       success: true,
-      user: {
-        ...user,
-        hasPassword: Boolean((user as any).passwordHash),
-        passwordHash: undefined,
-        backupCodes: {
-          total: backupCodesTotal,
-          unused: backupCodesUnused,
-        },
-        stats: {
-          properties: propertyCount,
-          favorites: favoritesCount,
-          leadsReceived: user._count.leads,
-          leadsSent: user._count.realtorLeads,
-        },
-      },
+      user,
     });
   } catch (error) {
     console.error("Error fetching profile:", error);
@@ -333,30 +340,16 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const updated = await (prisma as any).user.update({
+    await (prisma as any).user.update({
       where: { id: userId },
       data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        emailVerified: true,
-        image: true,
-        role: true,
-        phone: true,
-        phoneVerifiedAt: true,
-        publicSlug: true,
-        publicProfileEnabled: true,
-        publicHeadline: true,
-        publicBio: true,
-        publicCity: true,
-        publicState: true,
-        publicPhoneOptIn: true,
-        realtorCreci: true,
-        realtorCreciState: true,
-        realtorType: true,
-      },
     });
+
+    const updated = await buildProfileUserPayload(String(userId));
+
+    if (!updated) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
     return NextResponse.json({
       success: true,
