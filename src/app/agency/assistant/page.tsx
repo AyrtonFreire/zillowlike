@@ -34,7 +34,7 @@ type AgencyInsight = {
 type AgencyInsightsResponse = {
   success: boolean;
   team: Team | null;
-  aiConfig: {
+  operationalConfig: {
     channels: Record<string, boolean>;
     automations: Record<string, boolean>;
     thresholds: Record<string, number>;
@@ -46,7 +46,7 @@ type AgencyInsightsResponse = {
       autoPrioritizeCriticalItems: boolean;
     };
   };
-  coaching: {
+  teamHealth: {
     teamExecutionScore: number;
     minExecutionScoreTarget: number;
     avgFirstResponseMinutes: number | null;
@@ -180,7 +180,7 @@ export default function AgencyAssistantPage() {
         const metricsJson = (await metricsResponse.json().catch(() => null)) as AssistantMetricsResponse | null;
 
         if (!insightsResponse.ok || !insightsJson?.success) {
-          throw new Error((insightsJson as any)?.error || "Não conseguimos carregar a central de IA agora.");
+          throw new Error((insightsJson as any)?.error || "Não conseguimos carregar a área assistida agora.");
         }
 
         setInsights(insightsJson);
@@ -190,7 +190,7 @@ export default function AgencyAssistantPage() {
         setInsights(null);
         setStats(null);
         setMetrics(null);
-        setError(fetchError?.message || "Não conseguimos carregar a central de IA agora.");
+        setError(fetchError?.message || "Não conseguimos carregar a área assistida agora.");
       } finally {
         setLoading(false);
       }
@@ -200,7 +200,7 @@ export default function AgencyAssistantPage() {
   }, [status]);
 
   const aiChannelsSummary = useMemo(() => {
-    const channels = insights?.aiConfig?.channels || {};
+    const channels = insights?.operationalConfig?.channels || {};
     return Object.entries(channels)
       .filter(([, enabled]) => Boolean(enabled))
       .map(([key]) => {
@@ -210,22 +210,22 @@ export default function AgencyAssistantPage() {
         if (key === "email") return "Email";
         return key;
       });
-  }, [insights?.aiConfig?.channels]);
+  }, [insights?.operationalConfig?.channels]);
 
   const automationCoveragePercent = useMemo(() => {
-    const enabledRules = Number(insights?.coaching?.automationCoverage?.enabledRules || 0);
-    const totalRules = Number(insights?.coaching?.automationCoverage?.totalRules || 0);
+    const enabledRules = Number(insights?.teamHealth?.automationCoverage?.enabledRules || 0);
+    const totalRules = Number(insights?.teamHealth?.automationCoverage?.totalRules || 0);
     if (!totalRules) return 0;
     return Math.round((enabledRules / totalRules) * 100);
-  }, [insights?.coaching?.automationCoverage]);
+  }, [insights?.teamHealth?.automationCoverage]);
 
-  const coachingTopMembers = useMemo(() => {
-    return Array.isArray(insights?.coaching?.members) ? insights.coaching.members.slice(0, 4) : [];
-  }, [insights?.coaching?.members]);
+  const teamHealthTopMembers = useMemo(() => {
+    return Array.isArray(insights?.teamHealth?.members) ? insights.teamHealth.members.slice(0, 4) : [];
+  }, [insights?.teamHealth?.members]);
 
-  const coachingAlerts = useMemo(() => {
-    return Array.isArray(insights?.coaching?.alerts) ? insights.coaching.alerts : [];
-  }, [insights?.coaching?.alerts]);
+  const teamHealthAlerts = useMemo(() => {
+    return Array.isArray(insights?.teamHealth?.alerts) ? insights.teamHealth.alerts : [];
+  }, [insights?.teamHealth?.alerts]);
 
   const generatedDrafts = Number(
     (metrics?.counts?.ASSISTANT_DRAFT_GENERATED || 0) + (metrics?.counts?.ASSISTANT_DRAFT_FALLBACK || 0)
@@ -234,7 +234,7 @@ export default function AgencyAssistantPage() {
   const snoozedItems = Number(metrics?.counts?.ASSISTANT_ITEM_SNOOZED || 0);
 
   if (status === "loading" || loading) {
-    return <InlineSpinner message="Carregando central de IA..." />;
+    return <InlineSpinner message="Carregando área assistida..." />;
   }
 
   if (!insights?.team) {
@@ -243,13 +243,13 @@ export default function AgencyAssistantPage() {
         {error ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</div>
         ) : null}
-        <StatCard title="Ative a IA da agência">
+        <StatCard title="Ative a área assistida da agência">
           <div className="text-sm text-gray-600">
-            Você precisa vincular um time antes de usar a área de IA. Vá em{" "}
+            Você precisa vincular um time antes de usar esta área. Vá em{" "}
             <Link href="/agency/team" className="font-semibold text-blue-600 hover:text-blue-700">
               Time
             </Link>{" "}
-            para configurar membros, regras e guardrails.
+            para configurar membros, regras e parâmetros.
           </div>
         </StatCard>
       </div>
@@ -267,11 +267,11 @@ export default function AgencyAssistantPage() {
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold text-emerald-700">
               <Bot className="h-3.5 w-3.5" />
-              IA da Agência
+              Assistência da Agência
             </div>
-            <h1 className="mt-3 text-xl font-semibold text-gray-900">Fila, coaching e automações separadas da operação diária</h1>
+            <h1 className="mt-3 text-xl font-semibold text-gray-900">Pendências assistidas e automações separadas da operação diária</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Use esta área para supervisionar pendências assistidas por IA, revisar gargalos do time e ajustar canais e guardrails sem poluir o painel principal.
+              Use esta área para supervisionar pendências assistidas, revisar gargalos do time e ajustar canais e parâmetros sem poluir o painel principal.
             </p>
           </div>
 
@@ -281,7 +281,7 @@ export default function AgencyAssistantPage() {
               className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
             >
               <Settings className="mr-2 h-4 w-4" />
-              Configurar IA
+              Ajustar regras
             </Link>
             <Link
               href="/agency/team-chat"
@@ -300,13 +300,13 @@ export default function AgencyAssistantPage() {
           </div>
           <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Score de execução</div>
-            <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.teamExecutionScore}</div>
-            <div className="text-xs text-gray-500">Meta atual: {insights.coaching.minExecutionScoreTarget}</div>
+            <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.teamHealth.teamExecutionScore}</div>
+            <div className="text-xs text-gray-500">Meta atual: {insights.teamHealth.minExecutionScoreTarget}</div>
           </div>
           <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">Automações ativas</div>
-            <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.coaching.automationCoverage.enabledRules}</div>
-            <div className="text-xs text-gray-500">de {insights.coaching.automationCoverage.totalRules} regras ligadas</div>
+            <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.teamHealth.automationCoverage.enabledRules}</div>
+            <div className="text-xs text-gray-500">de {insights.teamHealth.automationCoverage.totalRules} regras ligadas</div>
           </div>
         </div>
       </div>
@@ -332,7 +332,7 @@ export default function AgencyAssistantPage() {
           title="Sugestões geradas"
           value={generatedDrafts}
           icon={Zap}
-          subtitle="Uso de IA no mês"
+          subtitle="Sugestões emitidas no mês"
           iconColor="text-violet-700"
           iconBgColor="bg-violet-50"
         />
@@ -349,7 +349,7 @@ export default function AgencyAssistantPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
           <StatCard
-            title="Fila operacional da IA"
+            title="Fila assistida"
             action={
               <div className="text-sm text-gray-500">
                 {stats?.counts?.ALL ?? 0} pendência{(stats?.counts?.ALL ?? 0) === 1 ? "" : "s"} aberta{(stats?.counts?.ALL ?? 0) === 1 ? "" : "s"}
@@ -361,10 +361,10 @@ export default function AgencyAssistantPage() {
         </div>
 
         <div className="xl:col-span-1 space-y-6">
-          <StatCard title="Coaching prioritário">
+          <StatCard title="Acompanhamento prioritário">
             <div className="space-y-3">
-              {coachingTopMembers.length > 0 ? (
-                coachingTopMembers.map((member) => (
+              {teamHealthTopMembers.length > 0 ? (
+                teamHealthTopMembers.map((member) => (
                   <div key={member.userId} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -386,7 +386,7 @@ export default function AgencyAssistantPage() {
                         </div>
                       </div>
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${member.executionScore < insights.coaching.minExecutionScoreTarget ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${member.executionScore < insights.teamHealth.minExecutionScoreTarget ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}
                       >
                         {member.executionScore}/100
                       </span>
@@ -399,7 +399,7 @@ export default function AgencyAssistantPage() {
             </div>
           </StatCard>
 
-          <StatCard title="Métricas de adoção">
+          <StatCard title="Uso da área">
             <div className="space-y-3">
               <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Última atividade</div>
@@ -438,13 +438,13 @@ export default function AgencyAssistantPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <StatCard title="Automações e guardrails">
+        <StatCard title="Automações e parâmetros">
           <div className="space-y-3">
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Cobertura</div>
               <div className="mt-1 text-sm font-semibold text-gray-900">{automationCoveragePercent}% das regras ativas</div>
               <div className="text-xs text-gray-500">
-                {insights.coaching.automationCoverage.enabledRules} de {insights.coaching.automationCoverage.totalRules} regras • {insights.coaching.automationCoverage.activeChannels} de {insights.coaching.automationCoverage.totalChannels} canais
+                {insights.teamHealth.automationCoverage.enabledRules} de {insights.teamHealth.automationCoverage.totalRules} regras • {insights.teamHealth.automationCoverage.activeChannels} de {insights.teamHealth.automationCoverage.totalChannels} canais
               </div>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
@@ -465,25 +465,25 @@ export default function AgencyAssistantPage() {
               <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                   <Shield className="h-3.5 w-3.5" />
-                  Guardrails
+                  Parâmetros
                 </div>
                 <div className="mt-1 text-sm font-semibold text-gray-900">
-                  {insights.aiConfig.thresholds.clientFirstContactGraceMinutes} min para 1º contato
+                  {insights.operationalConfig.thresholds.clientFirstContactGraceMinutes} min para 1º contato
                 </div>
                 <div className="text-xs text-gray-500">
-                  Lead parado após {insights.aiConfig.thresholds.staleLeadDays} dia(s) sem avanço
+                  Lead parado após {insights.operationalConfig.thresholds.staleLeadDays} dia(s) sem avanço
                 </div>
               </div>
               <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                   <Users className="h-3.5 w-3.5" />
-                  Coaching
+                  Capacidade do time
                 </div>
                 <div className="mt-1 text-sm font-semibold text-gray-900">
-                  Até {insights.aiConfig.coaching.maxPendingReplyPerAgent} pendência(s) por corretor
+                  Até {insights.operationalConfig.coaching.maxPendingReplyPerAgent} pendência(s) por corretor
                 </div>
                 <div className="text-xs text-gray-500">
-                  Sobrecarga a partir de {insights.aiConfig.coaching.overloadLeadsPerAgent} leads por carteira
+                  Sobrecarga a partir de {insights.operationalConfig.coaching.overloadLeadsPerAgent} leads por carteira
                 </div>
               </div>
             </div>
@@ -498,9 +498,9 @@ export default function AgencyAssistantPage() {
             </Link>
           }
         >
-          {coachingAlerts.length > 0 ? (
+          {teamHealthAlerts.length > 0 ? (
             <div className="space-y-3">
-              {coachingAlerts.slice(0, 4).map((alert, index) => {
+              {teamHealthAlerts.slice(0, 4).map((alert, index) => {
                 const styles = severityStyles(alert.severity);
                 return (
                   <div key={`${alert.title}-${index}`} className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
@@ -539,14 +539,14 @@ export default function AgencyAssistantPage() {
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
               <div className="text-sm font-semibold text-gray-900">1. Limpe a fila</div>
-              <div className="mt-1 text-sm text-gray-600">Resolva, adie ou dispense itens da IA sem misturar isso com o painel operacional.</div>
+              <div className="mt-1 text-sm text-gray-600">Resolva, adie ou dispense itens assistidos sem misturar isso com o painel operacional.</div>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-              <div className="text-sm font-semibold text-gray-900">2. Revise coaching</div>
+              <div className="text-sm font-semibold text-gray-900">2. Revise a capacidade</div>
               <div className="mt-1 text-sm text-gray-600">Veja quem está sobrecarregado e ajuste distribuição antes que o SLA estoure.</div>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-              <div className="text-sm font-semibold text-gray-900">3. Ajuste guardrails</div>
+              <div className="text-sm font-semibold text-gray-900">3. Ajuste parâmetros</div>
               <div className="mt-1 text-sm text-gray-600">Ative ou refine automações e canais conforme a maturidade operacional do seu time.</div>
             </div>
           </div>
@@ -561,23 +561,23 @@ export default function AgencyAssistantPage() {
             <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
               <span>Resposta média do time</span>
               <span className="font-semibold text-gray-900">
-                {typeof insights.coaching.avgFirstResponseMinutes === "number" ? `${insights.coaching.avgFirstResponseMinutes} min` : "-"}
+                {typeof insights.teamHealth.avgFirstResponseMinutes === "number" ? `${insights.teamHealth.avgFirstResponseMinutes} min` : "-"}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
               <span>Desequilíbrio de carga</span>
-              <span className="font-semibold text-gray-900">{insights.coaching.workloadImbalanceIndex}</span>
+              <span className="font-semibold text-gray-900">{insights.teamHealth.workloadImbalanceIndex}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
               <span>Priorização automática</span>
               <span className="font-semibold text-gray-900">
-                {insights.aiConfig.coaching.autoPrioritizeCriticalItems ? "Ligada" : "Desligada"}
+                {insights.operationalConfig.coaching.autoPrioritizeCriticalItems ? "Ligada" : "Desligada"}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
               <span>Alerta de desequilíbrio</span>
               <span className="font-semibold text-gray-900">
-                {insights.aiConfig.coaching.alertOnWorkloadImbalance ? "Ligado" : "Desligado"}
+                {insights.operationalConfig.coaching.alertOnWorkloadImbalance ? "Ligado" : "Desligado"}
               </span>
             </div>
           </div>

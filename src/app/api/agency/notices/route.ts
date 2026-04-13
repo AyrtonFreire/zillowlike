@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
     }
 
     const nextMetadata: any = {
-      kind: "AGENCY_NOTICE",
+      kind: "OPERATIONAL_NOTICE",
       teamId: String(teamId),
       leadIds,
       leads: (leads || []).map((l) => ({
@@ -247,12 +247,12 @@ export async function POST(req: NextRequest) {
 
     void createAuditLog({
       level: "INFO",
-      action: "AGENCY_NOTICE_CREATED",
-      message: "Agency notice created",
+      action: "OPERATIONAL_NOTICE_CREATED",
+      message: "Operational notice created",
       actorId: String(userId),
       actorEmail: email || undefined,
       actorRole: String(role || ""),
-      targetType: "AssistantItem",
+      targetType: "OperationalNotice",
       targetId: String(item.id),
       metadata: {
         teamId: String(teamId),
@@ -262,7 +262,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, item });
+    return NextResponse.json({ success: true, notice: item });
   } catch (error) {
     console.error("/api/agency/notices error", error);
     return NextResponse.json({ error: "Não conseguimos criar este aviso agora." }, { status: 500 });

@@ -131,8 +131,8 @@ export async function GET(req: NextRequest) {
           clientNoFirstContact: 0,
           clientOverdueNextAction: 0,
         },
-        aiConfig: DEFAULT_AGENCY_AI_CONFIG,
-        coaching: {
+        operationalConfig: DEFAULT_AGENCY_AI_CONFIG,
+        teamHealth: {
           teamExecutionScore: 100,
           minExecutionScoreTarget: DEFAULT_AGENCY_AI_CONFIG.coaching.minExecutionScore,
           avgFirstResponseMinutes: null,
@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Time não encontrado" }, { status: 404 });
     }
 
-    const aiConfig = await getAgencyAiConfig(String(teamId));
+    const operationalConfig = await getAgencyAiConfig(String(teamId));
 
     const members = Array.isArray(team.members) ? (team.members as any[]) : [];
     const memberIds = members.map((m) => String(m.userId));
@@ -225,8 +225,8 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const clientFirstContactGraceMinutes = Math.max(5, Number(aiConfig.thresholds.clientFirstContactGraceMinutes || 30));
-    const staleLeadDays = Math.max(1, Number(aiConfig.thresholds.staleLeadDays || 3));
+    const clientFirstContactGraceMinutes = Math.max(5, Number(operationalConfig.thresholds.clientFirstContactGraceMinutes || 30));
+    const staleLeadDays = Math.max(1, Number(operationalConfig.thresholds.staleLeadDays || 3));
     const firstContactThreshold = new Date(now.getTime() - clientFirstContactGraceMinutes * 60 * 1000);
     const activeLeadIds = new Set<string>();
     const byStageActive: Record<string, number> = {};
@@ -463,23 +463,23 @@ export async function GET(req: NextRequest) {
         executionScore -= pendingClients.length * 8;
         executionScore -= noFirstContactClients.length * 7;
         executionScore -= stalled.length * 6;
-        if (avgFirstResponseMinutes && avgFirstResponseMinutes > Number(aiConfig.thresholds.leadPendingReplyMinutesForm || 30)) {
+        if (avgFirstResponseMinutes && avgFirstResponseMinutes > Number(operationalConfig.thresholds.leadPendingReplyMinutesForm || 30)) {
           executionScore -= Math.min(
             18,
-            Math.round((avgFirstResponseMinutes - Number(aiConfig.thresholds.leadPendingReplyMinutesForm || 30)) / 10)
+            Math.round((avgFirstResponseMinutes - Number(operationalConfig.thresholds.leadPendingReplyMinutesForm || 30)) / 10)
           );
         }
-        if (activeLeads.length > Number(aiConfig.coaching.overloadLeadsPerAgent || 25)) {
-          executionScore -= Math.min(20, (activeLeads.length - Number(aiConfig.coaching.overloadLeadsPerAgent || 25)) * 2);
+        if (activeLeads.length > Number(operationalConfig.coaching.overloadLeadsPerAgent || 25)) {
+          executionScore -= Math.min(20, (activeLeads.length - Number(operationalConfig.coaching.overloadLeadsPerAgent || 25)) * 2);
         }
         executionScore += Math.min(10, won.length * 2);
         executionScore = clampNumber(executionScore, 0, 100);
 
         const workloadStatus =
-          activeLeads.length > Number(aiConfig.coaching.overloadLeadsPerAgent || 25) ||
-          pending.length + pendingClients.length > Number(aiConfig.coaching.maxPendingReplyPerAgent || 5)
+          activeLeads.length > Number(operationalConfig.coaching.overloadLeadsPerAgent || 25) ||
+          pending.length + pendingClients.length > Number(operationalConfig.coaching.maxPendingReplyPerAgent || 5)
             ? "overloaded"
-            : executionScore < Number(aiConfig.coaching.minExecutionScore || 70)
+            : executionScore < Number(operationalConfig.coaching.minExecutionScore || 70)
               ? "attention"
               : "balanced";
 
@@ -508,31 +508,31 @@ export async function GET(req: NextRequest) {
         return b.activeLeads - a.activeLeads;
       });
 
-    const coachingMembers = memberStats
+    const teamHealthMembers = memberStats
       .map((member) => ({
         ...member,
         totalPending: Number(member.pendingReply || 0) + Number(member.clientPendingReply || 0),
       }))
       .sort((a, b) => Number(a.executionScore || 0) - Number(b.executionScore || 0));
 
-    const teamExecutionScore = average(coachingMembers.map((member) => Number(member.executionScore || 0))) ?? 100;
-    const avgFirstResponseMinutes = average(coachingMembers.map((member) => member.avgFirstResponseMinutes ?? null));
-    const workloadSamples = coachingMembers.map((member) => Number(member.activeLeads || 0));
+    const teamExecutionScore = average(teamHealthMembers.map((member) => Number(member.executionScore || 0))) ?? 100;
+    const avgFirstResponseMinutes = average(teamHealthMembers.map((member) => member.avgFirstResponseMinutes ?? null));
+    const workloadSamples = teamHealthMembers.map((member) => Number(member.activeLeads || 0));
     const workloadImbalanceIndex = workloadSamples.length > 1 ? Math.max(...workloadSamples) - Math.min(...workloadSamples) : 0;
     const automationCoverage = {
-      enabledRules: Object.values(aiConfig.automations).filter(Boolean).length,
-      totalRules: Object.keys(aiConfig.automations).length,
-      activeChannels: Object.values(aiConfig.channels).filter(Boolean).length,
-      totalChannels: Object.keys(aiConfig.channels).length,
+      enabledRules: Object.values(operationalConfig.automations).filter(Boolean).length,
+      totalRules: Object.keys(operationalConfig.automations).length,
+      activeChannels: Object.values(operationalConfig.channels).filter(Boolean).length,
+      totalChannels: Object.keys(operationalConfig.channels).length,
     };
 
-    const coachingAlerts: AgencyInsight[] = [];
-    const weakestMembers = coachingMembers.filter((member) => Number(member.executionScore || 0) < Number(aiConfig.coaching.minExecutionScore || 70));
+    const teamHealthAlerts: AgencyInsight[] = [];
+    const weakestMembers = teamHealthMembers.filter((member) => Number(member.executionScore || 0) < Number(operationalConfig.coaching.minExecutionScore || 70));
     if (weakestMembers.length > 0) {
       const focus = weakestMembers[0];
-      coachingAlerts.push({
+      teamHealthAlerts.push({
         title: "Execução abaixo da meta",
-        detail: `${focus.name || focus.email || "Um corretor"} está com score ${focus.executionScore}/100 e precisa de coaching operacional.`,
+        detail: `${focus.name || focus.email || "Um corretor"} está com score ${focus.executionScore}/100 e precisa de suporte operacional.`,
         severity: Number(focus.executionScore || 0) < 50 ? "critical" : "warning",
         href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=${encodeURIComponent(focus.userId)}`,
         hrefLabel: "Abrir carteira",
@@ -540,25 +540,25 @@ export async function GET(req: NextRequest) {
     }
 
     if (
-      aiConfig.coaching.alertOnWorkloadImbalance &&
-      workloadImbalanceIndex >= Math.max(5, Math.round(Number(aiConfig.coaching.overloadLeadsPerAgent || 25) / 2))
+      operationalConfig.coaching.alertOnWorkloadImbalance &&
+      workloadImbalanceIndex >= Math.max(5, Math.round(Number(operationalConfig.coaching.overloadLeadsPerAgent || 25) / 2))
     ) {
-      coachingAlerts.push({
+      teamHealthAlerts.push({
         title: "Carga do time desequilibrada",
         detail: `A diferença entre as carteiras ativas chegou a ${workloadImbalanceIndex} leads.`,
-        severity: workloadImbalanceIndex >= Number(aiConfig.coaching.overloadLeadsPerAgent || 25) ? "critical" : "warning",
+        severity: workloadImbalanceIndex >= Number(operationalConfig.coaching.overloadLeadsPerAgent || 25) ? "critical" : "warning",
         href: "/agency/team#distribution",
         hrefLabel: "Ajustar distribuição",
       });
     }
 
-    if (teamExecutionScore < Number(aiConfig.coaching.minExecutionScore || 70)) {
-      coachingAlerts.push({
+    if (teamExecutionScore < Number(operationalConfig.coaching.minExecutionScore || 70)) {
+      teamHealthAlerts.push({
         title: "Meta de execução do time em risco",
-        detail: `O score médio do time está em ${teamExecutionScore}/100, abaixo da meta de ${aiConfig.coaching.minExecutionScore}.`,
+        detail: `O score médio do time está em ${teamExecutionScore}/100, abaixo da meta de ${operationalConfig.coaching.minExecutionScore}.`,
         severity: teamExecutionScore < 55 ? "critical" : "warning",
         href: "/agency",
-        hrefLabel: "Abrir central IA",
+        hrefLabel: "Abrir painel",
       });
     }
 
@@ -638,11 +638,11 @@ export async function GET(req: NextRequest) {
 
     if (clientOverdueNextAction > 0) {
       highlights.push({
-        title: "Próximas ações de clientes vencidas",
-        detail: `${clientOverdueNextAction} cliente${clientOverdueNextAction === 1 ? "" : "s"} com próxima ação vencida.`,
-        severity: clientOverdueNextAction >= 8 ? "warning" : "info",
-        href: `/agency/clients?sla=OVERDUE_NEXT_ACTION`,
-        hrefLabel: "Priorizar agora",
+        title: "Clientes com próxima ação vencida",
+        detail: `${clientOverdueNextAction} cliente${clientOverdueNextAction === 1 ? "" : "s"} com próxima ação vencida no CRM.`,
+        severity: clientOverdueNextAction >= 5 ? "warning" : "info",
+        href: "/agency/clients?insight=overdueNextAction",
+        hrefLabel: "Abrir clientes",
       });
     }
 
@@ -693,7 +693,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    highlights.push(...coachingAlerts);
+    highlights.push(...teamHealthAlerts);
 
     const activeByStage = Object.entries(byStageActive)
       .filter(([k]) => k !== "WON" && k !== "LOST")
@@ -865,15 +865,15 @@ export async function GET(req: NextRequest) {
         clientNoFirstContact,
         clientOverdueNextAction,
       },
-      aiConfig,
-      coaching: {
+      operationalConfig,
+      teamHealth: {
         teamExecutionScore,
-        minExecutionScoreTarget: Number(aiConfig.coaching.minExecutionScore || 70),
+        minExecutionScoreTarget: Number(operationalConfig.coaching.minExecutionScore || 70),
         avgFirstResponseMinutes,
         workloadImbalanceIndex,
         automationCoverage,
-        alerts: coachingAlerts,
-        members: coachingMembers,
+        alerts: teamHealthAlerts,
+        members: teamHealthMembers,
       },
       members: memberStats,
       highlights: highlights.slice(0, 8),

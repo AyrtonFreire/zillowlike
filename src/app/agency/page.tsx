@@ -64,47 +64,6 @@ type AgencyInsightsResponse = {
     clientNoFirstContact: number;
     clientOverdueNextAction: number;
   };
-  aiConfig: {
-    channels: Record<string, boolean>;
-    automations: Record<string, boolean>;
-    thresholds: Record<string, number>;
-    coaching: {
-      overloadLeadsPerAgent: number;
-      maxPendingReplyPerAgent: number;
-      minExecutionScore: number;
-      alertOnWorkloadImbalance: boolean;
-      autoPrioritizeCriticalItems: boolean;
-    };
-  };
-  coaching: {
-    teamExecutionScore: number;
-    minExecutionScoreTarget: number;
-    avgFirstResponseMinutes: number | null;
-    workloadImbalanceIndex: number;
-    automationCoverage: {
-      enabledRules: number;
-      totalRules: number;
-      activeChannels: number;
-      totalChannels: number;
-    };
-    alerts: AgencyInsight[];
-    members: Array<{
-      userId: string;
-      name: string | null;
-      email: string | null;
-      role: string;
-      activeLeads: number;
-      pendingReply: number;
-      stalledLeads: number;
-      activeClients?: number;
-      clientPendingReply?: number;
-      clientNoFirstContact?: number;
-      avgFirstResponseMinutes?: number | null;
-      executionScore: number;
-      workloadStatus: "balanced" | "attention" | "overloaded";
-      totalPending: number;
-    }>;
-  };
   members: Array<{
     userId: string;
     name: string | null;
@@ -220,7 +179,6 @@ export default function AgencyDashboardPage() {
   }, [pipelineLeads, selectedRealtorId]);
 
   const selectedLeadIdSet = useMemo(() => new Set(selectedLeadIds.map(String)), [selectedLeadIds]);
-  const aiWhatsappEnabled = insights?.aiConfig?.channels?.whatsapp !== false;
 
   const getRealtorWhatsAppUrl = useMemo(() => {
     const raw =
@@ -794,7 +752,7 @@ export default function AgencyDashboardPage() {
                         </label>
                       </div>
 
-                      {aiWhatsappEnabled && getRealtorWhatsAppUrl && selectedRealtorId && (
+                      {getRealtorWhatsAppUrl && selectedRealtorId && (
                         <div>
                           <a
                             href={getRealtorWhatsAppUrl}
@@ -808,9 +766,9 @@ export default function AgencyDashboardPage() {
                         </div>
                       )}
 
-                      {!aiWhatsappEnabled && selectedRealtorId ? (
+                      {!getRealtorWhatsAppUrl && selectedRealtorId ? (
                         <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                          O atalho de WhatsApp está desativado nas configurações da IA desta agência.
+                          Este corretor não tem um WhatsApp disponível para atalho rápido.
                         </div>
                       ) : null}
 

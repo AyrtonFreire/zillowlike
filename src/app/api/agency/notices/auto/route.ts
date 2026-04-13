@@ -277,7 +277,7 @@ export async function POST(req: NextRequest) {
       }
 
       const nextMetadata: any = {
-        kind: "AGENCY_NOTICE",
+        kind: "OPERATIONAL_NOTICE",
         trigger: "SLA_PENDING_REPLY",
         teamId: String(teamId),
         leadIds,
@@ -339,8 +339,8 @@ export async function POST(req: NextRequest) {
 
     void createAuditLog({
       level: "INFO",
-      action: "AGENCY_NOTICE_AUTO_RUN",
-      message: "Agency auto notices generated",
+      action: "OPERATIONAL_NOTICE_AUTO_RUN",
+      message: "Operational auto notices generated",
       actorId: String(userId),
       actorEmail: email || undefined,
       actorRole: String(role || ""),
