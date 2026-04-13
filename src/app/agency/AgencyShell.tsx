@@ -6,14 +6,9 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { Bot, LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
+import CollapsibleSidebarNav, { type SidebarNavItem } from "@/components/workspace/CollapsibleSidebarNav";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: any;
-};
-
-const NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS: SidebarNavItem[] = [
   { href: "/agency", label: "Painel", icon: LayoutDashboard },
   { href: "/agency/team", label: "Time", icon: Users },
   { href: "/agency/leads", label: "Leads", icon: Kanban },
@@ -127,30 +122,13 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
 
           <div className="relative p-4 sm:p-6">
             <div className="flex flex-col md:flex-row gap-5">
-              <aside className="md:w-64 flex-shrink-0">
-                <nav className="rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-2 md:p-3 shadow-sm">
-                  <div className="grid grid-cols-4 md:grid-cols-1 gap-1">
-                    {NAV_ITEMS.map((item) => {
-                      const active = isActiveHref(pathname, item.href);
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-1.5 md:gap-2 px-2.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all border ${
-                            active
-                              ? "glass-teal text-white border-transparent shadow-md"
-                              : "bg-white/60 text-gray-700 border-transparent hover:bg-white hover:shadow-sm"
-                          }`}
-                        >
-                          <Icon className={`w-4 h-4 ${active ? "text-white" : "text-gray-600"}`} />
-                          <span className="leading-none">{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </nav>
-              </aside>
+              <CollapsibleSidebarNav
+                items={NAV_ITEMS}
+                pathname={pathname}
+                storageKey="oggahub_sidebar_collapsed_agency"
+                workspaceLabel="Agência"
+                isItemActive={(currentPath, item) => isActiveHref(currentPath, item.href)}
+              />
 
               <div className="flex-1 min-w-0">
                 <div className="pb-5 border-b border-gray-200/70">

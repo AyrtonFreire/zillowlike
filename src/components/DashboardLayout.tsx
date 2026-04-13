@@ -2,10 +2,12 @@
 
 import { ModernNavbar } from "./modern";
 import Link from "next/link";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
 import { usePathname } from "next/navigation";
+import CollapsibleSidebarNav from "@/components/workspace/CollapsibleSidebarNav";
+import { getDashboardSidebarConfig } from "@/components/workspace/dashboardSidebarConfig";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -24,6 +26,7 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const pathname = usePathname();
   const isBrokerContext = !!pathname?.startsWith("/broker");
+  const sidebarConfig = useMemo(() => getDashboardSidebarConfig(pathname), [pathname]);
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   useEffect(() => {
@@ -140,7 +143,22 @@ export default function DashboardLayout({
           isBrokerContext && assistantOpen ? "lg:pr-[420px]" : ""
         }`}
       >
-        {children}
+        {sidebarConfig ? (
+          <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-5 md:flex-row">
+              <CollapsibleSidebarNav
+                items={sidebarConfig.items}
+                pathname={pathname || "/"}
+                storageKey={sidebarConfig.storageKey}
+                workspaceLabel={sidebarConfig.workspaceLabel}
+                isItemActive={sidebarConfig.isItemActive}
+              />
+              <div className="min-w-0 flex-1">{children}</div>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
       </main>
 
       <RealtorAssistantWidget />

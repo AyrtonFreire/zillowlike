@@ -17,7 +17,7 @@ import {
   Eye,
   Activity,
 } from "lucide-react";
-import { ModernNavbar } from "@/components/modern";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface RealtorQueue {
   id: string;
@@ -126,45 +126,52 @@ export default function AdminQueuePage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Carregando fila...</p>
+      <DashboardLayout
+        title="Controle da Fila de Corretores"
+        description="Gerencie a ordem e status dos corretores na fila"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Admin", href: "/admin" },
+          { label: "Fila" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Carregando fila...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ModernNavbar />
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Controle da Fila de Corretores</h1>
-              <p className="text-gray-600 mt-1">Gerencie a ordem e status dos corretores na fila</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={fetchQueues}
-                className="flex items-center gap-2 px-4 py-2 glass-teal text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Atualizar
-              </button>
-              <Link
-                href="/admin"
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Voltar
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <DashboardLayout
+      title="Controle da Fila de Corretores"
+      description="Gerencie a ordem e status dos corretores na fila"
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Admin", href: "/admin" },
+        { label: "Fila" },
+      ]}
+      actions={
+        <>
+          <button
+            onClick={fetchQueues}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-teal-700 hover:bg-teal-50 transition-colors text-sm font-semibold"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Atualizar
+          </button>
+          <Link
+            href="/admin"
+            className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/15 transition-colors text-sm font-medium"
+          >
+            Voltar
+          </Link>
+        </>
+      }
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -322,6 +329,6 @@ export default function AdminQueuePage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

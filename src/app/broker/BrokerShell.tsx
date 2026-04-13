@@ -12,19 +12,16 @@ import {
   MessageCircle,
   MessageSquare,
   Sparkles,
-  Users,
   Home,
   UserRound,
   ClipboardList,
 } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
+import CollapsibleSidebarNav, { type SidebarNavItem } from "@/components/workspace/CollapsibleSidebarNav";
 import { getPusherClient } from "@/lib/pusher-client";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: any;
+type NavItem = SidebarNavItem & {
   badgeKey?: keyof BrokerNavMetrics;
 };
 
@@ -161,7 +158,6 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const section = useMemo(() => sectionFromPath(pathname), [pathname]);
   const [metrics, setMetrics] = useState<BrokerNavMetrics | null>(null);
-  const [assistantOpen, setAssistantOpen] = useState(false);
   const { data: session } = useSession();
   const realtorId = (session as any)?.user?.id || (session as any)?.userId || "";
 
@@ -236,38 +232,6 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
     }
   }, [fetchMetrics, realtorId]);
 
-  useEffect(() => {
-    const key = "zlw_realtor_assistant_widget_open";
-
-    const readFromStorage = () => {
-      try {
-        setAssistantOpen(window.localStorage.getItem(key) === "1");
-      } catch {
-        setAssistantOpen(false);
-      }
-    };
-
-    readFromStorage();
-
-    const onAssistantEvent = (evt: Event) => {
-      const anyEvt: any = evt as any;
-      const open = anyEvt?.detail?.open;
-      if (typeof open === "boolean") setAssistantOpen(open);
-    };
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== key) return;
-      setAssistantOpen(e.newValue === "1");
-    };
-
-    window.addEventListener("zlw-assistant-open", onAssistantEvent as any);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("zlw-assistant-open", onAssistantEvent as any);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-
   const headerAction = useMemo(() => {
     const normalized = normalizePath(pathname);
     if (normalized.startsWith("/broker/leads")) {
@@ -286,14 +250,14 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
 
     if (item.badgeKey === "unreadChats") {
       return (
-        <span className="ml-1 text-[11px] font-extrabold text-red-600 tabular-nums">
+        <span className="absolute right-2.5 top-2 text-[11px] font-extrabold text-red-600 tabular-nums md:static md:ml-1">
           {value > 99 ? "99+" : value}
         </span>
       );
     }
 
     return (
-      <span className="md:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+      <span className="absolute right-2 top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white md:static md:ml-auto">
         {value > 99 ? "99+" : value}
       </span>
     );
@@ -312,31 +276,14 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
 
           <div className="relative p-4 sm:p-6">
             <div className="flex flex-col md:flex-row gap-5">
-              <aside className="md:w-64 flex-shrink-0">
-                <nav className="rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-2 md:p-3 shadow-sm">
-                  <div className="grid grid-cols-4 md:grid-cols-1 gap-1">
-                    {NAV_ITEMS.map((item) => {
-                      const active = isActiveHref(pathname, item.href);
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className={`relative flex flex-col md:flex-row items-center justify-center md:justify-start gap-1.5 md:gap-2 px-2.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all border ${
-                            active
-                              ? "glass-teal text-white border-transparent shadow-md"
-                              : "bg-white/60 text-gray-700 border-transparent hover:bg-white hover:shadow-sm"
-                          }`}
-                        >
-                          <Icon className={`w-4 h-4 ${active ? "text-white" : "text-gray-600"}`} />
-                          <span className="leading-none">{item.label}</span>
-                          {renderBadge(item)}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </nav>
-              </aside>
+              <CollapsibleSidebarNav
+                items={NAV_ITEMS}
+                pathname={pathname}
+                storageKey="oggahub_sidebar_collapsed_broker"
+                workspaceLabel="Corretor"
+                isItemActive={(currentPath, item) => isActiveHref(currentPath, item.href)}
+                renderBadge={(item) => renderBadge(item)}
+              />
 
               <div className="flex-1 min-w-0">
                 <div className="pb-5 border-b border-gray-200/70">

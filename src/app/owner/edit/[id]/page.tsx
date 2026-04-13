@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { parseVideoUrl } from "@/lib/video";
+import DashboardLayout from "@/components/DashboardLayout";
 
 async function preprocessImageForUpload(file: File): Promise<File> {
   const MAX_SIDE = 2560;
@@ -155,14 +156,34 @@ export default function EditPropertyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Carregando...</div>
-      </div>
+      <DashboardLayout
+        title="Editar imóvel"
+        description="Atualize os dados principais do anúncio."
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Proprietário", href: "/owner/dashboard" },
+          { label: "Imóveis", href: "/owner/properties" },
+          { label: "Editar" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="text-gray-600">Carregando...</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <DashboardLayout
+      title="Editar imóvel"
+      description="Atualize os dados principais do anúncio."
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Proprietário", href: "/owner/dashboard" },
+        { label: "Imóveis", href: "/owner/properties" },
+        { label: "Editar" },
+      ]}
+    >
       <div className="bg-white border-b">
         <div className="mx-auto max-w-7xl px-4 py-4">
           <Link href={`/owner`} className="text-glass-teal hover:text-blue-800">← Meus imóveis</Link>
@@ -323,6 +344,6 @@ export default function EditPropertyPage() {
           </div>
         </form>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

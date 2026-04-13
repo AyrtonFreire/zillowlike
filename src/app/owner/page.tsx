@@ -4,6 +4,7 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { buildPropertyPath } from "@/lib/slug";
+import DashboardLayout from "@/components/DashboardLayout";
 
 function formatCentsBRLNoDecimals(value: bigint | number | null | undefined) {
   if (value === null || value === undefined) return "R$ 0";
@@ -48,19 +49,26 @@ export default async function OwnerDashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="mx-auto max-w-7xl px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-blue-600 hover:text-blue-800">← Voltar à busca</Link>
-            <Link href="/start" className="glass-teal text-white px-4 py-2 rounded-lg hover:bg-blue-700">Novo imóvel</Link>
-          </div>
-        </div>
-      </div>
-
+    <DashboardLayout
+      title="Seus imóveis"
+      description="Acompanhe e gerencie o portfólio principal do proprietário."
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Proprietário", href: "/owner/dashboard" },
+        { label: "Imóveis" },
+      ]}
+      actions={
+        <>
+          <Link href="/" className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/15 transition-colors text-sm font-medium">
+            Voltar à busca
+          </Link>
+          <Link href="/start" className="px-4 py-2 rounded-lg bg-white text-teal-700 hover:bg-teal-50 transition-colors text-sm font-semibold">
+            Novo imóvel
+          </Link>
+        </>
+      }
+    >
       <div className="mx-auto max-w-7xl px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Seus imóveis</h1>
-
         {properties.length === 0 ? (
           <div className="text-gray-600">Você ainda não cadastrou imóveis.</div>
         ) : (
@@ -80,7 +88,7 @@ export default async function OwnerDashboardPage() {
                   <div className="text-blue-600 font-bold mb-3">{formatCentsBRLNoDecimals(p.price)}</div>
                   <div className="flex gap-4 items-center">
                     <Link href={buildPropertyPath(p.id, p.title)} className="text-sm text-blue-600 hover:text-blue-800" aria-label={`Ver ${p.title}`}>Ver</Link>
-                    <Link href={`/owner/edit/${p.id}`} className="text-sm text-gray-700 hover:text-gray-900" aria-label={`Editar ${p.title}`}>Editar</Link>
+                    <Link href={`/owner/properties/edit/${p.id}`} className="text-sm text-gray-700 hover:text-gray-900" aria-label={`Editar ${p.title}`}>Editar</Link>
                     <form action={async () => {
                       "use server";
                       const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
@@ -100,6 +108,6 @@ export default async function OwnerDashboardPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

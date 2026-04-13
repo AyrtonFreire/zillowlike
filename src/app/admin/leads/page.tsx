@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -8,15 +8,13 @@ import {
   Users, 
   Clock, 
   CheckCircle, 
-  XCircle, 
   AlertCircle,
   TrendingUp,
-  Filter,
   Search,
   Eye,
   RefreshCw
 } from "lucide-react";
-import { ModernNavbar } from "@/components/modern";
+import DashboardLayout from "@/components/DashboardLayout";
 import EmptyState from "@/components/ui/EmptyState";
 
 interface Lead {
@@ -93,7 +91,7 @@ export default function AdminLeadsPage() {
     }
   }, [status, session, router]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -143,13 +141,13 @@ export default function AdminLeadsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leads.length, queues.length]);
 
   useEffect(() => {
     if (status === "authenticated") {
-      fetchData();
+      void fetchData();
     }
-  }, [status]);
+  }, [status, fetchData]);
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -195,46 +193,53 @@ export default function AdminLeadsPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dados...</p>
+      <DashboardLayout
+        title="Gerenciamento de Leads"
+        description="Monitore todos os leads e atendimentos"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Admin", href: "/admin" },
+          { label: "Leads" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Carregando dados...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ModernNavbar />
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Leads</h1>
-              <p className="text-gray-600 mt-1">Monitore todos os leads e atendimentos</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => fetchData()}
-                disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Atualizar
-              </button>
-              <Link
-                href="/admin"
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Voltar
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <DashboardLayout
+      title="Gerenciamento de Leads"
+      description="Monitore todos os leads e atendimentos"
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Admin", href: "/admin" },
+        { label: "Leads" },
+      ]}
+      actions={
+        <>
+          <button
+            onClick={() => fetchData()}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-teal-700 hover:bg-teal-50 disabled:opacity-50 transition-colors text-sm font-semibold"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Atualizar
+          </button>
+          <Link
+            href="/admin"
+            className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/15 transition-colors text-sm font-medium"
+          >
+            Voltar
+          </Link>
+        </>
+      }
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
@@ -475,6 +480,6 @@ export default function AdminLeadsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

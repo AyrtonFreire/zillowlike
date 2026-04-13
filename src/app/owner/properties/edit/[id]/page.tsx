@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Upload, X, GripVertical } from "lucide-react";
+import NextImage from "next/image";
+import { ArrowLeft, Save, Upload, X } from "lucide-react";
 import { parseVideoUrl } from "@/lib/video";
+import DashboardLayout from "@/components/DashboardLayout";
 
 type RouteParams = {
   id: string;
@@ -117,7 +119,6 @@ export default function EditPropertyPage() {
   const [aiGenerateWarning, setAiGenerateWarning] = useState<string | null>(null);
 
   const [userRole, setUserRole] = useState<string>("USER");
-  const [agencyTeamId, setAgencyTeamId] = useState<string | null>(null);
   const [teamRealtors, setTeamRealtors] = useState<Array<{ id: string; name: string | null; email: string | null }>>([]);
   const [capturerRealtorId, setCapturerRealtorId] = useState<string>("");
   
@@ -245,13 +246,7 @@ export default function EditPropertyPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (params?.id) {
-      fetchProperty();
-    }
-  }, [params?.id]);
-
-  const fetchProperty = async () => {
+  const fetchProperty = useCallback(async () => {
     try {
       const response = await fetch(`/api/owner/properties/${params.id}`);
       if (!response.ok) throw new Error("Failed to fetch");
@@ -354,31 +349,37 @@ export default function EditPropertyPage() {
     } catch (error) {
       console.error("Error fetching property:", error);
       alert("Erro ao carregar imóvel");
+      router.push("/owner/properties");
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id, router]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/user/profile");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data?.success || !data.user || cancelled) return;
+        const res = await fetch("/api/user/profile", { cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (cancelled || !res.ok || !data?.success || !data?.user) return;
         setUserRole(String(data.user.role || "USER").toUpperCase());
       } catch {
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
   useEffect(() => {
+    if (params?.id) {
+      void fetchProperty();
+    }
+  }, [params?.id, fetchProperty]);
+
+  useEffect(() => {
     if (userRole !== "AGENCY") {
-      setAgencyTeamId(null);
       setTeamRealtors([]);
       setCapturerRealtorId("");
       return;
@@ -389,14 +390,15 @@ export default function EditPropertyPage() {
       try {
         const profileRes = await fetch("/api/agency/profile");
         const profileJson = await profileRes.json().catch(() => null);
-        const teamId = profileRes.ok && profileJson?.success && profileJson?.agencyProfile?.teamId
-          ? String(profileJson.agencyProfile.teamId)
-          : null;
+        const teamId =
+          profileJson?.agencyProfile?.teamId && typeof profileJson.agencyProfile.teamId === "string"
+            ? String(profileJson.agencyProfile.teamId)
+            : null;
         if (cancelled) return;
-        setAgencyTeamId(teamId);
 
         if (!teamId) {
           setTeamRealtors([]);
+          setCapturerRealtorId("");
           return;
         }
 
@@ -412,7 +414,6 @@ export default function EditPropertyPage() {
         setTeamRealtors(realtors);
       } catch {
         if (cancelled) return;
-        setAgencyTeamId(null);
         setTeamRealtors([]);
       }
     })();
@@ -773,14 +774,34 @@ export default function EditPropertyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full" />
-      </div>
+      <DashboardLayout
+        title="Editar imóvel"
+        description="Atualize os dados públicos, privados e comerciais do anúncio."
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Proprietário", href: "/owner/dashboard" },
+          { label: "Imóveis", href: "/owner/properties" },
+          { label: "Editar" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <DashboardLayout
+      title="Editar imóvel"
+      description="Atualize os dados públicos, privados e comerciais do anúncio."
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Proprietário", href: "/owner/dashboard" },
+        { label: "Imóveis", href: "/owner/properties" },
+        { label: "Editar" },
+      ]}
+    >
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -1867,7 +1888,7 @@ export default function EditPropertyPage() {
                       onChange={(e) => setHidePrice(e.target.checked)}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span>Ocultar preço (mostrar "Consulte")</span>
+                    <span>Ocultar preço (mostrar &quot;Consulte&quot;)</span>
                   </label>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg">
@@ -1926,10 +1947,13 @@ export default function EditPropertyPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {images.map((img, idx) => (
                   <div key={img.uploadKey || String(idx)} className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                    <img
+                    <NextImage
                       src={img.url}
                       alt={img.alt || ""}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="(min-width: 768px) 25vw, 50vw"
+                      className="object-cover"
+                      unoptimized={img.url.startsWith("blob:")}
                     />
 
                     {img.pending && typeof img.progress === "number" && (
@@ -1984,6 +2008,6 @@ export default function EditPropertyPage() {
           </form>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

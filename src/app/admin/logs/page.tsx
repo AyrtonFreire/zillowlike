@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, Activity, AlertCircle, Info, CheckCircle } from "lucide-react";
-import Link from "next/link";
-import { ModernNavbar } from "@/components/modern";
+import { useCallback, useEffect, useState } from "react";
+import { Activity, AlertCircle, Info, CheckCircle } from "lucide-react";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface Log {
   id: string;
@@ -39,11 +38,7 @@ export default function AdminLogsPage() {
   }
   const exportUrl = `/api/admin/logs/export?${exportParams.toString()}`;
 
-  useEffect(() => {
-    fetchLogs();
-  }, [days, levelFilter]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -61,7 +56,11 @@ export default function AdminLogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [days, levelFilter]);
+
+  useEffect(() => {
+    void fetchLogs();
+  }, [fetchLogs]);
 
   const actionOptions = Array.from(
     new Set(logs.map((log) => log.action).filter((a) => typeof a === "string" && a.length > 0)),
@@ -119,36 +118,33 @@ export default function AdminLogsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <DashboardLayout
+        title="Logs do Sistema"
+        description="Auditoria operacional e rastreio de eventos do sistema"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Admin", href: "/admin" },
+          { label: "Logs" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ModernNavbar />
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Link
-              href="/admin"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Logs do Sistema
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {filteredLogs.length} registros encontrados
-              </p>
-            </div>
-          </div>
-
-          {/* Filters */}
+    <DashboardLayout
+      title="Logs do Sistema"
+      description={`${filteredLogs.length} registro${filteredLogs.length === 1 ? "" : "s"} encontrado${filteredLogs.length === 1 ? "" : "s"}`}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Admin", href: "/admin" },
+        { label: "Logs" },
+      ]}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row gap-4 md:items-center">
             <div className="flex flex-wrap gap-3 text-xs">
               <div className="flex items-center gap-2">
@@ -228,11 +224,7 @@ export default function AdminLogsPage() {
               </a>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Logs List */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="divide-y divide-gray-200">
             {filteredLogs.length > 0 ? (
@@ -293,6 +285,6 @@ export default function AdminLogsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
