@@ -3,10 +3,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import Tabs from "@/components/ui/Tabs";
-import { Activity, AlertTriangle, BellRing, Building2, ClipboardList, KeyRound, MessageSquare, Plus, Settings, Trash2, UserRound, Users, X } from "lucide-react";
+import { BellRing, Building2, ClipboardList, KeyRound, MessageSquare, Settings, Trash2, Users, X } from "lucide-react";
 
 type TeamMember = {
   id: string;
@@ -516,29 +515,72 @@ export default function AgencyTeamPage() {
     return (Array.isArray(pipelineLeads) ? pipelineLeads : []).filter((lead) => String(lead.realtor?.id || "") === realtorId);
   }, [pipelineLeads, selectedRealtorId]);
 
-  const teamAttentionMembers = useMemo(() => {
-    return (Array.isArray(insights?.members) ? insights.members : [])
-      .slice()
-      .sort((a, b) => {
-        const aLoad = Number(a.pendingReply || 0) + Number(a.clientPendingReply || 0) + Number(a.clientNoFirstContact || 0);
-        const bLoad = Number(b.pendingReply || 0) + Number(b.clientPendingReply || 0) + Number(b.clientNoFirstContact || 0);
-        if (bLoad !== aLoad) return bLoad - aLoad;
-        return Number(b.activeLeads || 0) - Number(a.activeLeads || 0);
-      })
-      .slice(0, 4);
-  }, [insights?.members]);
-
   const quickLeadAttention = useMemo(() => {
     return Array.isArray(insights?.sla?.pendingReplyLeads) ? insights.sla.pendingReplyLeads.slice(0, 4) : [];
   }, [insights?.sla?.pendingReplyLeads]);
 
-  const quickClientAttention = useMemo(() => {
-    return Array.isArray(insights?.sla?.pendingReplyClients) ? insights.sla.pendingReplyClients.slice(0, 3) : [];
-  }, [insights?.sla?.pendingReplyClients]);
+  const pendingReplyLeadIds = useMemo(() => {
+    return new Set(
+      Array.isArray(insights?.sla?.pendingReplyLeads)
+        ? insights.sla.pendingReplyLeads.map((lead) => String(lead.leadId || "")).filter(Boolean)
+        : [],
+    );
+  }, [insights?.sla?.pendingReplyLeads]);
 
   const queuePositionByUserId = useMemo(() => {
     return new Map(queueMembers.map((member, index) => [String(member.userId), index + 1]));
   }, [queueMembers]);
+
+  const memberLeadSummary = useMemo(() => {
+    const summary = new Map<string, { total: number; pending: number; leads: PipelineLead[] }>();
+
+    for (const lead of Array.isArray(pipelineLeads) ? pipelineLeads : []) {
+      const realtorId = String(lead.realtor?.id || "").trim();
+      if (!realtorId) continue;
+
+      const current = summary.get(realtorId) || { total: 0, pending: 0, leads: [] };
+      current.total += 1;
+      if (pendingReplyLeadIds.has(String(lead.id || ""))) current.pending += 1;
+      current.leads.push(lead);
+      summary.set(realtorId, current);
+    }
+
+    return summary;
+  }, [pendingReplyLeadIds, pipelineLeads]);
+
+  const visibleOperationalMembers = useMemo(() => {
+    const baseMembers = Array.isArray(insights?.members) ? insights.members : [];
+
+    return baseMembers
+      .map((member) => {
+        const memberId = String(member.userId || "");
+        const summary = memberLeadSummary.get(memberId);
+
+        return {
+          ...member,
+          leadCount: summary?.total ?? Number(member.activeLeads || 0),
+          pendingCount: summary?.pending ?? Number(member.pendingReply || 0),
+          recentLeads: (summary?.leads || [])
+            .slice()
+            .sort((a, b) => {
+              const aTime = new Date(a.createdAt || 0).getTime();
+              const bTime = new Date(b.createdAt || 0).getTime();
+              return bTime - aTime;
+            })
+            .slice(0, 3),
+        };
+      })
+      .sort((a, b) => {
+        if (b.pendingCount !== a.pendingCount) return b.pendingCount - a.pendingCount;
+        if (b.leadCount !== a.leadCount) return b.leadCount - a.leadCount;
+        return String(a.name || a.username || a.email || "").localeCompare(String(b.name || b.username || b.email || ""));
+      })
+      .slice(0, 6);
+  }, [insights?.members, memberLeadSummary]);
+
+  const membersNeedingAttention = useMemo(() => {
+    return visibleOperationalMembers.filter((member) => member.pendingCount > 0).length;
+  }, [visibleOperationalMembers]);
 
   const openNoticeModal = async () => {
     setNoticeOpen(true);
@@ -922,11 +964,6 @@ export default function AgencyTeamPage() {
   const publishedTeamProfileCount = Array.isArray(agencyProfile?.teamMembers)
     ? agencyProfile.teamMembers.filter((member) => member.publicSlug).length
     : 0;
-  const visibleTeamMembers = teamAttentionMembers.length > 0
-    ? teamAttentionMembers
-    : Array.isArray(insights?.members)
-      ? insights.members.slice(0, 4)
-      : [];
 
   const distributionLabel = (mode: TeamLeadDistributionMode) => {
     if (mode === "CAPTURER_FIRST") return "Prioridade do captador";
@@ -956,6 +993,22 @@ export default function AgencyTeamPage() {
     return `${String(first).toUpperCase()}${String(last).toUpperCase()}`.slice(0, 2);
   };
 
+  const memberDisplayName = (member: { name?: string | null; username?: string | null; email?: string | null }) => {
+    return member.name || member.username || member.email || "Membro";
+  };
+
+  const leadDisplayName = (lead: {
+    contactName?: string | null;
+    propertyTitle?: string | null;
+    name?: string | null;
+    id?: string | null;
+    leadId?: string | null;
+    contact?: { name?: string | null } | null;
+    property?: { title?: string | null } | null;
+  }) => {
+    return lead.contactName || lead.propertyTitle || lead.contact?.name || lead.property?.title || lead.name || `Lead ${lead.leadId || lead.id || ""}`;
+  };
+
   return (
     <div className="space-y-6">
       {error && (
@@ -975,217 +1028,220 @@ export default function AgencyTeamPage() {
         items={[
           {
             key: "general",
-            label: "Command Center",
+            label: "Operação",
             content: (
               <div className="space-y-6">
-                <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-white p-5 shadow-sm">
+                <div className="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-white p-6 shadow-sm shadow-sky-100/40">
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                     <div className="min-w-0">
                       <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1 text-[11px] font-semibold text-sky-700">
                         <ClipboardList className="h-3.5 w-3.5" />
-                        Command Center
+                        Operação do time
                       </div>
-                      <h2 className="mt-3 text-xl font-semibold text-gray-900">Supervisão unificada da agência</h2>
-                      <p className="mt-1 text-sm text-gray-600">
-                        Concentre aqui as decisões operacionais do time, os atalhos de execução e a ligação entre CRM, clientes, chat interno e operação comercial.
+                      <h2 className="mt-3 text-xl font-semibold text-gray-900 sm:text-2xl">Visão operacional do time</h2>
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+                        Acompanhe quem está em atendimento, onde existe risco de atraso e quais leads merecem prioridade agora, sem repetir os indicadores da página de painel.
                       </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={teamCrmHref} className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white hover:bg-neutral-800">
+                      <Link href={teamCrmHref} className="inline-flex h-10 items-center justify-center rounded-xl bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800">
                         <Users className="mr-2 h-4 w-4" />
                         Abrir leads
                       </Link>
-                      <button type="button" onClick={() => void openNoticeModal()} className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                      <button type="button" onClick={() => void openNoticeModal()} className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
                         <BellRing className="mr-2 h-4 w-4" />
                         Avisar corretor
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Workspace</div>
-                      <div className="mt-1 text-sm font-semibold text-gray-900">{team?.name || agencyProfile?.name || "Agência"}</div>
-                      <div className="text-xs text-gray-500">Papel atual: {workspaceRoleLabel || "OWNER"}</div>
+                  <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-3xl border border-slate-200/80 bg-white/90 px-4 py-4 shadow-sm shadow-slate-100/70">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Time ativo</div>
+                      <div className="mt-2 text-base font-semibold text-gray-900">{team?.name || agencyProfile?.name || "Agência"}</div>
+                      <div className="mt-1 text-xs text-gray-500">Papel atual: {workspaceRoleLabel || "OWNER"}</div>
                     </div>
-                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Distribuição</div>
-                      <div className="mt-1 text-sm font-semibold text-gray-900">{distributionLabel(leadDistributionMode)}</div>
-                      <div className="text-xs text-gray-500">{distributionHint(leadDistributionMode)}</div>
+                    <div className="rounded-3xl border border-slate-200/80 bg-white/90 px-4 py-4 shadow-sm shadow-slate-100/70">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Corretores acompanhados</div>
+                      <div className="mt-2 text-base font-semibold text-gray-900">{visibleOperationalMembers.length} integrante(s)</div>
+                      <div className="mt-1 text-xs text-gray-500">Com carteira ativa ou atividade recente na operação</div>
                     </div>
-                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Fila do time</div>
-                      <div className="mt-1 text-sm font-semibold text-gray-900">{queueMemberCount} corretor(es)</div>
-                      <div className="text-xs text-gray-500">Base atual para distribuição e cobertura comercial</div>
+                    <div className="rounded-3xl border border-amber-200 bg-amber-50/70 px-4 py-4 shadow-sm shadow-amber-100/70">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">Precisando de atenção</div>
+                      <div className="mt-2 text-base font-semibold text-gray-900">{membersNeedingAttention} corretor(es)</div>
+                      <div className="mt-1 text-xs text-amber-800/80">Com leads aguardando resposta no momento</div>
                     </div>
-                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Perfil público</div>
-                      <div className="mt-1 text-sm font-semibold text-gray-900">{agencyProfile?.completion?.score ?? 0}% completo</div>
-                      <div className="text-xs text-gray-500">{profileCompletionPending} item(ns) pendente(s)</div>
+                    <div className="rounded-3xl border border-slate-200/80 bg-white/90 px-4 py-4 shadow-sm shadow-slate-100/70">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Distribuição atual</div>
+                      <div className="mt-2 text-base font-semibold text-gray-900">{distributionLabel(leadDistributionMode)}</div>
+                      <div className="mt-1 text-xs text-gray-500">{distributionHint(leadDistributionMode)}</div>
                     </div>
                   </div>
                 </div>
 
                 {insights?.team ? (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-6">
-                      <MetricCard title="Leads ativos" value={insights.funnel.activeTotal} icon={Activity} subtitle="Em andamento" iconColor="text-teal-700" iconBgColor="bg-teal-50" />
-                      <MetricCard title="Sem responsável" value={insights.funnel.unassigned} icon={Users} subtitle="Atribuir no CRM" iconColor="text-amber-700" iconBgColor="bg-amber-50" />
-                      <MetricCard title="Pendentes (SLA)" value={insights.sla.pendingReplyTotal} icon={AlertTriangle} subtitle="Cliente aguardando" iconColor="text-rose-700" iconBgColor="bg-rose-50" />
-                      <MetricCard title="Clientes ativos" value={insights.clients.activeTotal} icon={UserRound} subtitle="Carteira institucional" iconColor="text-violet-700" iconBgColor="bg-violet-50" />
-                      <MetricCard title="Clientes pendentes" value={insights.sla.clientPendingReplyTotal} icon={MessageSquare} subtitle="Inbound sem retorno" iconColor="text-orange-700" iconBgColor="bg-orange-50" />
-                      <MetricCard title="Novos 24h" value={insights.funnel.newLast24h} icon={Plus} subtitle="Entradas recentes" iconColor="text-blue-700" iconBgColor="bg-blue-50" />
-                    </div>
-
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                       <div className="xl:col-span-2">
                         <StatCard
-                          title="Ações prioritárias"
+                          title="Integrantes em operação"
                           action={<Link href={teamCrmHref} className="text-sm font-medium text-blue-600 hover:text-blue-700">Abrir CRM</Link>}
                         >
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <Link href={`${teamCrmHref}?realtorId=unassigned`} className="rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-4 hover:bg-amber-50 transition-colors">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Distribuição</div>
-                              <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.funnel.unassigned}</div>
-                              <div className="mt-1 text-sm text-gray-600">lead(s) sem responsável</div>
-                            </Link>
-                            <Link href={`${teamCrmHref}?onlyPendingReply=1`} className="rounded-2xl border border-rose-200 bg-rose-50/70 px-4 py-4 hover:bg-rose-50 transition-colors">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">SLA de leads</div>
-                              <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
-                              <div className="mt-1 text-sm text-gray-600">cliente(s) aguardando resposta</div>
-                            </Link>
-                            <Link href="/agency/clients?sla=PENDING_REPLY" className="rounded-2xl border border-violet-200 bg-violet-50/70 px-4 py-4 hover:bg-violet-50 transition-colors">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">SLA de clientes</div>
-                              <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.sla.clientPendingReplyTotal}</div>
-                              <div className="mt-1 text-sm text-gray-600">cliente(s) sem retorno</div>
-                            </Link>
-                            <a href="#distribution" className="rounded-2xl border border-sky-200 bg-sky-50/70 px-4 py-4 hover:bg-sky-50 transition-colors">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">Fila do time</div>
-                              <div className="mt-1 text-2xl font-semibold text-gray-900">{queueMemberCount}</div>
-                              <div className="mt-1 text-sm text-gray-600">revise ordem interna e distribuição manual</div>
-                            </a>
+                          <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                            Priorize quem está com retorno pendente e use a carteira de cada integrante para entender o que está sendo atendido agora.
                           </div>
-
-                          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                              <div className="text-sm font-semibold text-gray-900">Leads pedindo ação</div>
-                              <div className="mt-3 space-y-3">
-                                {quickLeadAttention.length > 0 ? quickLeadAttention.map((lead) => (
-                                  <div key={lead.leadId} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{lead.contactName || lead.propertyTitle || `Lead ${lead.leadId}`}</p>
-                                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{lead.realtorName || "Sem corretor definido"} • {formatDateTime(lead.lastClientAt)}</p>
+                          {visibleOperationalMembers.length > 0 ? (
+                            <div className="space-y-4">
+                              {visibleOperationalMembers.map((member) => (
+                                <div key={member.userId} className={`rounded-3xl border p-5 shadow-sm ${member.pendingCount > 0 ? "border-amber-200 bg-white shadow-amber-100/50" : "border-slate-200 bg-white shadow-slate-100/60"}`}>
+                                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-start gap-3">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-semibold text-white shadow-sm shadow-slate-200">
+                                          {initials(memberDisplayName(member))}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex flex-wrap items-center gap-2.5">
+                                            <p className="truncate text-sm font-semibold text-gray-900 sm:text-base">{memberDisplayName(member)}</p>
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${member.pendingCount > 0 ? "border border-amber-200 bg-amber-50 text-amber-700" : "border border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+                                              {member.pendingCount > 0 ? "Atenção imediata" : "Operação estável"}
+                                            </span>
+                                          </div>
+                                          <p className="mt-1 text-sm text-gray-500">
+                                            {member.pendingCount > 0 ? `${member.pendingCount} lead(s) pedindo retorno no momento.` : "Nenhuma pendência crítica agora."}
+                                          </p>
+                                          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Carteira ativa</div>
+                                              <div className="mt-1 text-sm font-semibold text-slate-900">{member.leadCount} lead(s)</div>
+                                            </div>
+                                            <div className={`rounded-2xl border px-3 py-3 ${member.pendingCount > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
+                                              <div className={`text-[11px] font-semibold uppercase tracking-wide ${member.pendingCount > 0 ? "text-amber-700" : "text-emerald-700"}`}>Aguardando resposta</div>
+                                              <div className="mt-1 text-sm font-semibold text-slate-900">{member.pendingCount} lead(s)</div>
+                                            </div>
+                                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Posição na fila</div>
+                                              <div className="mt-1 text-sm font-semibold text-slate-900">#{queuePositionByUserId.get(String(member.userId)) || "-"}</div>
+                                            </div>
+                                          </div>
+                                        </div>
                                       </div>
-                                      <Link href={`${teamCrmHref}?lead=${encodeURIComponent(lead.leadId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Abrir</Link>
+                                    </div>
+
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <Link href={`${teamCrmHref}?realtorId=${encodeURIComponent(member.userId)}`} className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                                        Ver carteira
+                                      </Link>
                                     </div>
                                   </div>
-                                )) : <div className="text-sm text-gray-600">Nenhum lead crítico agora.</div>}
-                              </div>
-                            </div>
 
-                            <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                              <div className="text-sm font-semibold text-gray-900">Clientes pedindo ação</div>
-                              <div className="mt-3 space-y-3">
-                                {quickClientAttention.length > 0 ? quickClientAttention.map((client) => (
-                                  <div key={client.clientId} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{client.name || `Cliente ${client.clientId}`}</p>
-                                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{client.assignedUserName || "Sem responsável definido"} • {formatDateTime(client.lastInboundAt)}</p>
+                                  <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div>
+                                        <div className="text-sm font-semibold text-gray-900">Leads em atendimento</div>
+                                        <div className="mt-1 text-xs text-gray-500">Os contatos mais recentes para você entender rapidamente o contexto da carteira.</div>
                                       </div>
-                                      <Link href={`/agency/clients?client=${encodeURIComponent(client.clientId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Abrir</Link>
                                     </div>
-                                  </div>
-                                )) : <div className="text-sm text-gray-600">Nenhum cliente crítico agora.</div>}
-                              </div>
-                            </div>
-                          </div>
-                        </StatCard>
-                      </div>
 
-                      <div className="xl:col-span-1">
-                        <StatCard title="Supervisão do time">
-                          <div className="space-y-3">
-                            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resumo</div>
-                              <div className="mt-1 text-sm font-semibold text-gray-900">{insights.summary}</div>
-                            </div>
-                            {teamAttentionMembers.length > 0 ? teamAttentionMembers.map((member) => (
-                              <div key={member.userId} className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.username || member.email || "Membro"}</p>
-                                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
-                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-700">{member.activeLeads} leads</span>
-                                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">{member.pendingReply} pendentes</span>
-                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-violet-700">{member.activeClients ?? 0} clientes</span>
-                                </div>
-                                <div className="mt-3">
-                                  <Link href={`${teamCrmHref}?realtorId=${encodeURIComponent(member.userId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Ver carteira</Link>
-                                </div>
-                              </div>
-                            )) : <div className="text-sm text-gray-600">Sem dados por membro ainda.</div>}
-                          </div>
-                        </StatCard>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                      <div className="xl:col-span-2">
-                        <StatCard
-                          title="Carteiras do time"
-                          action={<Link href={teamCrmHref} className="text-sm font-medium text-blue-600 hover:text-blue-700">Abrir CRM</Link>}
-                        >
-                          {visibleTeamMembers.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {visibleTeamMembers.map((member) => (
-                                <div key={member.userId} className="rounded-2xl border border-gray-200 bg-white px-4 py-4">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-semibold text-gray-900 truncate">{member.name || member.username || member.email || "Membro"}</div>
-                                      <div className="mt-1 text-xs text-gray-500">Fila #{queuePositionByUserId.get(String(member.userId)) || "-"}</div>
+                                    <div className="mt-3 space-y-3">
+                                      {member.recentLeads.length > 0 ? member.recentLeads.map((lead) => (
+                                        <div key={String(lead.id)} className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 md:flex-row md:items-center md:justify-between">
+                                          <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-gray-900">{leadDisplayName(lead)}</p>
+                                            <p className="mt-1 text-xs text-gray-500">
+                                              {lead.pipelineStage || lead.status || "Sem etapa definida"}
+                                              {pendingReplyLeadIds.has(String(lead.id || "")) ? " • aguardando retorno" : " • em andamento"}
+                                              {lead.createdAt ? ` • ${formatDateTime(lead.createdAt)}` : ""}
+                                            </p>
+                                          </div>
+                                          <Link href={`${teamCrmHref}?lead=${encodeURIComponent(String(lead.id || ""))}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                                            Abrir lead
+                                          </Link>
+                                        </div>
+                                      )) : (
+                                        <div className="text-sm text-gray-600">Nenhum lead recente atribuído para este integrante.</div>
+                                      )}
                                     </div>
-                                    <Link href={`${teamCrmHref}?realtorId=${encodeURIComponent(member.userId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Abrir</Link>
-                                  </div>
-                                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
-                                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-700">{member.activeLeads} leads</span>
-                                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">{member.pendingReply} pendentes</span>
-                                    <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-violet-700">{member.activeClients ?? 0} clientes</span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="text-sm text-gray-600">Conecte um time para visualizar a carteira por corretor.</div>
+                            <div className="text-sm text-gray-600">Conecte um time e leads ao CRM para visualizar a operação por corretor.</div>
                           )}
                         </StatCard>
                       </div>
 
-                      <div className="xl:col-span-1">
-                        <StatCard title="Atalhos de gestão">
+                      <div className="xl:col-span-1 space-y-6">
+                        <StatCard title="Leads pedindo ação">
+                          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800">
+                            Leads com indício de espera por resposta do time. Use este bloco para agir antes de perder o timing.
+                          </div>
                           <div className="space-y-3">
-                            <Link href="/agency/team-chat" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                            {quickLeadAttention.length > 0 ? quickLeadAttention.map((lead) => (
+                              <div key={lead.leadId} className="rounded-3xl border border-gray-200 bg-white px-4 py-4 shadow-sm shadow-slate-100/60">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="line-clamp-2 text-sm font-semibold text-gray-900">{lead.contactName || lead.propertyTitle || `Lead ${lead.leadId}`}</p>
+                                    <div className="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                      {lead.pipelineStage || "Sem etapa definida"}
+                                    </div>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {lead.realtorName || "Sem corretor definido"}
+                                      {lead.lastClientAt ? ` • último toque ${formatDateTime(lead.lastClientAt)}` : ""}
+                                    </p>
+                                  </div>
+                                  <Link href={`${teamCrmHref}?lead=${encodeURIComponent(lead.leadId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Abrir</Link>
+                                </div>
+                              </div>
+                            )) : <div className="text-sm text-gray-600">Nenhum lead crítico agora.</div>}
+                          </div>
+                        </StatCard>
+
+                        <StatCard title="Leitura rápida do time">
+                          <div className="space-y-3">
+                            <div className="rounded-3xl border border-gray-200 bg-gray-50 px-4 py-3">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resumo operacional</div>
+                              <div className="mt-1 text-sm font-semibold text-gray-900">{insights.summary}</div>
+                            </div>
+                            <div className="rounded-3xl border border-gray-200 bg-white px-4 py-3">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Fluxo de distribuição</div>
+                              <div className="mt-1 text-sm font-semibold text-gray-900">{distributionLabel(leadDistributionMode)}</div>
+                              <div className="mt-1 text-xs text-gray-500">{distributionHint(leadDistributionMode)}</div>
+                            </div>
+                            <div className="rounded-3xl border border-gray-200 bg-white px-4 py-3">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Fila pronta</div>
+                              <div className="mt-1 text-sm font-semibold text-gray-900">{queueMemberCount} corretor(es)</div>
+                              <div className="text-xs text-gray-500">Base atual para distribuição e cobertura comercial</div>
+                            </div>
+                          </div>
+                        </StatCard>
+
+                        <StatCard title="Atalhos de gestão">
+                          <div className="space-y-2.5">
+                            <Link href="/agency/team-chat" className="flex items-start gap-3 rounded-3xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
                               <MessageSquare className="mt-0.5 h-4 w-4 text-gray-700" />
                               <div>
                                 <div className="text-sm font-semibold text-gray-900">Chat do time</div>
                                 <div className="mt-1 text-sm text-gray-600">Acompanhe comunicação interna e destrave respostas.</div>
                               </div>
                             </Link>
-                            <a href="#distribution" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                            <a href="#distribution" className="flex items-start gap-3 rounded-3xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
                               <Settings className="mt-0.5 h-4 w-4 text-gray-700" />
                               <div>
                                 <div className="text-sm font-semibold text-gray-900">Distribuição e fila</div>
                                 <div className="mt-1 text-sm text-gray-600">Revise roteamento, round-robin e ordem do time.</div>
                               </div>
                             </a>
-                            <a href="#advanced" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                            <a href="#advanced" className="flex items-start gap-3 rounded-3xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
                               <Building2 className="mt-0.5 h-4 w-4 text-gray-700" />
                               <div>
                                 <div className="text-sm font-semibold text-gray-900">Perfil institucional</div>
                                 <div className="mt-1 text-sm text-gray-600">Atualize página pública, roteamento e playbooks.</div>
                               </div>
                             </a>
-                            <a href="#invites" className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
+                            <a href="#invites" className="flex items-start gap-3 rounded-3xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 transition-colors">
                               <KeyRound className="mt-0.5 h-4 w-4 text-gray-700" />
                               <div>
                                 <div className="text-sm font-semibold text-gray-900">Acessos do time</div>
@@ -1199,7 +1255,7 @@ export default function AgencyTeamPage() {
                   </div>
                 ) : (
                   <StatCard title="Conecte o time da agência">
-                    <div className="text-sm text-gray-600">Vincule um time para liberar o Command Center, o CRM e as ações de supervisão.</div>
+                    <div className="text-sm text-gray-600">Vincule um time para liberar a visão operacional, o CRM e o acompanhamento por integrante.</div>
                   </StatCard>
                 )}
               </div>

@@ -523,18 +523,6 @@ export default function AgencyTeamCrmPage() {
             {insights?.sla?.pendingReplyTotal ?? "-"}
           </div>
         </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="text-[11px] font-semibold text-gray-500">Clientes ativos</div>
-          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
-            {insights?.clients?.activeTotal ?? "-"}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="text-[11px] font-semibold text-gray-500">Clientes pendentes</div>
-          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
-            {insights?.sla?.clientPendingReplyTotal ?? "-"}
-          </div>
-        </div>
       </div>
 
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm lg:shadow-none lg:rounded-t-2xl lg:border lg:border-gray-200 lg:border-b-0">

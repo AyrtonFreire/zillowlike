@@ -16,21 +16,26 @@ import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import Drawer from "@/components/ui/Drawer";
 import SearchFiltersBarZillow, { type FilterValues } from "@/components/SearchFiltersBarZillow";
 import {
+  ArrowUpRight,
   BadgeDollarSign,
   BedDouble,
+  Building2,
   Check,
   Clock,
   Copy,
+  Globe,
   Grid3X3,
   Info,
+  Instagram,
+  Linkedin,
   MapPin,
   MessageCircle,
   Phone,
   PawPrint,
   Search,
   Sparkles,
-  Star,
   TrendingUp,
+  Users,
   X,
 } from "lucide-react";
 
@@ -277,6 +282,39 @@ function toDateLabel(value: string) {
   return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
 }
 
+function normalizeExternalUrl(value: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
+function normalizeInstagramUrl(value: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const handle = raw.replace(/^@/, "").replace(/^instagram\.com\//i, "").replace(/^www\.instagram\.com\//i, "");
+  if (!handle) return null;
+  return `https://www.instagram.com/${handle}`;
+}
+
+function formatCompactUrl(value: string | null) {
+  const normalized = normalizeExternalUrl(value);
+  if (!normalized) return null;
+  return normalized.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "");
+}
+
+function humanizeToken(value: string | null | undefined) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  return raw
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function RealtorPublicLandingClient({
   siteUrl,
   pageUrl,
@@ -377,6 +415,100 @@ export default function RealtorPublicLandingClient({
 
     return items;
   }, [properties.length, realtor.experience, realtor.rentedCount, realtor.soldCount]);
+
+  const roleLabel = realtor.role === "AGENCY" ? "Imobiliária" : "Corretor";
+
+  const heroImage = useMemo(() => {
+    return properties.find((item) => item.images?.[0]?.url)?.images?.[0]?.url || realtor.image || null;
+  }, [properties, realtor.image]);
+
+  const websiteHref = useMemo(() => normalizeExternalUrl(agencyProfile?.website || null), [agencyProfile?.website]);
+
+  const instagramHref = useMemo(() => normalizeInstagramUrl(realtor.instagram), [realtor.instagram]);
+
+  const linkedinHref = useMemo(() => normalizeExternalUrl(realtor.linkedin), [realtor.linkedin]);
+
+  const socialLinks = useMemo(() => {
+    const items: Array<{ key: string; label: string; href: string; icon: ReactNode }> = [];
+    if (instagramHref) items.push({ key: "instagram", label: "Instagram", href: instagramHref, icon: <Instagram className="h-4 w-4" /> });
+    if (linkedinHref) items.push({ key: "linkedin", label: "LinkedIn", href: linkedinHref, icon: <Linkedin className="h-4 w-4" /> });
+    if (websiteHref) items.push({ key: "website", label: "Website", href: websiteHref, icon: <Globe className="h-4 w-4" /> });
+    return items;
+  }, [instagramHref, linkedinHref, websiteHref]);
+
+  const topFacts = useMemo(() => {
+    const items: Array<{ label: string; value: string; helper: string }> = [
+      {
+        label: "Carteira",
+        value: String(properties.length),
+        helper: realtor.role === "AGENCY" ? "Imóveis ativos da agência" : "Imóveis ativos no perfil",
+      },
+    ];
+
+    if (realtor.role === "AGENCY") {
+      items.push({
+        label: "Corretores",
+        value: String(agencyProfile?.teamMembers.length || 0),
+        helper: "Perfis públicos vinculados",
+      });
+    } else if (realtor.experience != null && realtor.experience > 0) {
+      items.push({
+        label: "Experiência",
+        value: `${realtor.experience} ano${realtor.experience === 1 ? "" : "s"}`,
+        helper: "Tempo declarado de atuação",
+      });
+    }
+
+    if (locationLabel) {
+      items.push({
+        label: "Base",
+        value: locationLabel,
+        helper: "Cidade e estado públicos",
+      });
+    }
+
+    if (realtor.totalRatings > 0) {
+      items.push({
+        label: "Avaliações",
+        value: String(realtor.totalRatings),
+        helper: `Nota média ${ratingValueLabel}`,
+      });
+    } else if (realtor.avgResponseTime != null) {
+      items.push({
+        label: "Resposta média",
+        value: `${realtor.avgResponseTime} min`,
+        helper: "Tempo médio de resposta",
+      });
+    }
+
+    if (websiteHref) {
+      items.push({
+        label: "Website",
+        value: formatCompactUrl(websiteHref) || "Site",
+        helper: "Canal institucional",
+      });
+    } else if (teamLabel) {
+      items.push({
+        label: "Equipe",
+        value: teamLabel,
+        helper: "Time associado ao perfil",
+      });
+    }
+
+    if (serviceAreaChips.length > 0) {
+      items.push({
+        label: "Regiões",
+        value: String(serviceAreaChips.length),
+        helper: serviceAreaChips.slice(0, 2).join(" • "),
+      });
+    }
+
+    return items.slice(0, 6);
+  }, [agencyProfile?.teamMembers.length, locationLabel, properties.length, ratingValueLabel, realtor.avgResponseTime, realtor.experience, realtor.role, realtor.totalRatings, serviceAreaChips, teamLabel, websiteHref]);
+
+  const teamPreview = useMemo(() => {
+    return (agencyProfile?.teamMembers || []).slice(0, 3);
+  }, [agencyProfile?.teamMembers]);
 
   const isFeatured = (p: PublicProperty) => Array.isArray(p.conditionTags) && p.conditionTags.includes("Destaque");
   const isPetsOk = (p: PublicProperty) => Boolean(p.petFriendly) || Boolean(p.petsSmall) || Boolean(p.petsLarge);
@@ -743,14 +875,17 @@ export default function RealtorPublicLandingClient({
 
   const ShareSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
     const tileBase =
-      "group w-full aspect-square max-w-[56px] sm:max-w-[64px] rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center justify-center shadow-sm hover:shadow transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
+      "group flex h-14 w-14 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-800 transition-colors hover:border-black/30 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
     const srOnly = "sr-only";
 
     return (
       <section id={id} className={wrapperClassName}>
-        <div className="text-base font-semibold text-gray-900">Compartilhar</div>
-        <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-4 sm:p-5 shadow-sm">
-          <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3 justify-items-center">
+        <div className="rounded-[28px] border border-black/10 bg-white p-6">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Distribuição</div>
+          <h3 className="mt-2 font-serif text-2xl text-neutral-950">Compartilhar perfil</h3>
+          <p className="mt-2 text-sm leading-relaxed text-neutral-600">Use os canais abaixo para divulgar o perfil público sem sair do padrão institucional.</p>
+
+          <div className="mt-5 grid grid-cols-3 gap-3 justify-items-start">
             <a
               href={`https://wa.me/?text=${encodeURIComponent(shareTemplates.find((t) => t.key === "whatsapp")?.text || pageUrl)}`}
               target="_blank"
@@ -759,7 +894,7 @@ export default function RealtorPublicLandingClient({
               aria-label="Compartilhar no WhatsApp"
               title="WhatsApp"
             >
-              <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-[12px] bg-[#25D366] flex items-center justify-center shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#25D366]">
                 <BrandWhatsAppIcon className="h-5 w-5 text-white" />
               </span>
               <span className={srOnly}>WhatsApp</span>
@@ -777,7 +912,7 @@ export default function RealtorPublicLandingClient({
                   <Check className="h-3.5 w-3.5 text-white" />
                 </span>
               ) : null}
-              <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-[12px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#515bd4] flex items-center justify-center shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#515bd4]">
                 <BrandInstagramIcon className="h-5 w-5 text-white" />
               </span>
               <span className={srOnly}>Instagram</span>
@@ -791,22 +926,25 @@ export default function RealtorPublicLandingClient({
               aria-label="Compartilhar no Facebook"
               title="Facebook"
             >
-              <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-[12px] bg-[#1877F2] flex items-center justify-center shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2]">
                 <BrandFacebookIcon className="h-5 w-5 text-white" />
               </span>
               <span className={srOnly}>Facebook</span>
             </a>
           </div>
 
-          <div className="mt-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+          <div className="mt-5 rounded-[24px] border border-black/10 bg-[#faf7f1] px-4 py-4">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-[11px] font-semibold text-neutral-500">Link do perfil</div>
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Link do perfil</div>
+                <div className="mt-2 text-xs font-mono text-neutral-700 break-all">{pageUrl}</div>
+              </div>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className={`h-8 w-8 rounded-full border border-neutral-200 flex items-center justify-center transition duration-150 ${
+                className={`flex h-10 w-10 items-center justify-center rounded-full border border-black/10 transition duration-150 ${
                   copiedLink
-                    ? "bg-emerald-600 border-emerald-600 text-white scale-[1.06] shadow-sm"
+                    ? "scale-[1.06] border-emerald-600 bg-emerald-600 text-white shadow-sm"
                     : "bg-white text-neutral-700 hover:bg-neutral-50"
                 }`}
                 aria-label="Copiar link do perfil"
@@ -816,8 +954,6 @@ export default function RealtorPublicLandingClient({
                 <span className={srOnly}>Copiar link</span>
               </button>
             </div>
-
-            <div className="mt-2 text-xs font-mono text-neutral-700 break-all">{pageUrl}</div>
           </div>
         </div>
       </section>
@@ -825,507 +961,602 @@ export default function RealtorPublicLandingClient({
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className="sticky top-0 z-[300]">
+    <div className="min-h-screen bg-[#f6f1e8] text-neutral-900">
+      <div className="sticky top-0 z-[300] border-b border-black/10 bg-white/90 backdrop-blur">
         <ModernNavbar forceLight={true} />
       </div>
 
-      <main className="mx-auto max-w-screen-2xl pb-24 md:pb-12">
-        <div className="lg:flex lg:items-start lg:gap-6">
-          <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-20 lg:w-72 lg:shrink-0 lg:mt-4">
-            <div className="rounded-3xl border border-neutral-200 bg-white/90 backdrop-blur p-2 shadow-sm">
-              <a
-                href="#grid"
-                className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
-              >
-                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
-                  <Grid3X3 className="h-5 w-5" />
-                </span>
-                <span className="text-sm font-semibold">Imóveis</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => openReviews("sidebar")}
-                className="mt-1 w-full text-left group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
-              >
-                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
-                  <Star className="h-5 w-5" />
-                </span>
-                <span className="text-sm font-semibold">Avaliações</span>
-              </button>
-              {isOwner ? (
-                <a
-                  href="#compartilhar"
-                  className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
-                >
-                  <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
-                    <Copy className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold">Compartilhar</span>
-                </a>
-              ) : null}
-            </div>
+      <main className="pb-24 md:pb-12">
+        <section className="relative border-b border-black/10 bg-neutral-950">
+          <div className="relative h-[38vh] min-h-[320px] md:h-[46vh] md:min-h-[440px]">
+            {heroImage ? (
+              <Image
+                src={heroImage}
+                alt={realtor.name}
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.18),_transparent_40%),linear-gradient(135deg,_#18181b,_#3f3f46_55%,_#111827)]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-black/15" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#f6f1e8] via-transparent to-transparent" />
 
-            <div className="mt-4 space-y-6">
-              <div className="px-2">
-                <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden max-h-[calc(100vh-260px)] flex flex-col">
-                  <SearchFiltersBarZillow
-                    variant="panel"
-                    disablePreview
-                    filters={filters}
-                    totalResults={filteredInventory.length}
-                    onFiltersChange={(newFilters) => setFilters(newFilters)}
-                    onClearFilters={() => {
-                      setFilters(EMPTY_FILTERS);
-                      setVisibleCount(DEFAULT_PAGE_SIZE);
-                    }}
-                    onApply={(applied) => {
-                      setFilters(applied);
-                      setVisibleCount(DEFAULT_PAGE_SIZE);
-                    }}
-                  />
+            <div className="absolute inset-x-0 bottom-10">
+              <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+                <div className="max-w-4xl">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">{roleLabel} no OggaHub</div>
+                  <h1 className="mt-3 font-serif text-4xl leading-tight text-white sm:text-5xl lg:text-6xl">{realtor.name}</h1>
+                  {realtor.publicHeadline ? (
+                    <p className="mt-4 max-w-2xl text-sm leading-7 text-white/82 sm:text-base">{realtor.publicHeadline}</p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="relative -mt-16 overflow-hidden rounded-[32px] border border-black/10 bg-[#fbfaf7] shadow-[0_24px_80px_rgba(0,0,0,0.12)] md:-mt-20">
+            <div className="grid gap-8 border-b border-black/10 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0">
+                <div className="flex items-start gap-4 sm:gap-6">
+                  <div className="shrink-0 rounded-[28px] border border-black/10 bg-white p-1.5 shadow-sm">
+                    {realtor.image ? (
+                      <Image
+                        src={realtor.image}
+                        alt={realtor.name}
+                        width={128}
+                        height={128}
+                        className="h-24 w-24 rounded-[22px] object-cover sm:h-28 sm:w-28"
+                        priority
+                      />
+                    ) : (
+                      <div className="flex h-24 w-24 items-center justify-center rounded-[22px] bg-neutral-100 text-3xl font-semibold text-neutral-700 sm:h-28 sm:w-28">
+                        {(realtor.name || "?").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-600">
+                        {realtor.role === "AGENCY" ? <Building2 className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
+                        {roleLabel}
+                      </span>
+                      {realtor.creci && realtor.creciState ? (
+                        <span className="inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-neutral-700">
+                          CRECI {realtor.creci}/{realtor.creciState}
+                        </span>
+                      ) : null}
+                      {teamLabel ? (
+                        <span className="inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-neutral-700">
+                          Time {teamLabel}
+                        </span>
+                      ) : null}
+                      {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
+                    </div>
+
+                    <div className="mt-4 text-[15px] leading-7 text-neutral-700">
+                      {realtor.publicBio ? realtor.publicBio : realtor.publicHeadline || `Conheça a curadoria e a apresentação pública de ${realtor.name}.`}
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {locationLabel ? (
+                        <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-[#f6f1e8] px-3 py-1.5 text-xs font-medium text-neutral-700">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {locationLabel}
+                        </span>
+                      ) : null}
+                      {serviceAreaChips.slice(0, 5).map((area) => (
+                        <span key={area} className="inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700">
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {isOwner ? <ShareSection id="compartilhar" wrapperClassName="px-2" /> : null}
-            </div>
-          </aside>
-
-          <div className="min-w-0 flex-1">
-            <section className="px-4 sm:px-6 lg:px-10 pt-6">
-              <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-white to-teal-50" />
-                <div className="relative p-5 sm:p-7">
-                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start gap-6">
-                    <div className="min-w-0">
-                      <div className="flex items-start gap-4 sm:gap-5">
-                        <div className="flex-shrink-0">
-                          <div className="rounded-3xl p-[2px] bg-accent shadow-sm">
-                            <div className="rounded-3xl bg-white p-[2px]">
-                              {realtor.image ? (
-                                <Image
-                                  src={realtor.image}
-                                  alt={realtor.name}
-                                  width={128}
-                                  height={128}
-                                  className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl object-cover"
-                                  priority
-                                />
-                              ) : (
-                                <div className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl bg-gray-100 flex items-center justify-center text-4xl font-semibold text-gray-700">
-                                  {(realtor.name || "?").charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight truncate">{realtor.name}</h1>
-                            {realtor.creci && realtor.creciState ? (
-                              <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
-                                CRECI {realtor.creci}/{realtor.creciState}
-                              </span>
-                            ) : null}
-                            {teamLabel ? (
-                              <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
-                                Time {teamLabel}
-                              </span>
-                            ) : null}
-                            {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
-                          </div>
-
-                          <div className="mt-3 text-sm sm:text-base text-neutral-900 whitespace-pre-line">
-                            {realtor.publicHeadline ? <div className="font-semibold">{realtor.publicHeadline}</div> : null}
-                            {realtor.publicBio ? <div className="mt-1 text-neutral-700">{realtor.publicBio}</div> : null}
-                            {locationLabel ? <div className="mt-1 text-neutral-600">{locationLabel}</div> : null}
-                            {serviceAreaChips.length > 0 ? (
-                              <div className="mt-1 text-neutral-600">Atendo: {serviceAreaChips.slice(0, 5).join(" • ")}</div>
-                            ) : null}
-                          </div>
-                        </div>
+              <div className="space-y-5 lg:border-l lg:border-black/10 lg:pl-8">
+                <button type="button" onClick={() => openReviews("hero_rating")} className="w-full text-left">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Reputação pública</div>
+                  <div className="mt-3 flex items-end justify-between gap-4">
+                    <div>
+                      <div className="font-serif text-5xl leading-none text-neutral-950">{ratingValueLabel}</div>
+                      <div className="mt-2">
+                        <RatingStars readonly rating={Math.round(realtor.avgRating)} size="sm" />
                       </div>
-
-                      {testimonialsPreview.length > 0 ? (
-                        <div className={`mt-5 grid gap-3 ${testimonialsPreview.length === 1 ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
-                          {testimonialsPreview.map((t) => (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => openReviews("hero_testimonial")}
-                              className="text-left rounded-3xl border border-neutral-200 bg-white/80 hover:bg-white p-4 shadow-sm hover:shadow transition-shadow"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-sm font-semibold text-neutral-900 truncate">{t.authorName || "Cliente"}</div>
-                                  <div className="text-xs text-neutral-500">{toDateLabel(t.createdAt)}</div>
-                                </div>
-                                <div className="flex-shrink-0">
-                                  <RatingStars readonly rating={t.rating} size="sm" />
-                                </div>
-                              </div>
-                              <div className="mt-3 text-sm text-neutral-700 max-h-[4.5rem] overflow-hidden">“{t.comment}”</div>
-                            </button>
-                          ))}
+                    </div>
+                    <div className="text-right text-sm text-neutral-600">
+                      <div>{realtor.totalRatings} avaliação{realtor.totalRatings === 1 ? "" : "s"}</div>
+                      {realtor.avgResponseTime != null ? (
+                        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-neutral-700">
+                          <Clock className="h-3.5 w-3.5" />
+                          {realtor.avgResponseTime} min de resposta
                         </div>
                       ) : null}
                     </div>
+                  </div>
+                </button>
 
-                    <div className="lg:w-[380px]">
-                      <div className="rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-4 sm:p-5 shadow-sm">
-                        <div className="flex items-end justify-between gap-4">
-                          <button type="button" onClick={() => openReviews("hero_rating")} className="text-left">
-                            <div className="text-4xl sm:text-5xl font-bold text-neutral-900 leading-none">{ratingValueLabel}</div>
-                            <div className="mt-2">
-                              <RatingStars readonly rating={Math.round(realtor.avgRating)} size="sm" />
-                            </div>
-                            <div className="mt-1 text-xs font-semibold text-neutral-600">
-                              {realtor.totalRatings} avaliação{realtor.totalRatings === 1 ? "" : "s"}
-                            </div>
-                          </button>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {whatsappDigits ? (
+                    <button
+                      type="button"
+                      onClick={() => handleWhatsApp(baseIntroMessage, "hero_primary")}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-neutral-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Falar no WhatsApp
+                    </button>
+                  ) : (
+                    <div className="rounded-full border border-black/10 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-600">
+                      WhatsApp indisponível
+                    </div>
+                  )}
 
-                          <div className="text-right">
-                            {realtor.avgResponseTime != null ? (
-                              <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700">
-                                <Clock className="h-4 w-4" />
-                                {realtor.avgResponseTime} min
+                  {telHref ? (
+                    <a
+                      href={`tel:${telHref}`}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50"
+                      onClick={() => {
+                        try {
+                          track({ name: "public_profile_call", payload: { source: "hero" } } as any);
+                        } catch {}
+                      }}
+                    >
+                      <Phone className="h-4 w-4" />
+                      Ligar agora
+                    </a>
+                  ) : (
+                    <div className="rounded-full border border-black/10 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-600">
+                      Telefone indisponível
+                    </div>
+                  )}
+                </div>
+
+                {socialLinks.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {socialLinks.map((item) => (
+                      <a
+                        key={item.key}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50"
+                      >
+                        {item.icon}
+                        {item.label}
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+
+                {teamPreview.length > 0 ? (
+                  <div className="rounded-[24px] border border-black/10 bg-[#f8f3ea] p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Equipe publicada</div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="flex -space-x-3">
+                        {teamPreview.map((member) => (
+                          <div key={member.id} className="h-10 w-10 overflow-hidden rounded-full border-2 border-[#f8f3ea] bg-white">
+                            {member.image ? (
+                              <Image src={member.image} alt={member.name} width={40} height={40} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-neutral-700">
+                                {(member.name || "?").charAt(0).toUpperCase()}
                               </div>
-                            ) : null}
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-sm text-neutral-700">
+                        <div className="font-medium text-neutral-900">{agencyProfile?.teamMembers.length} profissionais em destaque</div>
+                        <div className="text-xs text-neutral-600">Equipe pública vinculada ao perfil institucional</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="grid gap-px bg-black/10 sm:grid-cols-2 xl:grid-cols-3">
+              {topFacts.map((item) => (
+                <div key={item.label} className="bg-[#fbfaf7] px-6 py-5">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">{item.label}</div>
+                  <div className="mt-2 text-lg font-semibold text-neutral-950">{item.value}</div>
+                  <div className="mt-1 text-sm text-neutral-600">{item.helper}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-b border-black/10 py-5">
+            <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-neutral-600">
+              <a href="#about" className="transition hover:text-neutral-950">Sobre</a>
+              {realtor.role === "AGENCY" && agencyProfile?.teamMembers.length ? (
+                <a href="#team" className="transition hover:text-neutral-950">Equipe</a>
+              ) : null}
+              <a href="#grid" className="transition hover:text-neutral-950">Imóveis</a>
+              <button type="button" onClick={() => openReviews("section_nav")} className="transition hover:text-neutral-950">
+                Avaliações
+              </button>
+              {isOwner ? (
+                <a href="#share" className="transition hover:text-neutral-950">Compartilhar</a>
+              ) : null}
+            </nav>
+          </div>
+
+          <div className="grid gap-12 pt-10 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0">
+              <section id="about" className="scroll-mt-28 border-b border-black/10 pb-10">
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="max-w-4xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Apresentação</div>
+                    <h2 className="mt-3 font-serif text-3xl text-neutral-950 sm:text-4xl">Uma presença pública mais editorial, sem perder profundidade.</h2>
+                    <div className="mt-5 whitespace-pre-line text-[15px] leading-8 text-neutral-700">
+                      {realtor.publicBio ? realtor.publicBio : realtor.publicHeadline || `${realtor.name} apresenta uma seleção pública de imóveis com foco em clareza, confiança e contexto de mercado.`}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-black/10 bg-white p-6">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Informações-chave</div>
+                    <div className="mt-4 space-y-4 text-sm text-neutral-700">
+                      {locationLabel ? (
+                        <div>
+                          <div className="font-medium text-neutral-950">Base de atuação</div>
+                          <div className="mt-1">{locationLabel}</div>
+                        </div>
+                      ) : null}
+                      {serviceAreaChips.length > 0 ? (
+                        <div>
+                          <div className="font-medium text-neutral-950">Áreas atendidas</div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {serviceAreaChips.slice(0, 8).map((area) => (
+                              <span key={area} className="rounded-full border border-black/10 px-3 py-1 text-xs text-neutral-700">
+                                {area}
+                              </span>
+                            ))}
                           </div>
                         </div>
-
-                        <div
-                          className={`mt-4 grid gap-2 ${
-                            heroStats.length === 1 ? "grid-cols-1" : "grid-cols-2"
-                          }`}
-                        >
-                          {heroStats.map((s) => (
-                            <div key={s.label} className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
-                              <div className="text-[11px] font-semibold text-neutral-500">{s.label}</div>
-                              <div className="mt-0.5 text-lg font-semibold text-neutral-900">{s.value}</div>
-                            </div>
-                          ))}
+                      ) : null}
+                      {websiteHref ? (
+                        <div>
+                          <div className="font-medium text-neutral-950">Website</div>
+                          <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-2 text-neutral-700 underline-offset-4 hover:underline">
+                            {formatCompactUrl(websiteHref)}
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </a>
                         </div>
-
-                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {whatsappDigits ? (
-                            <button
-                              type="button"
-                              onClick={() => handleWhatsApp(baseIntroMessage, "hero_primary")}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                              Falar no WhatsApp
-                            </button>
-                          ) : (
-                            <div className="rounded-2xl border border-neutral-200 bg-white/70 px-4 py-3 text-sm font-semibold text-neutral-700">
-                              WhatsApp não configurado
-                            </div>
-                          )}
-
-                          {telHref ? (
-                            <a
-                              href={`tel:${telHref}`}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
-                              onClick={() => {
-                                try {
-                                  track({ name: "public_profile_call", payload: { source: "hero" } } as any);
-                                } catch {}
-                              }}
-                            >
-                              <Phone className="h-4 w-4" />
-                              Ligar
-                            </a>
-                          ) : (
-                            <div className="rounded-2xl border border-neutral-200 bg-white/70 px-4 py-3 text-sm font-semibold text-neutral-700">
-                              Telefone não disponível
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            {realtor.role === "AGENCY" && agencyProfile ? (
-              <AgencyPublicProfileSections
-                agencySlug={realtor.publicSlug}
-                agencyName={realtor.name}
-                website={agencyProfile.website}
-                specialties={agencyProfile.specialties}
-                yearsInBusiness={agencyProfile.yearsInBusiness}
-                serviceAreas={agencyProfile.serviceAreas}
-                completion={agencyProfile.completion}
-                teamMembers={agencyProfile.teamMembers}
-                ctaCards={agencyProfile.ctaCards}
-                operationMetrics={agencyProfile.operationMetrics}
-              />
-            ) : null}
-
-            <section className="mt-6 px-4 sm:px-6 lg:px-10">
-              <div className="flex items-start gap-4 overflow-x-auto pb-2">
-                {highlights.map((h) => {
-                  const active = h.key === highlight;
-                  return (
-                    <button
-                      key={h.key}
-                      type="button"
-                      onClick={() => {
-                        setHighlight(h.key);
-                        setVisibleCount(DEFAULT_PAGE_SIZE);
-                        try {
-                          track({ name: "public_profile_highlight", value: h.key } as any);
-                        } catch {}
-                      }}
-                      className="flex flex-col items-center gap-1 flex-shrink-0"
-                    >
-                      <div className={`h-16 w-16 rounded-full p-[2px] ${active ? "bg-accent" : "bg-neutral-200"}`}>
-                        <div
-                          className={`h-full w-full rounded-full flex items-center justify-center transition-colors ${
-                            active ? "bg-white text-neutral-900" : "bg-white text-neutral-700"
-                          }`}
-                        >
-                          {h.icon}
-                        </div>
-                      </div>
-                      <div className={`text-[11px] font-semibold ${active ? "text-neutral-900" : "text-neutral-600"}`}>{h.label}</div>
+              {testimonialsPreview.length > 0 ? (
+                <section className="border-b border-black/10 py-10">
+                  <div className="flex items-end justify-between gap-4">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Prova social</div>
+                      <h2 className="mt-2 font-serif text-3xl text-neutral-950">Avaliações em destaque</h2>
+                    </div>
+                    <button type="button" onClick={() => openReviews("featured_reviews")} className="text-sm font-medium text-neutral-700 underline-offset-4 hover:text-neutral-950 hover:underline">
+                      Ver todas
                     </button>
-                  );
-                })}
-              </div>
-            </section>
+                  </div>
 
-            <nav className="lg:hidden sticky top-16 z-40 bg-white/90 backdrop-blur border-y border-neutral-200">
-              <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 h-12 flex items-center justify-around">
-                <a href="#grid" className="p-2 text-gray-900">
-                  <Grid3X3 className="h-5 w-5" />
-                </a>
-                <button type="button" onClick={() => openReviews("mobile_nav")} className="p-2 text-gray-700">
-                  <Star className="h-5 w-5" />
-                </button>
-              </div>
-            </nav>
-
-            <section id="grid" className="mt-0 scroll-mt-24">
-              <div className="px-4 sm:px-6 lg:px-10 pt-4 pb-3">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-neutral-900">Imóveis</div>
-                    <div className="md:hidden flex items-center gap-2">
+                  <div className={`mt-6 grid gap-4 ${testimonialsPreview.length === 1 ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
+                    {testimonialsPreview.map((item) => (
                       <button
+                        key={item.id}
                         type="button"
-                        onClick={() => {
-                          setFiltersOpen(true);
-                        }}
-                        className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800"
+                        onClick={() => openReviews("hero_testimonial")}
+                        className="rounded-[28px] border border-black/10 bg-white p-6 text-left transition hover:border-black/20 hover:shadow-sm"
                       >
-                        <Search className="h-4 w-4" />
-                        Filtros
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-sm font-semibold text-neutral-950">{item.authorName || "Cliente"}</div>
+                            <div className="mt-1 text-xs text-neutral-500">{toDateLabel(item.createdAt)}</div>
+                          </div>
+                          <RatingStars readonly rating={item.rating} size="sm" />
+                        </div>
+                        <div className="mt-4 text-[15px] leading-7 text-neutral-700">“{item.comment}”</div>
                       </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {realtor.role === "AGENCY" && agencyProfile ? (
+                <AgencyPublicProfileSections
+                  agencySlug={realtor.publicSlug}
+                  agencyName={realtor.name}
+                  website={agencyProfile.website}
+                  specialties={agencyProfile.specialties}
+                  yearsInBusiness={agencyProfile.yearsInBusiness}
+                  serviceAreas={agencyProfile.serviceAreas}
+                  completion={agencyProfile.completion}
+                  teamMembers={agencyProfile.teamMembers}
+                  ctaCards={agencyProfile.ctaCards}
+                  operationMetrics={agencyProfile.operationMetrics}
+                />
+              ) : null}
+
+              <section id="grid" className="scroll-mt-28 pt-10">
+                <div className="flex flex-col gap-6 border-b border-black/10 pb-8 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Portfólio público</div>
+                    <h2 className="mt-2 font-serif text-3xl text-neutral-950 sm:text-4xl">Imóveis em vitrine</h2>
+                    <p className="mt-3 text-sm leading-7 text-neutral-600">
+                      {searchedList.length} resultado{searchedList.length === 1 ? "" : "s"} dentro da seleção ativa.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-4 lg:items-end">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => {
-                          setMobileMapOpen(true);
+                          setDesktopViewMode("list");
                           setMapBounds(null);
                         }}
-                        className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800"
+                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                          desktopViewMode === "list"
+                            ? "border-neutral-950 bg-neutral-950 text-white"
+                            : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50"
+                        }`}
+                      >
+                        <Grid3X3 className="h-4 w-4" />
+                        Lista
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.innerWidth < 768) {
+                            setMobileMapOpen(true);
+                          } else {
+                            setDesktopViewMode("map");
+                          }
+                          setMapBounds(null);
+                        }}
+                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                          desktopViewMode === "map"
+                            ? "border-neutral-950 bg-neutral-950 text-white"
+                            : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50"
+                        }`}
                       >
                         <MapPin className="h-4 w-4" />
-                        Ver mapa
+                        Mapa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFiltersOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50"
+                      >
+                        <Search className="h-4 w-4" />
+                        Refinar
                       </button>
                     </div>
-                  </div>
 
-                  <div className="hidden md:flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDesktopViewMode("list");
-                        setMapBounds(null);
-                      }}
-                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
-                        desktopViewMode === "list"
-                          ? "border-accent bg-accent text-white"
-                          : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
-                      }`}
-                    >
-                      <Grid3X3 className="h-4 w-4" />
-                      Lista
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDesktopViewMode("map");
-                        setMapBounds(null);
-                      }}
-                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
-                        desktopViewMode === "map"
-                          ? "border-accent bg-accent text-white"
-                          : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
-                      }`}
-                    >
-                      <MapPin className="h-4 w-4" />
-                      Mapa
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setFiltersOpen(true)}
-                      className="lg:hidden inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
-                    >
-                      <Search className="h-4 w-4" />
-                      Filtros
-                    </button>
-                  </div>
-                  <div className="w-full md:max-w-md">
-                    <div className="flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg bg-white hover:border-neutral-400 transition-colors focus-within:ring-2 focus-within:ring-accent">
-                      <Search className="w-4 h-4 text-neutral-400" />
-                      <input
-                        type="text"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
+                    <div className="w-full lg:w-[360px]">
+                      <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-3 transition focus-within:border-black/30">
+                        <Search className="h-4 w-4 text-neutral-400" />
+                        <input
+                          type="text"
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const next = searchInput.trim();
+                              setSearchTerm(next);
+                              setVisibleCount(DEFAULT_PAGE_SIZE);
+                            }
+                          }}
+                          placeholder="Buscar por bairro, cidade ou título"
+                          className="flex-1 bg-transparent text-sm outline-none"
+                        />
+                        {searchInput.trim() ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchInput("");
+                              setSearchTerm("");
+                              setVisibleCount(DEFAULT_PAGE_SIZE);
+                            }}
+                            className="rounded-full p-1 transition hover:bg-neutral-100"
+                            aria-label="Limpar"
+                          >
+                            <X className="h-4 w-4 text-neutral-500" />
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
                             const next = searchInput.trim();
                             setSearchTerm(next);
                             setVisibleCount(DEFAULT_PAGE_SIZE);
-                          }
-                        }}
-                        placeholder="Buscar por bairro, cidade, título..."
-                        className="flex-1 outline-none text-sm bg-transparent"
-                      />
-                      {searchInput.trim() ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchInput("");
-                            setSearchTerm("");
-                            setVisibleCount(DEFAULT_PAGE_SIZE);
                           }}
-                          className="p-1 hover:bg-neutral-100 rounded transition-colors"
-                          aria-label="Limpar"
+                          className="rounded-full p-1 transition hover:bg-neutral-100"
+                          aria-label="Buscar"
                         >
-                          <X className="w-4 h-4 text-neutral-500" />
+                          <Search className="h-4 w-4 text-neutral-700" />
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = searchInput.trim();
-                          setSearchTerm(next);
-                          setVisibleCount(DEFAULT_PAGE_SIZE);
-                        }}
-                        className="p-1 hover:bg-neutral-100 rounded transition-colors"
-                        aria-label="Buscar"
-                      >
-                        <Search className="w-4 h-4 text-neutral-700" />
-                      </button>
+                      </div>
                     </div>
-                    {searchTerm ? (
-                      <div className="mt-1 text-xs text-neutral-600">{searchedList.length} resultado(s)</div>
-                    ) : null}
                   </div>
                 </div>
-              </div>
-              {properties.length === 0 ? (
-                <div className="px-4 py-10 text-center">
-                  <div className="text-sm font-semibold text-gray-900">Ainda não há imóveis disponíveis aqui.</div>
-                  <div className="text-sm text-gray-600 mt-1">Volte em breve para ver as novidades.</div>
+
+                <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
+                  {highlights.map((item) => {
+                    const active = item.key === highlight;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => {
+                          setHighlight(item.key);
+                          setVisibleCount(DEFAULT_PAGE_SIZE);
+                          try {
+                            track({ name: "public_profile_highlight", value: item.key } as any);
+                          } catch {}
+                        }}
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
+                          active
+                            ? "border-neutral-950 bg-neutral-950 text-white"
+                            : "border-black/10 bg-white text-neutral-700 hover:bg-neutral-50"
+                        }`}
+                      >
+                        <span className={active ? "text-white" : "text-neutral-500"}>{item.icon}</span>
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              ) : searchedList.length === 0 ? (
-                <div className="px-4 py-10 text-center">
-                  <div className="text-sm font-semibold text-gray-900">Nenhum imóvel encontrado.</div>
-                  <div className="text-sm text-gray-600 mt-1">Tente remover a busca ou mudar o highlight.</div>
-                </div>
-              ) : (
-                <>
-                  {desktopViewMode === "map" ? (
-                    <div className="md:px-4">
-                      <div className="rounded-3xl border border-neutral-200 bg-white overflow-hidden h-[70vh]">
-                        <MapWithPriceBubbles
-                          items={
-                            searchedList
-                              .filter((p) => p.latitude != null && p.longitude != null)
-                              .filter((p) => {
-                                if (!mapBounds) return true;
-                                const lat = Number(p.latitude);
-                                const lng = Number(p.longitude);
-                                return lat >= mapBounds.minLat && lat <= mapBounds.maxLat && lng >= mapBounds.minLng && lng <= mapBounds.maxLng;
-                              })
-                              .slice(0, 1500)
-                              .map((p) => ({
-                                id: p.id,
-                                price: Number(p.price || 0),
-                                latitude: Number(p.latitude),
-                                longitude: Number(p.longitude),
-                                title: p.title,
-                              }))
-                          }
-                          isLoading={false}
-                          autoLoad={true}
-                          onBoundsChange={(b) => setMapBounds(b)}
-                        />
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <div className="text-xs font-semibold text-neutral-600">
-                          {mapBounds ? "Filtrando nesta área" : "Mova o mapa para filtrar"}
+
+                {properties.length === 0 ? (
+                  <div className="rounded-[28px] border border-black/10 bg-white px-6 py-14 text-center">
+                    <div className="text-base font-semibold text-neutral-950">Ainda não há imóveis publicados neste perfil.</div>
+                    <div className="mt-2 text-sm text-neutral-600">Volte em breve para ver novas entradas na vitrine.</div>
+                  </div>
+                ) : searchedList.length === 0 ? (
+                  <div className="rounded-[28px] border border-black/10 bg-white px-6 py-14 text-center">
+                    <div className="text-base font-semibold text-neutral-950">Nenhum imóvel corresponde à seleção atual.</div>
+                    <div className="mt-2 text-sm text-neutral-600">Ajuste os filtros, a busca ou o recorte em destaque.</div>
+                  </div>
+                ) : (
+                  <div className="mt-8">
+                    {desktopViewMode === "map" ? (
+                      <div>
+                        <div className="overflow-hidden rounded-[32px] border border-black/10 bg-white h-[70vh]">
+                          <MapWithPriceBubbles
+                            items={
+                              searchedList
+                                .filter((p) => p.latitude != null && p.longitude != null)
+                                .filter((p) => {
+                                  if (!mapBounds) return true;
+                                  const lat = Number(p.latitude);
+                                  const lng = Number(p.longitude);
+                                  return lat >= mapBounds.minLat && lat <= mapBounds.maxLat && lng >= mapBounds.minLng && lng <= mapBounds.maxLng;
+                                })
+                                .slice(0, 1500)
+                                .map((p) => ({
+                                  id: p.id,
+                                  price: Number(p.price || 0),
+                                  latitude: Number(p.latitude),
+                                  longitude: Number(p.longitude),
+                                  title: p.title,
+                                }))
+                            }
+                            isLoading={false}
+                            autoLoad={true}
+                            onBoundsChange={(bounds) => setMapBounds(bounds)}
+                          />
                         </div>
+                        <div className="mt-4 flex items-center justify-between gap-4 text-sm text-neutral-600">
+                          <div>{mapBounds ? "Exibindo somente a área visível do mapa." : "Mova o mapa para restringir a vitrine geográfica."}</div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDesktopViewMode("list");
+                              setMapBounds(null);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50"
+                          >
+                            <Grid3X3 className="h-4 w-4" />
+                            Ver lista
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-6 sm:grid-cols-2 2xl:grid-cols-3">
+                        {visibleList.map((property, index) => (
+                          <PropertyTile
+                            key={property.id}
+                            property={property}
+                            priority={index < 6}
+                            badge={isFeatured(property) ? "Destaque" : isNew(property) ? "Novo" : null}
+                            onOpenOverlay={(id) => openOverlay(id, "profile_grid")}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {canLoadMore ? (
+                      <div className="pt-8">
                         <button
                           type="button"
                           onClick={() => {
-                            setDesktopViewMode("list");
-                            setMapBounds(null);
+                            setVisibleCount((value) => Math.min(value + DEFAULT_PAGE_SIZE, searchedList.length));
+                            try {
+                              track({ name: "public_profile_load_more", value: String(highlight) } as any);
+                            } catch {}
                           }}
-                          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
+                          className="w-full rounded-full border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50"
                         >
-                          <Grid3X3 className="h-4 w-4" />
-                          Ver lista
+                          Carregar mais imóveis
                         </button>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[2px] md:gap-5 bg-neutral-200 md:bg-transparent md:px-4">
-                      {visibleList.map((p, idx) => (
-                        <PropertyTile
-                          key={p.id}
-                          property={p}
-                          priority={idx < 9}
-                          badge={isFeatured(p) ? "Destaque" : isNew(p) ? "Novo" : null}
-                          onOpenOverlay={(id) => openOverlay(id, "profile_grid")}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {canLoadMore ? (
-                    <div className="px-4 sm:px-6 lg:px-10 py-6">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVisibleCount((v) => Math.min(v + DEFAULT_PAGE_SIZE, searchedList.length));
-                          try {
-                            track({ name: "public_profile_load_more", value: String(highlight) } as any);
-                          } catch {}
-                        }}
-                        className="w-full rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
-                      >
-                        Carregar mais
-                      </button>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </section>
-
-            <div className="lg:hidden">
-              {isOwner ? (
-                <ShareSection id="compartilhar-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
-              ) : null}
+                    ) : null}
+                  </div>
+                )}
+              </section>
             </div>
+
+            <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+              <section className="rounded-[28px] border border-black/10 bg-white p-6">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Contato e confiança</div>
+                <h3 className="mt-2 font-serif text-2xl text-neutral-950">Resumo do perfil</h3>
+
+                <div className="mt-5 space-y-4">
+                  {heroStats.map((stat) => (
+                    <div key={stat.label} className="border-b border-black/10 pb-4 last:border-b-0 last:pb-0">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">{stat.label}</div>
+                      <div className="mt-1 text-lg font-semibold text-neutral-950">{stat.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openReviews("sidebar_card")}
+                  className="mt-6 flex w-full items-center justify-between rounded-[22px] border border-black/10 bg-[#faf7f1] px-4 py-4 text-left transition hover:border-black/20"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-neutral-950">Avaliações públicas</div>
+                    <div className="mt-1 text-xs text-neutral-600">Clique para abrir a experiência completa de reviews.</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-serif text-3xl text-neutral-950">{ratingValueLabel}</div>
+                    <div className="text-xs text-neutral-600">{realtor.totalRatings} no total</div>
+                  </div>
+                </button>
+
+                {socialLinks.length > 0 ? (
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {socialLinks.map((item) => (
+                      <a
+                        key={item.key}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50"
+                      >
+                        {item.icon}
+                        {item.label}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+
+              {isOwner ? <ShareSection id="share" wrapperClassName="scroll-mt-28" /> : null}
+            </aside>
           </div>
-        </div>
+        </section>
       </main>
 
       {reviewsOpen ? (
@@ -1462,7 +1693,7 @@ function PropertyTile({
   return (
     <Link
       href={href}
-      className="group relative aspect-square bg-white overflow-hidden md:rounded-2xl md:ring-1 md:ring-neutral-200 md:shadow-sm md:hover:shadow md:hover:ring-accent transition"
+      className="group overflow-hidden rounded-[28px] border border-black/10 bg-white transition hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
       onClick={(e) => {
         try {
           track({ name: "listing_click", payload: { propertyId: property.id } } as any);
@@ -1472,32 +1703,60 @@ function PropertyTile({
         onOpenOverlay(property.id);
       }}
     >
-      {imageUrl ? (
-        <Image
-          src={imageUrl}
-          alt={property.title}
-          fill
-          sizes="(max-width: 768px) 33vw, 33vw"
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          priority={priority}
-        />
-      ) : (
-        <div className="absolute inset-0 h-full w-full flex items-center justify-center text-gray-300 bg-gray-50">
-          <MapPin className="h-7 w-7" />
-        </div>
-      )}
+      <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={property.title}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1536px) 50vw, 33vw"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            priority={priority}
+          />
+        ) : (
+          <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-[#f6f1e8] text-neutral-400">
+            <MapPin className="h-8 w-8" />
+          </div>
+        )}
 
-      {badge ? (
-        <div className="absolute left-1 top-1 rounded-full bg-accent text-white text-[10px] font-semibold px-2 py-1 shadow-sm">
-          {badge}
-        </div>
-      ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
 
-      <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-        <div className="text-sm font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)] truncate">{formatBRL(property.price)}</div>
-        {property.neighborhood ? (
-          <div className="text-xs text-white/95 drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)] truncate">{property.neighborhood}</div>
+        {badge ? (
+          <div className="absolute left-4 top-4 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-900 shadow-sm">
+            {badge}
+          </div>
         ) : null}
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div>
+          <div className="font-serif text-2xl leading-none text-neutral-950">{formatBRL(property.price)}</div>
+          <div className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
+            {[humanizeToken(property.purpose), humanizeToken(property.type)].filter(Boolean).join(" • ")}
+          </div>
+        </div>
+
+        <div>
+          <div className="line-clamp-2 text-base font-semibold leading-6 text-neutral-950">{property.title}</div>
+          <div className="mt-2 text-sm text-neutral-600">
+            {[property.neighborhood, property.city, property.state].filter(Boolean).join(", ")}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-neutral-700">
+          {property.bedrooms != null ? <span>{property.bedrooms} quartos</span> : null}
+          {property.bathrooms != null ? <span>{property.bathrooms} banhos</span> : null}
+          {property.areaM2 != null ? <span>{property.areaM2} m²</span> : null}
+          {property.parkingSpots != null ? <span>{property.parkingSpots} vaga{property.parkingSpots === 1 ? "" : "s"}</span> : null}
+        </div>
+
+        <div className="flex items-center justify-between border-t border-black/10 pt-4 text-sm text-neutral-600">
+          <span>{property.neighborhood || property.city}</span>
+          <span className="inline-flex items-center gap-1 font-medium text-neutral-900">
+            Ver detalhes
+            <ArrowUpRight className="h-4 w-4" />
+          </span>
+        </div>
       </div>
     </Link>
   );

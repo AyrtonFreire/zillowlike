@@ -362,8 +362,8 @@ export default function AgencyDashboardPage() {
     return (Array.isArray(insights?.members) ? insights.members : [])
       .slice()
       .sort((a, b) => {
-        const aPending = Number(a.pendingReply || 0) + Number(a.clientPendingReply || 0) + Number(a.clientNoFirstContact || 0);
-        const bPending = Number(b.pendingReply || 0) + Number(b.clientPendingReply || 0) + Number(b.clientNoFirstContact || 0);
+        const aPending = Number(a.pendingReply || 0);
+        const bPending = Number(b.pendingReply || 0);
         if (bPending !== aPending) return bPending - aPending;
         return Number(b.activeLeads || 0) - Number(a.activeLeads || 0);
       })
@@ -373,10 +373,6 @@ export default function AgencyDashboardPage() {
   const leadAttentionList = useMemo(() => {
     return Array.isArray(insights?.sla?.pendingReplyLeads) ? insights.sla.pendingReplyLeads.slice(0, 6) : [];
   }, [insights?.sla?.pendingReplyLeads]);
-
-  const clientAttentionList = useMemo(() => {
-    return Array.isArray(insights?.sla?.pendingReplyClients) ? insights.sla.pendingReplyClients.slice(0, 6) : [];
-  }, [insights?.sla?.pendingReplyClients]);
 
   const dashboardTeamId = insights?.team?.id ? String(insights.team.id) : "";
 
@@ -435,7 +431,7 @@ export default function AgencyDashboardPage() {
 
       {insights?.team ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6">
             <MetricCard
               title="Leads ativos"
               value={insights.funnel.activeTotal}
@@ -456,7 +452,7 @@ export default function AgencyDashboardPage() {
               title="Leads pendentes (SLA)"
               value={insights.sla.pendingReplyTotal}
               icon={AlertTriangle}
-              subtitle="Cliente aguardando resposta"
+              subtitle="Resposta pendente no funil"
               iconColor="text-rose-700"
               iconBgColor="bg-rose-50"
             />
@@ -468,22 +464,6 @@ export default function AgencyDashboardPage() {
               iconColor="text-sky-700"
               iconBgColor="bg-sky-50"
             />
-            <MetricCard
-              title="Clientes ativos"
-              value={insights.clients.activeTotal}
-              icon={Users}
-              subtitle="Carteira institucional"
-              iconColor="text-violet-700"
-              iconBgColor="bg-violet-50"
-            />
-            <MetricCard
-              title="Clientes pendentes"
-              value={insights.sla.clientPendingReplyTotal}
-              icon={AlertTriangle}
-              subtitle="Inbound sem retorno"
-              iconColor="text-orange-700"
-              iconBgColor="bg-orange-50"
-            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -491,17 +471,12 @@ export default function AgencyDashboardPage() {
               <StatCard
                 title="Prioridades operacionais"
                 action={
-                  <div className="flex items-center gap-2">
-                    <Link href={`/agency/teams/${dashboardTeamId}/crm`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      Abrir leads
-                    </Link>
-                    <Link href="/agency/clients" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      Abrir clientes
-                    </Link>
-                  </div>
+                  <Link href={`/agency/teams/${dashboardTeamId}/crm`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Abrir leads
+                  </Link>
                 }
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-4">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Distribuição</div>
                     <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.funnel.unassigned}</div>
@@ -510,12 +485,7 @@ export default function AgencyDashboardPage() {
                   <div className="rounded-2xl border border-rose-200 bg-rose-50/60 px-4 py-4">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">SLA de leads</div>
                     <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
-                    <div className="mt-1 text-sm text-gray-600">cliente(s) esperando resposta</div>
-                  </div>
-                  <div className="rounded-2xl border border-violet-200 bg-violet-50/60 px-4 py-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">Carteira de clientes</div>
-                    <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.clients.activeTotal}</div>
-                    <div className="mt-1 text-sm text-gray-600">cliente(s) ativos na agência</div>
+                    <div className="mt-1 text-sm text-gray-600">lead(s) aguardando retorno</div>
                   </div>
                   <div className="rounded-2xl border border-sky-200 bg-sky-50/60 px-4 py-4">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">Estoque do time</div>
@@ -535,13 +505,10 @@ export default function AgencyDashboardPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.email || "Corretor"}</p>
-                            <p className="mt-1 text-xs text-gray-500">{member.activeLeads} lead(s) ativos • {member.activeClients || 0} cliente(s) ativos</p>
+                            <p className="mt-1 text-xs text-gray-500">{member.activeLeads} lead(s) ativos no momento</p>
                             <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
                               <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
                                 {member.pendingReply} lead(s) pendente(s)
-                              </span>
-                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
-                                {member.clientPendingReply || 0} cliente(s) aguardando retorno
                               </span>
                             </div>
                           </div>
@@ -577,7 +544,7 @@ export default function AgencyDashboardPage() {
                             {lead.propertyTitle ? `${lead.propertyTitle} • ` : ""}
                             {lead.realtorName || "Sem corretor definido"}
                           </p>
-                          <p className="mt-1 text-[11px] font-medium text-gray-500">Última entrada do cliente em {formatDateTime(lead.lastClientAt)}</p>
+                          <p className="mt-1 text-[11px] font-medium text-gray-500">Última interação em {formatDateTime(lead.lastClientAt)}</p>
                         </div>
                         <Link href={`/agency/teams/${dashboardTeamId}/crm?lead=${encodeURIComponent(lead.leadId)}`} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                           Abrir
@@ -588,42 +555,6 @@ export default function AgencyDashboardPage() {
                 ) : (
                   <div className="text-sm text-gray-600">Nenhum lead aguardando resposta neste momento.</div>
                 )}
-              </StatCard>
-            </div>
-
-            <div className="lg:col-span-1">
-              <StatCard
-                title="Clientes que pedem ação"
-                action={
-                  <Link href="/agency/clients" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    Ver clientes
-                  </Link>
-                }
-              >
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sem 1º contato</div>
-                      <div className="mt-1 text-xl font-semibold text-gray-900">{insights.sla.clientNoFirstContact}</div>
-                    </div>
-                    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Ação vencida</div>
-                      <div className="mt-1 text-xl font-semibold text-gray-900">{insights.sla.clientOverdueNextAction}</div>
-                    </div>
-                  </div>
-
-                  {clientAttentionList.length > 0 ? (
-                    clientAttentionList.map((client) => (
-                      <div key={client.clientId} className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{client.name || `Cliente ${client.clientId}`}</p>
-                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{client.assignedUserName || "Sem responsável definido"}</p>
-                        <p className="mt-1 text-[11px] font-medium text-gray-500">Última entrada em {formatDateTime(client.lastInboundAt)}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-gray-600">Nenhum cliente com pendência crítica agora.</div>
-                  )}
-                </div>
               </StatCard>
             </div>
 
