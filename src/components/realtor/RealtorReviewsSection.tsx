@@ -371,38 +371,91 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
     });
   }, [histogram, histogramTotal, totalRatings]);
 
+  const positiveRatings = useMemo(() => {
+    return (histogram[4] || 0) + (histogram[5] || 0);
+  }, [histogram]);
+
+  const positiveShareLabel = useMemo(() => {
+    const denom = histogramTotal || totalRatings || 0;
+    if (!denom) return null;
+    return `${Math.round((positiveRatings / denom) * 100)}% deram 4★ ou 5★`;
+  }, [histogramTotal, positiveRatings, totalRatings]);
+
+  const highlightLabel = useMemo(() => {
+    if (!totalRatings || avgRating <= 0) return "Sem amostra pública suficiente ainda";
+    if (avgRating >= 4.8) return "Percepção pública de excelência no atendimento";
+    if (avgRating >= 4.5) return "Clientes relatam uma experiência muito positiva";
+    if (avgRating >= 4) return "Boa experiência geral entre os clientes avaliadores";
+    return "Experiência pública em formação com base nas avaliações";
+  }, [avgRating, totalRatings]);
+
+  const hasActiveFilters = useMemo(() => {
+    return filterStars != null || filterHasComment || sortBy !== "relevant";
+  }, [filterHasComment, filterStars, sortBy]);
+
+  const resetFilters = useCallback(() => {
+    setFilterStars(null);
+    setFilterHasComment(false);
+    setSortBy("relevant");
+  }, []);
+
+  const socialProofItems = useMemo(() => {
+    return [
+      {
+        label: "Clientes verificados",
+        value: totalRatings > 0 ? `${totalRatings}+` : "0",
+        tone: "Somente leads que realmente avançaram podem avaliar",
+      },
+      {
+        label: "Leitura rápida",
+        value: positiveShareLabel || "Sem base ainda",
+        tone: "Recorte da proporção de avaliações mais positivas",
+      },
+      {
+        label: "Contexto",
+        value: canSeeAll ? "Visão completa liberada" : "Avaliações públicas moderadas",
+        tone: canSeeAll ? "Você está vendo a experiência com visão ampliada" : "A experiência pública prioriza transparência e confiança",
+      },
+    ];
+  }, [canSeeAll, positiveShareLabel, totalRatings]);
+
   const renderHistogram = (dense?: boolean) => {
     return (
-      <div className={dense ? "space-y-2" : "space-y-2"}>
-        {histogramRows.map((row) => (
-          <button
-            key={`hist-${row.stars}`}
-            type="button"
-            onClick={() => setFilterStars((v) => (v === row.stars ? null : row.stars))}
-            className="w-full flex items-center gap-3 text-left"
-          >
-            <div className="w-10 text-xs font-semibold text-gray-700 flex items-center gap-1">
-              <span>{row.stars}</span>
-              <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-            </div>
-            <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-              <div className="h-full bg-yellow-400" style={{ width: `${row.pct}%` }} />
-            </div>
-            <div className="w-10 text-right text-xs font-semibold text-gray-600">{row.count}</div>
-          </button>
-        ))}
+      <div className={dense ? "space-y-2.5" : "space-y-3"}>
+        {histogramRows.map((row) => {
+          const active = filterStars === row.stars;
+          return (
+            <button
+              key={`hist-${row.stars}`}
+              type="button"
+              onClick={() => setFilterStars((v) => (v === row.stars ? null : row.stars))}
+              className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200 ${
+                active ? "border-slate-950 bg-slate-950 text-white shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+              }`}
+            >
+              <div className={`flex w-10 items-center gap-1 text-xs font-semibold ${active ? "text-white" : "text-slate-700"}`}>
+                <span>{row.stars}</span>
+                <Star className={`h-3.5 w-3.5 ${active ? "fill-yellow-300 text-yellow-300" : "fill-amber-400 text-amber-400"}`} />
+              </div>
+              <div className={`h-2.5 flex-1 overflow-hidden rounded-full ${active ? "bg-white/15" : "bg-slate-100"}`}>
+                <div className={`h-full rounded-full ${active ? "bg-white" : "bg-slate-900"}`} style={{ width: `${row.pct}%` }} />
+              </div>
+              <div className={`w-10 text-right text-xs font-semibold ${active ? "text-white/85" : "text-slate-500"}`}>{row.count}</div>
+            </button>
+          );
+        })}
       </div>
     );
   };
 
   const renderChips = () => {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap">
         <button
           type="button"
           onClick={() => setFilterStars(null)}
-          className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-            filterStars == null ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+            filterStars == null ? "border-slate-950 bg-slate-950 text-white shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:shadow-sm"
           }`}
         >
           Todas
@@ -412,8 +465,8 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
             key={`star-${s}`}
             type="button"
             onClick={() => setFilterStars((v) => (v === s ? null : s))}
-            className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-              filterStars === s ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+              filterStars === s ? "border-slate-950 bg-slate-950 text-white shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:shadow-sm"
             }`}
           >
             {s}★
@@ -422,8 +475,8 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
         <button
           type="button"
           onClick={() => setFilterHasComment((v) => !v)}
-          className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-            filterHasComment ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+            filterHasComment ? "border-slate-950 bg-slate-950 text-white shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:shadow-sm"
           }`}
         >
           Com comentário
@@ -441,22 +494,31 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
     ];
 
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="text-sm text-gray-600 mr-2">Ordenar:</div>
-        <div className="inline-flex rounded-full border border-gray-200 bg-white p-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Ordenar</div>
+        <div className="inline-flex overflow-x-auto rounded-full border border-slate-200 bg-white p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {items.map((it) => (
             <button
               key={`sort-${it.key}`}
               type="button"
               onClick={() => setSortBy(it.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                sortBy === it.key ? "bg-teal-50 text-teal-800" : "text-gray-700 hover:bg-gray-50"
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                sortBy === it.key ? "bg-slate-950 text-white shadow-sm" : "text-slate-700 hover:bg-slate-50"
               }`}
             >
               {it.label}
             </button>
           ))}
         </div>
+        {hasActiveFilters ? (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
+          >
+            Limpar filtros
+          </button>
+        ) : null}
       </div>
     );
   };
@@ -467,18 +529,18 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
         {loading ? (
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={`sk-${i}`} className="rounded-xl border border-gray-200 p-4 animate-pulse">
-                <div className="h-4 w-40 bg-gray-200 rounded" />
-                <div className="h-3 w-24 bg-gray-200 rounded mt-3" />
-                <div className="h-3 w-full bg-gray-200 rounded mt-4" />
-                <div className="h-3 w-2/3 bg-gray-200 rounded mt-2" />
+              <div key={`sk-${i}`} className="animate-pulse rounded-[24px] border border-slate-200 bg-white p-5">
+                <div className="h-4 w-40 rounded bg-slate-200" />
+                <div className="mt-3 h-3 w-24 rounded bg-slate-200" />
+                <div className="mt-4 h-3 w-full rounded bg-slate-200" />
+                <div className="mt-2 h-3 w-2/3 rounded bg-slate-200" />
               </div>
             ))}
           </div>
         ) : ratings.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center">
-            <p className="text-sm text-gray-700 font-medium">Ainda não há avaliações.</p>
-            <p className="text-xs text-gray-500 mt-1">Se você já virou lead, você pode ser o primeiro a avaliar.</p>
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-6 text-center">
+            <p className="text-sm font-medium text-slate-700">Ainda não há avaliações.</p>
+            <p className="mt-1 text-xs text-slate-500">Se você já virou lead, você pode ser o primeiro a avaliar.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -489,10 +551,10 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
               const authorInitial = (authorName || "C").trim().charAt(0).toUpperCase();
               const repliedLabel = r.repliedAt ? formatRelativeDate(r.repliedAt) : "";
               return (
-                <div key={r.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+                <div key={r.id} className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-700 shrink-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-semibold text-slate-700">
                         {r.author?.image ? (
                           <Image src={r.author.image} alt={authorName} width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
                         ) : (
@@ -501,26 +563,31 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                          <span className="text-sm font-semibold text-gray-900 truncate">{authorName}</span>
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                          <span className="truncate text-sm font-semibold text-slate-950">{authorName}</span>
                           <div className="flex items-center gap-2">
                             <RatingStars readonly rating={r.rating} size="sm" />
-                            <span className="text-xs text-gray-400">{formatMonthYear(r.createdAt)}</span>
+                            <span className="text-xs text-slate-400">{formatMonthYear(r.createdAt)}</span>
                           </div>
                         </div>
-                        {propertyTitle && <div className="text-xs text-gray-500 mt-1 truncate">{propertyTitle}</div>}
+                        {propertyTitle ? <div className="mt-1 truncate text-xs text-slate-500">{propertyTitle}</div> : null}
                       </div>
                     </div>
                   </div>
 
-                  {r.comment && <p className="text-sm text-gray-700 mt-3 whitespace-pre-line">{r.comment}</p>}
+                  <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Lead verificado</span>
+                    {r.comment ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Comentário detalhado</span> : null}
+                  </div>
+
+                  {r.comment ? <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-700">{r.comment}</p> : null}
 
                   {r.replyText ? (
-                    <div className="mt-4 pl-4 border-l-2 border-gray-200">
-                      <div className="text-xs font-semibold text-gray-700">
+                    <div className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                         Resposta do profissional{repliedLabel ? ` • ${repliedLabel}` : ""}
                       </div>
-                      <p className="text-sm text-gray-700 mt-2 whitespace-pre-line">{r.replyText}</p>
+                      <p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-700">{r.replyText}</p>
                     </div>
                   ) : null}
 
@@ -528,7 +595,7 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
                     <button
                       type="button"
                       onClick={() => reportReview(r.id)}
-                      className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:shadow-sm"
                     >
                       Denunciar
                     </button>
@@ -540,7 +607,7 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
                           setReplyOpenForId((prev) => (prev === r.id ? null : r.id));
                           setDraftReply(r.replyText || "");
                         }}
-                        className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:shadow-sm"
                       >
                         {r.replyText ? "Editar resposta" : "Responder"}
                       </button>
@@ -553,10 +620,10 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
                         value={draftReply}
                         onChange={(e) => setDraftReply(e.target.value)}
                         rows={3}
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-teal-200"
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
                         placeholder="Escreva uma resposta pública..."
                       />
-                      <div className="mt-2 flex items-center justify-end gap-2">
+                      <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                         <Button
                           variant="ghost"
                           size="md"
@@ -565,10 +632,11 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
                             setDraftReply("");
                           }}
                           disabled={submitting}
+                          className="w-full sm:w-auto"
                         >
                           Cancelar
                         </Button>
-                        <Button variant="primary" size="md" onClick={() => submitReply(r.id)} loading={submitting}>
+                        <Button variant="primary" size="md" onClick={() => submitReply(r.id)} loading={submitting} className="w-full sm:w-auto">
                           Salvar resposta
                         </Button>
                       </div>
@@ -580,7 +648,7 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
 
             {nextCursor && (
               <div className="pt-2">
-                <Button variant="ghost" size="md" loading={loadingMore} onClick={fetchMore} className="w-full">
+                <Button variant="secondary" size="md" loading={loadingMore} onClick={fetchMore} className="w-full border-slate-200 text-slate-800 hover:bg-slate-50">
                   Ver mais avaliações
                 </Button>
               </div>
@@ -596,108 +664,158 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
       id="avaliacoes"
       className={
         isGoogle
-          ? "rounded-3xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm"
+          ? "rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
           : embedded
-            ? "rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm"
-            : "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            ? "rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
+            : "rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
       }
     >
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          {!embedded && !isGoogle && <h2 className="text-lg font-semibold text-gray-900">Avaliações</h2>}
-          <p className={embedded ? "text-sm text-gray-600" : "text-sm text-gray-500 mt-1"}>Somente avaliações de clientes que viraram lead.</p>
-          {eligibilityHint && <p className="text-sm text-gray-600 mt-2">{eligibilityHint}</p>}
-          {existingRating?.id && !canSeeAll && <p className="text-sm text-gray-600 mt-2">Você já avaliou este profissional. Você pode editar sua avaliação.</p>}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-2xl">
+          {isGoogle ? (
+            <>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Avaliações públicas</div>
+              <h2 className="mt-2 font-serif text-2xl text-slate-950 sm:text-3xl">Experiência de clientes reais</h2>
+            </>
+          ) : !embedded ? (
+            <h2 className="text-lg font-semibold text-slate-900">Avaliações</h2>
+          ) : (
+            <div className="text-sm font-semibold text-slate-900">Avaliações verificadas</div>
+          )}
+          <p className={embedded ? "mt-1 text-sm text-slate-600" : "mt-1 text-sm text-slate-500"}>Somente avaliações de clientes que viraram lead.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{highlightLabel}</p>
+          {eligibilityHint ? <p className="mt-2 text-sm text-slate-600">{eligibilityHint}</p> : null}
+          {existingRating?.id && !canSeeAll ? <p className="mt-2 text-sm text-slate-600">Você já avaliou este profissional. Você pode editar sua avaliação.</p> : null}
+          {hasActiveFilters ? <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Filtros ativos aplicados à lista abaixo.</p> : null}
         </div>
 
         {requiresLogin ? (
-          <Button variant="secondary" size="sm" onClick={() => signIn(undefined, { callbackUrl: typeof window !== "undefined" ? window.location.href : undefined })}>
+          <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={() => signIn(undefined, { callbackUrl: typeof window !== "undefined" ? window.location.href : undefined })}>
             Entrar para avaliar
           </Button>
         ) : existingRating?.id && !canSeeAll ? (
-          <Button variant="secondary" size="sm" onClick={openEdit}>
+          <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={openEdit}>
             Editar minha avaliação
           </Button>
         ) : eligible ? (
-          <Button variant="primary" size="sm" onClick={openWrite}>
+          <Button variant="primary" size="sm" className="w-full sm:w-auto" onClick={openWrite}>
             Escrever avaliação
           </Button>
         ) : null}
       </div>
 
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {socialProofItems.map((item) => (
+          <div key={item.label} className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-4 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{item.label}</div>
+            <div className="mt-2 text-sm font-semibold leading-6 text-slate-950">{item.value}</div>
+            <div className="mt-1 text-xs leading-5 text-slate-500">{item.tone}</div>
+          </div>
+        ))}
+      </div>
+
       {isGoogle ? (
         <>
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-8">
-              <div className="text-sm font-semibold text-gray-900">Resumo das avaliações</div>
-              <div className="mt-3">{renderHistogram(true)}</div>
-            </div>
-            <div className="lg:col-span-4 lg:flex lg:justify-end">
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 w-full lg:max-w-[260px]">
-                <div className="flex items-end gap-3">
-                  <div className="text-5xl font-bold text-gray-900 leading-none">{ratingLabel}</div>
+          <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[300px_minmax(0,1fr)] xl:items-start">
+            <div className="space-y-4">
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Nota média</div>
+                <div className="mt-3 flex items-end gap-3">
+                  <div className="font-serif text-5xl leading-none text-slate-950">{ratingLabel}</div>
                   <div className="pb-1">
                     <RatingStars readonly rating={Math.round(avgRating)} size="sm" />
-                    <div className="text-xs text-gray-500 mt-1">{totalRatings} avaliação{totalRatings === 1 ? "" : "s"}</div>
+                    <div className="mt-1 text-xs text-slate-500">{totalRatings} avaliação{totalRatings === 1 ? "" : "s"}</div>
                   </div>
                 </div>
-                <div className="mt-4">{renderChips()}</div>
+                <div className="mt-4 text-sm leading-6 text-slate-600">Leitura consolidada da confiança pública construída a partir de clientes que realmente chegaram ao estágio de lead.</div>
               </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-950">Filtrar avaliações</div>
+                <div className="mt-1 text-xs text-slate-500">Refine por nota ou veja apenas relatos com contexto escrito.</div>
+                <div className="mt-3">{renderChips()}</div>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+              <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">Resumo das avaliações</div>
+                  <div className="mt-1 text-sm text-slate-600">Veja a distribuição das notas e organize a leitura pela ordem mais útil para comparar percepção, volume e qualidade dos relatos.</div>
+                </div>
+                <div className="min-w-0">{renderSort()}</div>
+              </div>
+              <div className="mt-4">{renderHistogram(true)}</div>
+              <div className="mt-4 text-xs text-slate-500">{histogramTotal || totalRatings} avaliação{histogramTotal === 1 || totalRatings === 1 ? "" : "s"} consideradas neste resumo.</div>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="text-sm font-semibold text-gray-900">Avaliações</div>
-            {renderSort()}
+          <div className="mt-6">
+            <div className="mb-4 text-sm font-semibold text-slate-950">Avaliações</div>
+            {renderList()}
           </div>
-
-          <div className="mt-4">{renderList()}</div>
         </>
       ) : (
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <div className="flex items-end gap-3">
-              <div className="text-4xl font-bold text-gray-900 leading-none">{ratingLabel}</div>
-              <div className="pb-1">
-                <RatingStars readonly rating={Math.round(avgRating)} size="sm" />
-                <div className="text-xs text-gray-500 mt-1">{totalRatings} avaliação{totalRatings === 1 ? "" : "s"}</div>
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="space-y-4">
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Reputação pública</div>
+              <div className="flex items-end gap-3">
+                <div className="font-serif text-4xl leading-none text-slate-950">{ratingLabel}</div>
+                <div className="pb-1">
+                  <RatingStars readonly rating={Math.round(avgRating)} size="sm" />
+                  <div className="mt-1 text-xs text-slate-500">{totalRatings} avaliação{totalRatings === 1 ? "" : "s"}</div>
+                </div>
               </div>
+              <div className="mt-3 text-sm leading-6 text-slate-600">{positiveShareLabel || "As avaliações aparecerão aqui conforme clientes verificados compartilharem a experiência."}</div>
+              <div className="mt-4">{renderHistogram()}</div>
             </div>
 
-            <div className="mt-4">{renderHistogram()}</div>
-            <div className="mt-4">{renderChips()}</div>
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+              <div className="text-sm font-semibold text-slate-950">Filtrar avaliações</div>
+              <div className="mt-1 text-xs text-slate-500">Use filtros rápidos para explorar o que mais importa para você.</div>
+              <div className="mt-3">{renderChips()}</div>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+              {renderSort()}
+            </div>
           </div>
 
-          <div className="lg:col-span-2">{renderList()}</div>
+          <div>{renderList()}</div>
         </div>
       )}
 
       {writeOpen && (
-        <div className="fixed inset-0 z-[60001] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !submitting && setWriteOpen(false)} />
-          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
-            <div className="p-6">
+        <div className="fixed inset-0 z-[60001] flex items-end justify-center p-0 sm:items-center sm:p-4">
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity" onClick={() => !submitting && setWriteOpen(false)} />
+          <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-slate-200 bg-white shadow-2xl transition-all duration-200 sm:rounded-[28px]">
+            <div className="flex justify-center pt-3 sm:hidden">
+              <div className="h-1.5 w-12 rounded-full bg-slate-200" />
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{editingRatingId ? "Editar avaliação" : "Escrever avaliação"}</h3>
-                  <p className="text-sm text-gray-500 mt-1">Sua avaliação ficará pública no perfil.</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{editingRatingId ? "Editar avaliação" : "Escrever avaliação"}</h3>
+                  <p className="mt-1 text-sm text-slate-500">Sua avaliação ficará pública no perfil.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => !submitting && setWriteOpen(false)}
-                  className="text-sm font-semibold text-gray-500 hover:text-gray-700"
+                  className="text-sm font-semibold text-slate-500 hover:text-slate-700"
                 >
                   Fechar
                 </button>
               </div>
 
               <div className="mt-5">
-                <div className="text-sm font-semibold text-gray-900 mb-2">Nota</div>
+                <div className="mb-2 text-sm font-semibold text-slate-900">Nota</div>
                 <RatingStars rating={draftStars} onRate={setDraftStars} size="lg" />
+                <div className="mt-2 text-xs leading-5 text-slate-500">Avaliações são aceitas apenas de clientes que realmente avançaram no atendimento.</div>
               </div>
 
               <div className="mt-5">
-                <label className="text-sm font-semibold text-gray-900" htmlFor="review-comment">
+                <label className="text-sm font-semibold text-slate-900" htmlFor="review-comment">
                   Comentário (opcional)
                 </label>
                 <textarea
@@ -705,19 +823,22 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
                   value={draftComment}
                   onChange={(e) => setDraftComment(e.target.value)}
                   rows={4}
-                  className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-teal-200"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
                   placeholder="Conte como foi sua experiência..."
                 />
+                <div className="mt-2 text-xs leading-5 text-slate-500">Se quiser ajudar outros clientes, comente sobre clareza, tempo de resposta e acompanhamento.</div>
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 flex items-center justify-end gap-3">
-              <Button variant="ghost" size="md" onClick={() => setWriteOpen(false)} disabled={submitting}>
-                Cancelar
-              </Button>
-              <Button variant="primary" size="md" onClick={submitReview} loading={submitting}>
-                {editingRatingId ? "Salvar" : "Enviar avaliação"}
-              </Button>
+            <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+                <Button variant="ghost" size="md" onClick={() => setWriteOpen(false)} disabled={submitting} className="w-full sm:w-auto">
+                  Cancelar
+                </Button>
+                <Button variant="primary" size="md" onClick={submitReview} loading={submitting} className="w-full sm:w-auto">
+                  {editingRatingId ? "Salvar" : "Enviar avaliação"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

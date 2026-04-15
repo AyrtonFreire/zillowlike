@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { Bot, LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import CollapsibleSidebarNav, { type SidebarNavItem } from "@/components/workspace/CollapsibleSidebarNav";
 
@@ -14,7 +14,6 @@ const NAV_ITEMS: SidebarNavItem[] = [
   { href: "/agency/leads", label: "Leads", icon: Kanban },
   { href: "/agency/clients", label: "Clientes", icon: UserRound },
   { href: "/agency/properties", label: "Imóveis", icon: Home },
-  { href: "/agency/assistant", label: "IA", icon: Bot },
   { href: "/agency/team-chat", label: "Chat do time", icon: MessageSquare },
 ];
 
@@ -75,14 +74,6 @@ function sectionFromPath(pathname: string) {
       title: "Chat do time",
       description: "Converse com cada integrante do time em canais dedicados.",
       crumb: "Chat do time",
-    };
-  }
-
-  if (p === "/agency/assistant") {
-    return {
-      title: "IA da Agência",
-      description: "Fila operacional, coaching, automações e guardrails em uma área dedicada.",
-      crumb: "IA",
     };
   }
 

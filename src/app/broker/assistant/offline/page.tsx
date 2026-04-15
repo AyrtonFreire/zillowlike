@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -9,6 +9,13 @@ import Toast from "@/components/Toast";
 import Input from "@/components/ui/Input";
 import Accordion from "@/components/ui/Accordion";
 import StatCard from "@/components/dashboard/StatCard";
+import {
+  formatConversationModeLabel,
+  formatLeadTemperatureLabel,
+  formatPipelineStageLabel,
+  formatPriorityLabel,
+  formatRecommendedActionLabel,
+} from "@/lib/offline-assistant-intelligence";
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -26,12 +33,28 @@ type AutoReplySettings = {
   weekSchedule: WeekSchedule;
   cooldownMinutes: number;
   maxRepliesPerLeadPer24h: number;
+  rollout?: {
+    experimentName?: string | null;
+    rolloutPercent?: number | null;
+    experimentPercent?: number | null;
+    realtorBucket?: number | null;
+    rolloutEnabled?: boolean | null;
+  } | null;
+  versions?: {
+    promptVersion?: string | null;
+    guardrailsVersion?: string | null;
+    policyVersion?: string | null;
+    scoringVersion?: string | null;
+    contextVersion?: string | null;
+  } | null;
 };
 
 type AutoReplyMetrics = {
   range: "24h" | "7d";
   since: string;
   enabled: boolean;
+  rollout?: AutoReplySettings["rollout"];
+  versions?: AutoReplySettings["versions"];
   items: Array<{
     leadId: string;
     contactName: string | null;
@@ -45,7 +68,76 @@ type AutoReplyMetrics = {
     visitRequested: boolean;
     visitPreferences: { period: string | null; days: string[] | null; time: string | null } | null;
     clientSlots: Record<string, any> | null;
+    conversationMode: string | null;
+    qualification: {
+      score?: number | null;
+      dataCompleteness?: number | null;
+      leadTemperature?: string | null;
+      responsePriority?: string | null;
+      recommendedAction?: string | null;
+    } | null;
+    handoff: {
+      needed?: boolean | null;
+      reason?: string | null;
+      priority?: string | null;
+      recommendedAction?: string | null;
+    } | null;
+    policy: {
+      nextQuestion?: string | null;
+      recommendedAction?: string | null;
+    } | null;
+    commercialSummary: string | null;
+    propertyContext: {
+      propertySummary?: string | null;
+      regionSummary?: string | null;
+      fitHighlights?: string[] | null;
+      attentionFlags?: string[] | null;
+    } | null;
+    operationalPlaybook: {
+      headline?: string | null;
+      whyNow?: string | null;
+      pipelineStage?: string | null;
+      actionChecklist?: string[] | null;
+      followUpDraft?: string | null;
+    } | null;
+    experiment: {
+      variant?: string | null;
+      rolloutPercent?: number | null;
+      experimentPercent?: number | null;
+      rolloutEnabled?: boolean | null;
+    } | null;
+    guardrails: {
+      version?: string | null;
+      scenario?: string | null;
+      appliedRules?: string[] | null;
+    } | null;
   }>;
+};
+
+type AutoReplyOverview = {
+  range: "24h" | "7d";
+  since: string;
+  enabled: boolean;
+  rollout?: AutoReplySettings["rollout"];
+  versions?: AutoReplySettings["versions"];
+  counts: { sent: number; skipped: number; failed: number };
+  funnel?: {
+    hotLeads?: number | null;
+    urgentLeads?: number | null;
+    handoffLeads?: number | null;
+    visitLeads?: number | null;
+    qualifiedLeads?: number | null;
+    averageDataCompleteness?: number | null;
+  } | null;
+  experiments?: Array<{ variant: string; count: number }>;
+  guardrails?: {
+    scenarios?: Array<{ scenario: string; count: number }>;
+    rules?: Array<{ rule: string; count: number }>;
+  } | null;
+  operational?: {
+    avgChecklistItems?: number | null;
+    pipelineStages?: Array<{ stage: string; count: number }>;
+  } | null;
 };
 
 const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
@@ -94,8 +186,56 @@ export default function BrokerAssistantOfflinePage() {
   const [metrics, setMetrics] = useState<AutoReplyMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [overview, setOverview] = useState<AutoReplyOverview | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
 
   const canAccess = role === "REALTOR" || role === "ADMIN";
+
+  const fetchSettings = useCallback(async () => {
+    const res = await fetch("/api/broker/auto-reply-settings");
+    if (!res.ok) return;
+    const data = await res.json().catch(() => null);
+    if (!data) return;
+    setSettings({
+      enabled: Boolean(data.enabled),
+      timezone: data.timezone || "America/Sao_Paulo",
+      weekSchedule: data.weekSchedule || DEFAULT_WEEK_SCHEDULE,
+      cooldownMinutes: Number(data.cooldownMinutes ?? 3),
+      maxRepliesPerLeadPer24h: Number(data.maxRepliesPerLeadPer24h ?? 6),
+      rollout: data.rollout || null,
+      versions: data.versions || null,
+    });
+  }, []);
+
+  const fetchMetrics = useCallback(async () => {
+    try {
+      setMetricsError(null);
+      setMetricsLoading(true);
+      const res = await fetch(`/api/broker/auto-reply-lead-summaries?range=${range}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || `API error: ${res.status}`);
+      setMetrics(data || null);
+    } catch {
+      setMetrics(null);
+      setMetricsError("Não conseguimos carregar os logs do assistente offline agora.");
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [range]);
+
+  const fetchOverview = useCallback(async () => {
+    try {
+      setOverviewLoading(true);
+      const res = await fetch(`/api/broker/auto-reply-metrics?range=${range}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || `API error: ${res.status}`);
+      setOverview(data || null);
+    } catch {
+      setOverview(null);
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, [range]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -103,14 +243,17 @@ export default function BrokerAssistantOfflinePage() {
       return;
     }
     if (status === "authenticated" && canAccess) {
-      fetchAll();
+      setLoading(true);
+      void Promise.all([fetchSettings(), fetchMetrics(), fetchOverview()]).finally(() => {
+        setLoading(false);
+      });
     }
-  }, [status, canAccess, router]);
+  }, [status, canAccess, router, fetchSettings, fetchMetrics, fetchOverview]);
 
   useEffect(() => {
     if (!canAccess || status !== "authenticated") return;
-    fetchMetrics();
-  }, [range, canAccess, status]);
+    void Promise.all([fetchMetrics(), fetchOverview()]);
+  }, [canAccess, status, fetchMetrics, fetchOverview]);
 
   useEffect(() => {
     try {
@@ -122,34 +265,15 @@ export default function BrokerAssistantOfflinePage() {
     }
   }, [metrics]);
 
-  const fetchSettings = async () => {
-    const res = await fetch("/api/broker/auto-reply-settings");
-    if (!res.ok) return;
-    const data = await res.json().catch(() => null);
-    if (!data) return;
-    setSettings({
-      enabled: Boolean(data.enabled),
-      timezone: data.timezone || "America/Sao_Paulo",
-      weekSchedule: data.weekSchedule || DEFAULT_WEEK_SCHEDULE,
-      cooldownMinutes: Number(data.cooldownMinutes ?? 3),
-      maxRepliesPerLeadPer24h: Number(data.maxRepliesPerLeadPer24h ?? 6),
-    });
-  };
-
-  const fetchMetrics = async () => {
-    try {
-      setMetricsError(null);
-      setMetricsLoading(true);
-      const res = await fetch(`/api/broker/auto-reply-lead-summaries?range=${range}`);
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || `API error: ${res.status}`);
-      setMetrics(data || null);
-    } catch (err) {
-      setMetrics(null);
-      setMetricsError("Não conseguimos carregar os logs do assistente offline agora.");
-    } finally {
-      setMetricsLoading(false);
-    }
+  const formatTokenLabel = (value: string | null | undefined) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "—";
+    return raw
+      .toLowerCase()
+      .split("_")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
   };
 
   const formatRelativeTime = (iso: string | null) => {
@@ -182,6 +306,13 @@ export default function BrokerAssistantOfflinePage() {
     }
     if (clientSlots.budget) chips.push(`Orçamento: ${String(clientSlots.budget)}`);
     if (clientSlots.moveTime) chips.push(`Mudança: ${String(clientSlots.moveTime)}`);
+    if (clientSlots.searchRegion) chips.push(`Região: ${String(clientSlots.searchRegion)}`);
+    if (clientSlots.financingIntent) chips.push(`Pagamento: ${String(clientSlots.financingIntent).toLowerCase().replace(/_/g, " ")}`);
+    if (clientSlots.decisionStage) chips.push(`Estágio: ${String(clientSlots.decisionStage).toLowerCase().replace(/_/g, " ")}`);
+    if (clientSlots.urgencyLevel) chips.push(`Urgência: ${String(clientSlots.urgencyLevel).toLowerCase()}`);
+    if (Array.isArray(clientSlots.objections) && clientSlots.objections.length) {
+      chips.push(`Objeções: ${clientSlots.objections.slice(0, 2).join(", ")}`);
+    }
 
     const unique = Array.from(new Set(chips.map((x) => String(x).trim()).filter(Boolean)));
     if (!unique.length) return null;
@@ -195,15 +326,6 @@ export default function BrokerAssistantOfflinePage() {
         ))}
       </div>
     );
-  };
-
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([fetchSettings(), fetchMetrics()]);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSave = async () => {
@@ -227,10 +349,12 @@ export default function BrokerAssistantOfflinePage() {
         weekSchedule: data.weekSchedule || DEFAULT_WEEK_SCHEDULE,
         cooldownMinutes: Number(data.cooldownMinutes ?? 3),
         maxRepliesPerLeadPer24h: Number(data.maxRepliesPerLeadPer24h ?? 6),
+        rollout: data.rollout || null,
+        versions: data.versions || null,
       });
 
       setToast({ message: "Configurações salvas com sucesso!", type: "success" });
-    } catch (err) {
+    } catch {
       setToast({ message: "Erro ao salvar assistente offline", type: "error" });
     } finally {
       setSaving(false);
@@ -433,6 +557,58 @@ export default function BrokerAssistantOfflinePage() {
                 </div>
               ) : null}
 
+              {!overviewLoading && overview ? (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    {[
+                      { label: "Respostas", value: overview.counts?.sent || 0 },
+                      { label: "Qualificados", value: overview.funnel?.qualifiedLeads || 0 },
+                      { label: "Quentes", value: overview.funnel?.hotLeads || 0 },
+                      { label: "Urgentes", value: overview.funnel?.urgentLeads || 0 },
+                      { label: "Handoffs", value: overview.funnel?.handoffLeads || 0 },
+                      { label: "Visitas", value: overview.funnel?.visitLeads || 0 },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
+                        <div className="mt-1 text-xl font-semibold text-gray-900">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-xl border border-gray-100 bg-white p-4">
+                      <p className="text-sm font-semibold text-gray-900">Rollout e versão</p>
+                      <p className="mt-1 text-xs text-gray-600">
+                        {overview.rollout?.rolloutEnabled ? "Rollout ativo" : "Rollout em controle"} · {overview.rollout?.rolloutPercent ?? 0}% corretores · {overview.rollout?.experimentPercent ?? 0}% leads
+                      </p>
+                      <p className="mt-2 text-xs text-gray-600">Prompt {overview.versions?.promptVersion || "—"} · Guardrails {overview.versions?.guardrailsVersion || "—"}</p>
+                      <p className="mt-1 text-xs text-gray-600">Completude média: {overview.funnel?.averageDataCompleteness ?? 0}%</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-100 bg-white p-4">
+                      <p className="text-sm font-semibold text-gray-900">Experimentos e pipeline</p>
+                      <p className="mt-1 text-xs text-gray-600">
+                        Variante líder: {overview.experiments?.[0] ? `${formatTokenLabel(overview.experiments[0].variant)} (${overview.experiments[0].count})` : "—"}
+                      </p>
+                      <p className="mt-2 text-xs text-gray-600">
+                        Pipeline líder: {overview.operational?.pipelineStages?.[0] ? `${formatPipelineStageLabel(overview.operational.pipelineStages[0].stage)} (${overview.operational.pipelineStages[0].count})` : "—"}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-600">Checklist médio do copiloto: {overview.operational?.avgChecklistItems ?? 0}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-100 bg-white p-4">
+                      <p className="text-sm font-semibold text-gray-900">Guardrails</p>
+                      <p className="mt-1 text-xs text-gray-600">
+                        Cenário líder: {overview.guardrails?.scenarios?.[0] ? `${formatTokenLabel(overview.guardrails.scenarios[0].scenario)} (${overview.guardrails.scenarios[0].count})` : "Sem acionamentos"}
+                      </p>
+                      <p className="mt-2 text-xs text-gray-600">
+                        Regra líder: {overview.guardrails?.rules?.[0] ? `${formatTokenLabel(overview.guardrails.rules[0].rule)} (${overview.guardrails.rules[0].count})` : "Sem regras aplicadas"}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
               {(metrics?.items || []).length === 0 ? (
                 <div className="rounded-2xl border border-gray-100 bg-white p-6">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -464,6 +640,17 @@ export default function BrokerAssistantOfflinePage() {
                           .filter(Boolean)
                           .join(" · ")
                       : "";
+                    const leadTemperature = row.qualification?.leadTemperature || null;
+                    const responsePriority = row.handoff?.priority || row.qualification?.responsePriority || null;
+                    const recommendedAction = row.policy?.recommendedAction || row.handoff?.recommendedAction || row.qualification?.recommendedAction || null;
+                    const nextStepText = row.policy?.nextQuestion || row.nextQuestion || null;
+                    const experimentVariant = row.experiment?.variant || null;
+                    const guardrailScenario = row.guardrails?.scenario || null;
+                    const propertySummary = row.propertyContext?.propertySummary || null;
+                    const regionSummary = row.propertyContext?.regionSummary || null;
+                    const fitHighlights = Array.isArray(row.propertyContext?.fitHighlights) ? row.propertyContext?.fitHighlights : [];
+                    const attentionFlags = Array.isArray(row.propertyContext?.attentionFlags) ? row.propertyContext?.attentionFlags : [];
+                    const playbookChecklist = Array.isArray(row.operationalPlaybook?.actionChecklist) ? row.operationalPlaybook?.actionChecklist : [];
 
                     return (
                       <Link
@@ -499,6 +686,31 @@ export default function BrokerAssistantOfflinePage() {
                                   Falhou
                                 </span>
                               ) : null}
+                              {leadTemperature ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-700">
+                                  {formatLeadTemperatureLabel(leadTemperature)}
+                                </span>
+                              ) : null}
+                              {responsePriority ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
+                                  Prioridade {formatPriorityLabel(responsePriority)}
+                                </span>
+                              ) : null}
+                              {row.conversationMode ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700">
+                                  {formatConversationModeLabel(row.conversationMode)}
+                                </span>
+                              ) : null}
+                              {experimentVariant ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                                  {formatTokenLabel(experimentVariant)}
+                                </span>
+                              ) : null}
+                              {guardrailScenario ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
+                                  Guardrail {formatTokenLabel(guardrailScenario)}
+                                </span>
+                              ) : null}
                             </div>
 
                             {row.lastClientMessagePreview ? (
@@ -513,6 +725,73 @@ export default function BrokerAssistantOfflinePage() {
                             ) : row.nextQuestion ? (
                               <p className="mt-1 text-xs text-gray-600 line-clamp-2">
                                 <span className="font-semibold text-gray-900">Próximo passo:</span> {row.nextQuestion}
+                              </p>
+                            ) : null}
+
+                            {row.commercialSummary ? (
+                              <p className="mt-2 text-xs text-gray-600 line-clamp-3">
+                                <span className="font-semibold text-gray-900">Resumo comercial:</span> {row.commercialSummary}
+                              </p>
+                            ) : null}
+
+                            {propertySummary ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
+                                <span className="font-semibold text-gray-900">Contexto do imóvel:</span> {propertySummary}
+                              </p>
+                            ) : null}
+
+                            {regionSummary ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
+                                <span className="font-semibold text-gray-900">Contexto da região:</span> {regionSummary}
+                              </p>
+                            ) : null}
+
+                            {recommendedAction ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Ação sugerida:</span> {formatRecommendedActionLabel(recommendedAction)}
+                              </p>
+                            ) : null}
+
+                            {nextStepText ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Pergunta/next-step:</span> {nextStepText}
+                              </p>
+                            ) : null}
+
+                            {row.operationalPlaybook?.headline ? (
+                              <p className="mt-2 text-xs text-gray-700 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Copiloto:</span> {row.operationalPlaybook.headline}
+                                {row.operationalPlaybook?.pipelineStage ? ` · ${formatPipelineStageLabel(row.operationalPlaybook.pipelineStage)}` : ""}
+                              </p>
+                            ) : null}
+
+                            {row.operationalPlaybook?.whyNow ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Por quê agora:</span> {row.operationalPlaybook.whyNow}
+                              </p>
+                            ) : null}
+
+                            {playbookChecklist.length ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
+                                <span className="font-semibold text-gray-900">Checklist:</span> {playbookChecklist.slice(0, 3).join(" · ")}
+                              </p>
+                            ) : null}
+
+                            {row.operationalPlaybook?.followUpDraft ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
+                                <span className="font-semibold text-gray-900">Draft de follow-up:</span> {row.operationalPlaybook.followUpDraft}
+                              </p>
+                            ) : null}
+
+                            {fitHighlights.length ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Aderência:</span> {fitHighlights.slice(0, 2).join(" · ")}
+                              </p>
+                            ) : null}
+
+                            {attentionFlags.length ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Pontos de atenção:</span> {attentionFlags.slice(0, 2).join(" · ")}
                               </p>
                             ) : null}
 

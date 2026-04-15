@@ -21,7 +21,6 @@ import {
   BedDouble,
   Building2,
   Check,
-  Clock,
   Copy,
   Globe,
   Grid3X3,
@@ -393,6 +392,14 @@ export default function RealtorPublicLandingClient({
     return realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—";
   }, [realtor.avgRating]);
 
+  const profileNarrative = useMemo(() => {
+    return (
+      realtor.publicBio ||
+      realtor.publicHeadline ||
+      `${realtor.name} apresenta uma seleção pública de imóveis com foco em clareza, confiança e contexto de mercado.`
+    );
+  }, [realtor.name, realtor.publicBio, realtor.publicHeadline]);
+
   const testimonialsPreview = useMemo(() => {
     return (initialRatingsPreview || [])
       .filter((r) => Boolean(r.comment && String(r.comment).trim()))
@@ -436,10 +443,52 @@ export default function RealtorPublicLandingClient({
     return items;
   }, [instagramHref, linkedinHref, websiteHref]);
 
+  const keyInfoEntries = useMemo(() => {
+    const items: Array<{ label: string; value: ReactNode }> = [];
+
+    if (locationLabel) {
+      items.push({
+        label: "Base de atuação",
+        value: locationLabel,
+      });
+    }
+
+    if (serviceAreaChips.length > 0) {
+      items.push({
+        label: "Áreas atendidas",
+        value: (
+          <div className="flex flex-wrap gap-2">
+            {serviceAreaChips.slice(0, 8).map((area) => (
+              <span key={area} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                {area}
+              </span>
+            ))}
+          </div>
+        ),
+      });
+    }
+
+    if (websiteHref) {
+      items.push({
+        label: "Website",
+        value: (
+          <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-slate-700 underline-offset-4 hover:underline">
+            {formatCompactUrl(websiteHref)}
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
+        ),
+      });
+    }
+
+    return items;
+  }, [locationLabel, serviceAreaChips, websiteHref]);
+
+  const hasKeyInfo = keyInfoEntries.length > 0;
+
   const topFacts = useMemo(() => {
     const items: Array<{ label: string; value: string; helper: string }> = [
       {
-        label: "Carteira",
+        label: "Portfólio",
         value: String(properties.length),
         helper: realtor.role === "AGENCY" ? "Imóveis ativos da agência" : "Imóveis ativos no perfil",
       },
@@ -470,8 +519,8 @@ export default function RealtorPublicLandingClient({
     if (realtor.totalRatings > 0) {
       items.push({
         label: "Avaliações",
-        value: String(realtor.totalRatings),
-        helper: `Nota média ${ratingValueLabel}`,
+        value: ratingValueLabel,
+        helper: `${realtor.totalRatings} review${realtor.totalRatings === 1 ? "" : "s"} pública${realtor.totalRatings === 1 ? "" : "s"}`,
       });
     } else if (realtor.avgResponseTime != null) {
       items.push({
@@ -503,7 +552,7 @@ export default function RealtorPublicLandingClient({
       });
     }
 
-    return items.slice(0, 6);
+    return items.slice(0, 4);
   }, [agencyProfile?.teamMembers.length, locationLabel, properties.length, ratingValueLabel, realtor.avgResponseTime, realtor.experience, realtor.role, realtor.totalRatings, serviceAreaChips, teamLabel, websiteHref]);
 
   const teamPreview = useMemo(() => {
@@ -875,15 +924,15 @@ export default function RealtorPublicLandingClient({
 
   const ShareSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
     const tileBase =
-      "group flex h-14 w-14 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-800 transition-colors hover:border-black/30 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
+      "group flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
     const srOnly = "sr-only";
 
     return (
       <section id={id} className={wrapperClassName}>
-        <div className="rounded-[28px] border border-black/10 bg-white p-6">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Distribuição</div>
-          <h3 className="mt-2 font-serif text-2xl text-neutral-950">Compartilhar perfil</h3>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-600">Use os canais abaixo para divulgar o perfil público sem sair do padrão institucional.</p>
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Distribuição</div>
+          <h3 className="mt-2 font-serif text-2xl text-slate-950">Compartilhar perfil</h3>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">Use os canais abaixo para divulgar o perfil público sem sair do padrão institucional.</p>
 
           <div className="mt-5 grid grid-cols-3 gap-3 justify-items-start">
             <a
@@ -933,24 +982,24 @@ export default function RealtorPublicLandingClient({
             </a>
           </div>
 
-          <div className="mt-5 rounded-[24px] border border-black/10 bg-[#faf7f1] px-4 py-4">
+          <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Link do perfil</div>
-                <div className="mt-2 text-xs font-mono text-neutral-700 break-all">{pageUrl}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Link do perfil</div>
+                <div className="mt-2 break-all text-xs font-mono text-slate-700">{pageUrl}</div>
               </div>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className={`flex h-10 w-10 items-center justify-center rounded-full border border-black/10 transition duration-150 ${
+                className={`flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 transition duration-150 ${
                   copiedLink
                     ? "scale-[1.06] border-emerald-600 bg-emerald-600 text-white shadow-sm"
-                    : "bg-white text-neutral-700 hover:bg-neutral-50"
+                    : "bg-white text-slate-700 hover:bg-slate-100"
                 }`}
                 aria-label="Copiar link do perfil"
                 title={copiedLink ? "Link copiado" : "Copiar link"}
               >
-                {copiedLink ? <Check className="h-4 w-4 text-white" /> : <Copy className="h-4 w-4 text-neutral-700" />}
+                {copiedLink ? <Check className="h-4 w-4 text-white" /> : <Copy className="h-4 w-4 text-slate-700" />}
                 <span className={srOnly}>Copiar link</span>
               </button>
             </div>
@@ -961,14 +1010,14 @@ export default function RealtorPublicLandingClient({
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f1e8] text-neutral-900">
-      <div className="sticky top-0 z-[300] border-b border-black/10 bg-white/90 backdrop-blur">
+    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
+      <div className="sticky top-0 z-[300] border-b border-slate-200/80 bg-white/90 backdrop-blur">
         <ModernNavbar forceLight={true} />
       </div>
 
-      <main className="pb-24 md:pb-12">
-        <section className="relative border-b border-black/10 bg-neutral-950">
-          <div className="relative h-[38vh] min-h-[320px] md:h-[46vh] md:min-h-[440px]">
+      <main className="pb-32 md:pb-12">
+        <section className="relative overflow-hidden border-b border-slate-200 bg-slate-950">
+          <div className="absolute inset-0">
             {heroImage ? (
               <Image
                 src={heroImage}
@@ -976,275 +1025,231 @@ export default function RealtorPublicLandingClient({
                 fill
                 priority
                 sizes="100vw"
-                className="object-cover"
+                className="object-cover opacity-30"
               />
             ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.18),_transparent_40%),linear-gradient(135deg,_#18181b,_#3f3f46_55%,_#111827)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.28),_transparent_35%),linear-gradient(135deg,_#0f172a,_#111827_48%,_#042f2e)]" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-black/15" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#f6f1e8] via-transparent to-transparent" />
-
-            <div className="absolute inset-x-0 bottom-10">
-              <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
-                <div className="max-w-4xl">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">{roleLabel} no OggaHub</div>
-                  <h1 className="mt-3 font-serif text-4xl leading-tight text-white sm:text-5xl lg:text-6xl">{realtor.name}</h1>
-                  {realtor.publicHeadline ? (
-                    <p className="mt-4 max-w-2xl text-sm leading-7 text-white/82 sm:text-base">{realtor.publicHeadline}</p>
-                  ) : null}
-                </div>
-              </div>
-            </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-teal-950/70" />
           </div>
-        </section>
 
-        <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
-          <div className="relative -mt-16 overflow-hidden rounded-[32px] border border-black/10 bg-[#fbfaf7] shadow-[0_24px_80px_rgba(0,0,0,0.12)] md:-mt-20">
-            <div className="grid gap-8 border-b border-black/10 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="relative mx-auto max-w-[1400px] px-4 py-12 sm:px-6 sm:py-16 lg:px-10 lg:py-20">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
               <div className="min-w-0">
-                <div className="flex items-start gap-4 sm:gap-6">
-                  <div className="shrink-0 rounded-[28px] border border-black/10 bg-white p-1.5 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur-sm">
+                    {realtor.role === "AGENCY" ? <Building2 className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
+                    {roleLabel} no OggaHub
+                  </span>
+                  {realtor.creci && realtor.creciState ? (
+                    <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-white/85 backdrop-blur-sm">
+                      CRECI {realtor.creci}/{realtor.creciState}
+                    </span>
+                  ) : null}
+                  {teamLabel ? (
+                    <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-white/85 backdrop-blur-sm">
+                      {teamLabel}
+                    </span>
+                  ) : null}
+                  {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
+                </div>
+
+                <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-5">
+                  <div className="shrink-0 rounded-[28px] border border-white/15 bg-white/10 p-1.5 shadow-lg backdrop-blur-sm">
                     {realtor.image ? (
                       <Image
                         src={realtor.image}
                         alt={realtor.name}
-                        width={128}
-                        height={128}
-                        className="h-24 w-24 rounded-[22px] object-cover sm:h-28 sm:w-28"
+                        width={112}
+                        height={112}
+                        className="h-20 w-20 rounded-[22px] object-cover sm:h-24 sm:w-24"
                         priority
                       />
                     ) : (
-                      <div className="flex h-24 w-24 items-center justify-center rounded-[22px] bg-neutral-100 text-3xl font-semibold text-neutral-700 sm:h-28 sm:w-28">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-white/10 text-3xl font-semibold text-white sm:h-24 sm:w-24">
                         {(realtor.name || "?").charAt(0).toUpperCase()}
                       </div>
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-600">
-                        {realtor.role === "AGENCY" ? <Building2 className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
-                        {roleLabel}
-                      </span>
-                      {realtor.creci && realtor.creciState ? (
-                        <span className="inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-neutral-700">
-                          CRECI {realtor.creci}/{realtor.creciState}
-                        </span>
-                      ) : null}
-                      {teamLabel ? (
-                        <span className="inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-neutral-700">
-                          Time {teamLabel}
-                        </span>
-                      ) : null}
-                      {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
-                    </div>
-
-                    <div className="mt-4 text-[15px] leading-7 text-neutral-700">
-                      {realtor.publicBio ? realtor.publicBio : realtor.publicHeadline || `Conheça a curadoria e a apresentação pública de ${realtor.name}.`}
-                    </div>
+                    <h1 className="font-serif text-3xl leading-tight text-white sm:text-5xl lg:text-6xl">{realtor.name}</h1>
+                    <p className="mt-4 max-w-3xl text-sm leading-6 text-white/78 sm:text-base sm:leading-7">{realtor.publicHeadline || profileNarrative}</p>
 
                     <div className="mt-5 flex flex-wrap gap-2">
                       {locationLabel ? (
-                        <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-[#f6f1e8] px-3 py-1.5 text-xs font-medium text-neutral-700">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/85 backdrop-blur-sm">
                           <MapPin className="h-3.5 w-3.5" />
                           {locationLabel}
                         </span>
                       ) : null}
-                      {serviceAreaChips.slice(0, 5).map((area) => (
-                        <span key={area} className="inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700">
+                      {serviceAreaChips.slice(0, 4).map((area) => (
+                        <span key={area} className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/85 backdrop-blur-sm">
                           {area}
                         </span>
                       ))}
+                    </div>
+
+                    <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
+                      {whatsappDigits ? (
+                        <button
+                          type="button"
+                          onClick={() => handleWhatsApp(baseIntroMessage, "hero_primary")}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 sm:w-auto"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Falar no WhatsApp
+                        </button>
+                      ) : null}
+
+                      {telHref ? (
+                        <a
+                          href={`tel:${telHref}`}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15 sm:w-auto"
+                          onClick={() => {
+                            try {
+                              track({ name: "public_profile_call", payload: { source: "hero" } } as any);
+                            } catch {}
+                          }}
+                        >
+                          <Phone className="h-4 w-4" />
+                          Ligar agora
+                        </a>
+                      ) : null}
+
+                      <a
+                        href="#grid"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15 sm:w-auto"
+                      >
+                        <Grid3X3 className="h-4 w-4" />
+                        Explorar imóveis
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => openReviews("hero_reviews_cta")}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-transparent px-5 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 sm:w-auto"
+                      >
+                        Ver avaliações
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-5 lg:border-l lg:border-black/10 lg:pl-8">
-                <button type="button" onClick={() => openReviews("hero_rating")} className="w-full text-left">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Reputação pública</div>
-                  <div className="mt-3 flex items-end justify-between gap-4">
-                    <div>
-                      <div className="font-serif text-5xl leading-none text-neutral-950">{ratingValueLabel}</div>
-                      <div className="mt-2">
-                        <RatingStars readonly rating={Math.round(realtor.avgRating)} size="sm" />
-                      </div>
-                    </div>
-                    <div className="text-right text-sm text-neutral-600">
-                      <div>{realtor.totalRatings} avaliação{realtor.totalRatings === 1 ? "" : "s"}</div>
-                      {realtor.avgResponseTime != null ? (
-                        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-neutral-700">
-                          <Clock className="h-3.5 w-3.5" />
-                          {realtor.avgResponseTime} min de resposta
-                        </div>
-                      ) : null}
+              <div className="rounded-[32px] border border-white/15 bg-white/10 p-5 text-white shadow-[0_24px_80px_rgba(15,23,42,0.3)] backdrop-blur-md sm:p-6">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Confiança pública</div>
+                <div className="mt-4 flex items-end justify-between gap-4">
+                  <div>
+                    <div className="font-serif text-4xl leading-none text-white sm:text-5xl">{ratingValueLabel}</div>
+                    <div className="mt-2">
+                      <RatingStars readonly rating={Math.round(realtor.avgRating)} size="sm" />
                     </div>
                   </div>
-                </button>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {whatsappDigits ? (
-                    <button
-                      type="button"
-                      onClick={() => handleWhatsApp(baseIntroMessage, "hero_primary")}
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-neutral-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Falar no WhatsApp
-                    </button>
-                  ) : (
-                    <div className="rounded-full border border-black/10 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-600">
-                      WhatsApp indisponível
-                    </div>
-                  )}
-
-                  {telHref ? (
-                    <a
-                      href={`tel:${telHref}`}
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50"
-                      onClick={() => {
-                        try {
-                          track({ name: "public_profile_call", payload: { source: "hero" } } as any);
-                        } catch {}
-                      }}
-                    >
-                      <Phone className="h-4 w-4" />
-                      Ligar agora
-                    </a>
-                  ) : (
-                    <div className="rounded-full border border-black/10 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-600">
-                      Telefone indisponível
-                    </div>
-                  )}
+                  <div className="text-right text-xs text-white/80 sm:text-sm">
+                    <div>{realtor.totalRatings} avaliação{realtor.totalRatings === 1 ? "" : "s"}</div>
+                    {realtor.avgResponseTime != null ? <div className="mt-1">{realtor.avgResponseTime} min de resposta média</div> : null}
+                  </div>
                 </div>
 
-                {socialLinks.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {socialLinks.map((item) => (
-                      <a
-                        key={item.key}
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50"
-                      >
-                        {item.icon}
-                        {item.label}
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                      </a>
-                    ))}
-                  </div>
-                ) : null}
+                <div className="mt-5 rounded-[24px] border border-white/10 bg-black/10 p-4 text-sm leading-7 text-white/75">
+                  Perfil público pensado para apresentar atendimento, confiança e portfólio em um único lugar.
+                </div>
 
                 {teamPreview.length > 0 ? (
-                  <div className="rounded-[24px] border border-black/10 bg-[#f8f3ea] p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Equipe publicada</div>
+                  <div className="mt-5 rounded-[24px] border border-white/10 bg-white/5 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Equipe publicada</div>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="flex -space-x-3">
                         {teamPreview.map((member) => (
-                          <div key={member.id} className="h-10 w-10 overflow-hidden rounded-full border-2 border-[#f8f3ea] bg-white">
+                          <div key={member.id} className="h-10 w-10 overflow-hidden rounded-full border-2 border-slate-900 bg-white/20">
                             {member.image ? (
                               <Image src={member.image} alt={member.name} width={40} height={40} className="h-full w-full object-cover" />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-neutral-700">
+                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
                                 {(member.name || "?").charAt(0).toUpperCase()}
                               </div>
                             )}
                           </div>
                         ))}
                       </div>
-                      <div className="text-sm text-neutral-700">
-                        <div className="font-medium text-neutral-900">{agencyProfile?.teamMembers.length} profissionais em destaque</div>
-                        <div className="text-xs text-neutral-600">Equipe pública vinculada ao perfil institucional</div>
+                      <div className="text-sm text-white/80">
+                        <div className="font-medium text-white">{agencyProfile?.teamMembers.length} profissionais em destaque</div>
+                        <div className="text-xs text-white/60">Atendimento conectado ao perfil institucional</div>
                       </div>
                     </div>
                   </div>
                 ) : null}
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="grid gap-px bg-black/10 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="relative -mt-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.08)] sm:-mt-10">
+            <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
               {topFacts.map((item) => (
-                <div key={item.label} className="bg-[#fbfaf7] px-6 py-5">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">{item.label}</div>
-                  <div className="mt-2 text-lg font-semibold text-neutral-950">{item.value}</div>
-                  <div className="mt-1 text-sm text-neutral-600">{item.helper}</div>
+                <div key={item.label} className="bg-white px-6 py-5">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</div>
+                  <div className="mt-2 text-lg font-semibold text-slate-950">{item.value}</div>
+                  <div className="mt-1 text-sm text-slate-600">{item.helper}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="border-b border-black/10 py-5">
-            <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-neutral-600">
-              <a href="#about" className="transition hover:text-neutral-950">Sobre</a>
+          <div className="border-b border-slate-200 py-5">
+            <nav className="flex items-center gap-x-6 gap-y-3 overflow-x-auto whitespace-nowrap pb-1 text-sm text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <a href="#about" className="transition hover:text-slate-950">Sobre</a>
               {realtor.role === "AGENCY" && agencyProfile?.teamMembers.length ? (
-                <a href="#team" className="transition hover:text-neutral-950">Equipe</a>
+                <a href="#team" className="transition hover:text-slate-950">Equipe</a>
               ) : null}
-              <a href="#grid" className="transition hover:text-neutral-950">Imóveis</a>
-              <button type="button" onClick={() => openReviews("section_nav")} className="transition hover:text-neutral-950">
+              <a href="#grid" className="transition hover:text-slate-950">Imóveis</a>
+              <button type="button" onClick={() => openReviews("section_nav")} className="transition hover:text-slate-950">
                 Avaliações
               </button>
               {isOwner ? (
-                <a href="#share" className="transition hover:text-neutral-950">Compartilhar</a>
+                <a href="#share" className="transition hover:text-slate-950">Compartilhar</a>
               ) : null}
             </nav>
           </div>
 
-          <div className="grid gap-12 pt-10 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0">
-              <section id="about" className="scroll-mt-28 border-b border-black/10 pb-10">
-                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+              <section id="about" className="scroll-mt-28 border-b border-slate-200 pb-10">
+                <div className={`grid gap-8 ${hasKeyInfo ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""}`}>
                   <div className="max-w-4xl">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Apresentação</div>
-                    <h2 className="mt-3 font-serif text-3xl text-neutral-950 sm:text-4xl">Uma presença pública mais editorial, sem perder profundidade.</h2>
-                    <div className="mt-5 whitespace-pre-line text-[15px] leading-8 text-neutral-700">
-                      {realtor.publicBio ? realtor.publicBio : realtor.publicHeadline || `${realtor.name} apresenta uma seleção pública de imóveis com foco em clareza, confiança e contexto de mercado.`}
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Apresentação</div>
+                    <h2 className="mt-3 font-serif text-2xl text-slate-950 sm:text-4xl">Conheça o perfil, o atendimento e a curadoria deste profissional.</h2>
+                    <div className="mt-5 whitespace-pre-line text-[15px] leading-8 text-slate-700">
+                      {profileNarrative}
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] border border-black/10 bg-white p-6">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Informações-chave</div>
-                    <div className="mt-4 space-y-4 text-sm text-neutral-700">
-                      {locationLabel ? (
-                        <div>
-                          <div className="font-medium text-neutral-950">Base de atuação</div>
-                          <div className="mt-1">{locationLabel}</div>
-                        </div>
-                      ) : null}
-                      {serviceAreaChips.length > 0 ? (
-                        <div>
-                          <div className="font-medium text-neutral-950">Áreas atendidas</div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {serviceAreaChips.slice(0, 8).map((area) => (
-                              <span key={area} className="rounded-full border border-black/10 px-3 py-1 text-xs text-neutral-700">
-                                {area}
-                              </span>
-                            ))}
+                  {hasKeyInfo ? (
+                    <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Informações-chave</div>
+                      <div className="mt-4 space-y-5 text-sm text-slate-700">
+                        {keyInfoEntries.map((item) => (
+                          <div key={item.label}>
+                            <div className="font-medium text-slate-950">{item.label}</div>
+                            <div className="mt-2">{item.value}</div>
                           </div>
-                        </div>
-                      ) : null}
-                      {websiteHref ? (
-                        <div>
-                          <div className="font-medium text-neutral-950">Website</div>
-                          <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-2 text-neutral-700 underline-offset-4 hover:underline">
-                            {formatCompactUrl(websiteHref)}
-                            <ArrowUpRight className="h-3.5 w-3.5" />
-                          </a>
-                        </div>
-                      ) : null}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               </section>
 
               {testimonialsPreview.length > 0 ? (
-                <section className="border-b border-black/10 py-10">
-                  <div className="flex items-end justify-between gap-4">
+                <section className="border-b border-slate-200 py-10">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Prova social</div>
-                      <h2 className="mt-2 font-serif text-3xl text-neutral-950">Avaliações em destaque</h2>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Prova social</div>
+                      <h2 className="mt-2 font-serif text-2xl text-slate-950 sm:text-3xl">Avaliações em destaque</h2>
                     </div>
-                    <button type="button" onClick={() => openReviews("featured_reviews")} className="text-sm font-medium text-neutral-700 underline-offset-4 hover:text-neutral-950 hover:underline">
+                    <button type="button" onClick={() => openReviews("featured_reviews")} className="text-left text-sm font-medium text-slate-700 underline-offset-4 hover:text-slate-950 hover:underline">
                       Ver todas
                     </button>
                   </div>
@@ -1255,16 +1260,16 @@ export default function RealtorPublicLandingClient({
                         key={item.id}
                         type="button"
                         onClick={() => openReviews("hero_testimonial")}
-                        className="rounded-[28px] border border-black/10 bg-white p-6 text-left transition hover:border-black/20 hover:shadow-sm"
+                        className="rounded-[28px] border border-slate-200 bg-white p-6 text-left transition hover:border-slate-300 hover:shadow-sm"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <div className="text-sm font-semibold text-neutral-950">{item.authorName || "Cliente"}</div>
-                            <div className="mt-1 text-xs text-neutral-500">{toDateLabel(item.createdAt)}</div>
+                            <div className="text-sm font-semibold text-slate-950">{item.authorName || "Cliente"}</div>
+                            <div className="mt-1 text-xs text-slate-500">{toDateLabel(item.createdAt)}</div>
                           </div>
                           <RatingStars readonly rating={item.rating} size="sm" />
                         </div>
-                        <div className="mt-4 text-[15px] leading-7 text-neutral-700">“{item.comment}”</div>
+                        <div className="mt-4 text-[15px] leading-7 text-slate-700">“{item.comment}”</div>
                       </button>
                     ))}
                   </div>
@@ -1287,17 +1292,41 @@ export default function RealtorPublicLandingClient({
               ) : null}
 
               <section id="grid" className="scroll-mt-28 pt-10">
-                <div className="flex flex-col gap-6 border-b border-black/10 pb-8 lg:flex-row lg:items-end lg:justify-between">
+                <div className="flex flex-col gap-3">
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Portfólio público</div>
-                    <h2 className="mt-2 font-serif text-3xl text-neutral-950 sm:text-4xl">Imóveis em vitrine</h2>
-                    <p className="mt-3 text-sm leading-7 text-neutral-600">
-                      {searchedList.length} resultado{searchedList.length === 1 ? "" : "s"} dentro da seleção ativa.
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Portfólio público</div>
+                    <h2 className="mt-2 font-serif text-3xl text-slate-950 sm:text-4xl">Explore a vitrine deste perfil</h2>
+                    <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+                      Quando a carteira cresce, a busca, os filtros e o mapa ajudam o visitante a encontrar o imóvel certo sem perder o contexto do perfil.
                     </p>
                   </div>
+                </div>
 
-                  <div className="flex flex-col gap-4 lg:items-end">
-                    <div className="flex flex-wrap gap-2">
+                {properties.length > 0 ? (
+                  <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {featuredList.slice(0, Math.min(3, featuredList.length)).map((property, index) => (
+                      <PropertyTile
+                        key={`featured-${property.id}`}
+                        property={property}
+                        priority={index < 3}
+                        badge={isFeatured(property) ? "Destaque" : isNew(property) ? "Novo" : null}
+                        onOpenOverlay={(id) => openOverlay(id, "profile_featured_shelf")}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="mt-8 rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+                  <div className="flex flex-col gap-6 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">Buscar na vitrine</div>
+                      <p className="mt-2 text-sm leading-7 text-slate-600">
+                        {searchedList.length} resultado{searchedList.length === 1 ? "" : "s"} dentro da seleção ativa.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-4 lg:items-end">
+                      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                       <button
                         type="button"
                         onClick={() => {
@@ -1306,8 +1335,8 @@ export default function RealtorPublicLandingClient({
                         }}
                         className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
                           desktopViewMode === "list"
-                            ? "border-neutral-950 bg-neutral-950 text-white"
-                            : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50"
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         }`}
                       >
                         <Grid3X3 className="h-4 w-4" />
@@ -1325,8 +1354,8 @@ export default function RealtorPublicLandingClient({
                         }}
                         className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
                           desktopViewMode === "map"
-                            ? "border-neutral-950 bg-neutral-950 text-white"
-                            : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50"
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         }`}
                       >
                         <MapPin className="h-4 w-4" />
@@ -1335,16 +1364,16 @@ export default function RealtorPublicLandingClient({
                       <button
                         type="button"
                         onClick={() => setFiltersOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50"
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
                       >
                         <Search className="h-4 w-4" />
                         Refinar
                       </button>
-                    </div>
+                      </div>
 
-                    <div className="w-full lg:w-[360px]">
-                      <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-3 transition focus-within:border-black/30">
-                        <Search className="h-4 w-4 text-neutral-400" />
+                      <div className="w-full lg:w-[360px]">
+                        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-3 transition focus-within:border-slate-300 focus-within:bg-white">
+                          <Search className="h-4 w-4 text-slate-400" />
                         <input
                           type="text"
                           value={searchInput}
@@ -1357,7 +1386,7 @@ export default function RealtorPublicLandingClient({
                             }
                           }}
                           placeholder="Buscar por bairro, cidade ou título"
-                          className="flex-1 bg-transparent text-sm outline-none"
+                          className="flex-1 bg-transparent text-sm text-slate-800 outline-none"
                         />
                         {searchInput.trim() ? (
                           <button
@@ -1367,10 +1396,10 @@ export default function RealtorPublicLandingClient({
                               setSearchTerm("");
                               setVisibleCount(DEFAULT_PAGE_SIZE);
                             }}
-                            className="rounded-full p-1 transition hover:bg-neutral-100"
+                            className="rounded-full p-1 transition hover:bg-slate-100"
                             aria-label="Limpar"
                           >
-                            <X className="h-4 w-4 text-neutral-500" />
+                            <X className="h-4 w-4 text-slate-500" />
                           </button>
                         ) : null}
                         <button
@@ -1380,10 +1409,10 @@ export default function RealtorPublicLandingClient({
                             setSearchTerm(next);
                             setVisibleCount(DEFAULT_PAGE_SIZE);
                           }}
-                          className="rounded-full p-1 transition hover:bg-neutral-100"
+                          className="rounded-full p-1 transition hover:bg-slate-100"
                           aria-label="Buscar"
                         >
-                          <Search className="h-4 w-4 text-neutral-700" />
+                          <Search className="h-4 w-4 text-slate-700" />
                         </button>
                       </div>
                     </div>
@@ -1406,11 +1435,11 @@ export default function RealtorPublicLandingClient({
                         }}
                         className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
                           active
-                            ? "border-neutral-950 bg-neutral-950 text-white"
-                            : "border-black/10 bg-white text-neutral-700 hover:bg-neutral-50"
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white"
                         }`}
                       >
-                        <span className={active ? "text-white" : "text-neutral-500"}>{item.icon}</span>
+                        <span className={active ? "text-white" : "text-slate-500"}>{item.icon}</span>
                         {item.label}
                       </button>
                     );
@@ -1418,20 +1447,20 @@ export default function RealtorPublicLandingClient({
                 </div>
 
                 {properties.length === 0 ? (
-                  <div className="rounded-[28px] border border-black/10 bg-white px-6 py-14 text-center">
-                    <div className="text-base font-semibold text-neutral-950">Ainda não há imóveis publicados neste perfil.</div>
-                    <div className="mt-2 text-sm text-neutral-600">Volte em breve para ver novas entradas na vitrine.</div>
+                  <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 px-6 py-14 text-center">
+                    <div className="text-base font-semibold text-slate-950">Ainda não há imóveis publicados neste perfil.</div>
+                    <div className="mt-2 text-sm text-slate-600">Volte em breve para ver novas entradas na vitrine.</div>
                   </div>
                 ) : searchedList.length === 0 ? (
-                  <div className="rounded-[28px] border border-black/10 bg-white px-6 py-14 text-center">
-                    <div className="text-base font-semibold text-neutral-950">Nenhum imóvel corresponde à seleção atual.</div>
-                    <div className="mt-2 text-sm text-neutral-600">Ajuste os filtros, a busca ou o recorte em destaque.</div>
+                  <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 px-6 py-14 text-center">
+                    <div className="text-base font-semibold text-slate-950">Nenhum imóvel corresponde à seleção atual.</div>
+                    <div className="mt-2 text-sm text-slate-600">Ajuste os filtros, a busca ou o recorte em destaque.</div>
                   </div>
                 ) : (
                   <div className="mt-8">
                     {desktopViewMode === "map" ? (
                       <div>
-                        <div className="overflow-hidden rounded-[32px] border border-black/10 bg-white h-[70vh]">
+                        <div className="h-[70vh] overflow-hidden rounded-[32px] border border-slate-200 bg-white">
                           <MapWithPriceBubbles
                             items={
                               searchedList
@@ -1456,7 +1485,7 @@ export default function RealtorPublicLandingClient({
                             onBoundsChange={(bounds) => setMapBounds(bounds)}
                           />
                         </div>
-                        <div className="mt-4 flex items-center justify-between gap-4 text-sm text-neutral-600">
+                        <div className="mt-4 flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
                           <div>{mapBounds ? "Exibindo somente a área visível do mapa." : "Mova o mapa para restringir a vitrine geográfica."}</div>
                           <button
                             type="button"
@@ -1464,7 +1493,7 @@ export default function RealtorPublicLandingClient({
                               setDesktopViewMode("list");
                               setMapBounds(null);
                             }}
-                            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50"
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
                           >
                             <Grid3X3 className="h-4 w-4" />
                             Ver lista
@@ -1495,7 +1524,7 @@ export default function RealtorPublicLandingClient({
                               track({ name: "public_profile_load_more", value: String(highlight) } as any);
                             } catch {}
                           }}
-                          className="w-full rounded-full border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50"
+                          className="w-full rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
                         >
                           Carregar mais imóveis
                         </button>
@@ -1503,19 +1532,55 @@ export default function RealtorPublicLandingClient({
                     ) : null}
                   </div>
                 )}
+                </div>
               </section>
             </div>
 
             <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
-              <section className="rounded-[28px] border border-black/10 bg-white p-6">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500">Contato e confiança</div>
-                <h3 className="mt-2 font-serif text-2xl text-neutral-950">Resumo do perfil</h3>
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Contato e confiança</div>
+                <h3 className="mt-2 font-serif text-2xl text-slate-950">Fale com este perfil</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">Use os canais disponíveis para iniciar a conversa e explorar a carteira com contexto.</p>
 
-                <div className="mt-5 space-y-4">
+                <div className="mt-5 space-y-3">
+                  {whatsappDigits ? (
+                    <button
+                      type="button"
+                      onClick={() => handleWhatsApp(baseIntroMessage, "sidebar_primary")}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Falar no WhatsApp
+                    </button>
+                  ) : null}
+
+                  {telHref ? (
+                    <a
+                      href={`tel:${telHref}`}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                      onClick={() => {
+                        try {
+                          track({ name: "public_profile_call", payload: { source: "sidebar" } } as any);
+                        } catch {}
+                      }}
+                    >
+                      <Phone className="h-4 w-4" />
+                      Ligar agora
+                    </a>
+                  ) : null}
+
+                  {!whatsappDigits && !telHref ? (
+                    <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                      Os canais diretos ainda não estão publicados. Enquanto isso, você pode explorar os imóveis e avaliar a reputação pública deste perfil.
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-6 space-y-4">
                   {heroStats.map((stat) => (
-                    <div key={stat.label} className="border-b border-black/10 pb-4 last:border-b-0 last:pb-0">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">{stat.label}</div>
-                      <div className="mt-1 text-lg font-semibold text-neutral-950">{stat.value}</div>
+                    <div key={stat.label} className="border-b border-slate-200 pb-4 last:border-b-0 last:pb-0">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{stat.label}</div>
+                      <div className="mt-1 text-lg font-semibold text-slate-950">{stat.value}</div>
                     </div>
                   ))}
                 </div>
@@ -1523,15 +1588,15 @@ export default function RealtorPublicLandingClient({
                 <button
                   type="button"
                   onClick={() => openReviews("sidebar_card")}
-                  className="mt-6 flex w-full items-center justify-between rounded-[22px] border border-black/10 bg-[#faf7f1] px-4 py-4 text-left transition hover:border-black/20"
+                  className="mt-6 flex w-full items-center justify-between rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-slate-300"
                 >
                   <div>
-                    <div className="text-sm font-semibold text-neutral-950">Avaliações públicas</div>
-                    <div className="mt-1 text-xs text-neutral-600">Clique para abrir a experiência completa de reviews.</div>
+                    <div className="text-sm font-semibold text-slate-950">Avaliações públicas</div>
+                    <div className="mt-1 text-xs text-slate-600">Clique para abrir a experiência completa de reviews.</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-serif text-3xl text-neutral-950">{ratingValueLabel}</div>
-                    <div className="text-xs text-neutral-600">{realtor.totalRatings} no total</div>
+                    <div className="font-serif text-3xl text-slate-950">{ratingValueLabel}</div>
+                    <div className="text-xs text-slate-600">{realtor.totalRatings} no total</div>
                   </div>
                 </button>
 
@@ -1543,7 +1608,7 @@ export default function RealtorPublicLandingClient({
                         href={item.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                       >
                         {item.icon}
                         {item.label}
@@ -1563,19 +1628,19 @@ export default function RealtorPublicLandingClient({
         <div className="fixed inset-0 z-[60000]">
           <div className="absolute inset-0 bg-black/50" onClick={closeReviewsOverlay} />
           <div className="relative h-full w-full flex items-center justify-center p-0 sm:p-6">
-            <div className="relative h-full w-full sm:h-[min(920px,calc(100vh-3rem))] sm:max-w-6xl rounded-none sm:rounded-3xl bg-white shadow-2xl border border-neutral-200 overflow-hidden">
-              <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-neutral-200">
-                <div className="text-base font-semibold text-neutral-900">Avaliações</div>
+            <div className="relative h-full w-full overflow-hidden rounded-none border border-slate-200 bg-white shadow-2xl sm:h-[min(920px,calc(100vh-3rem))] sm:max-w-6xl sm:rounded-3xl">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-6">
+                <div className="text-base font-semibold text-slate-900">Avaliações</div>
                 <button
                   type="button"
                   onClick={closeReviewsOverlay}
-                  className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors"
+                  className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
                 >
                   Fechar
                 </button>
               </div>
 
-              <div className="h-[calc(100%-53px)] overflow-y-auto bg-neutral-50 p-4 sm:p-6">
+              <div className="h-[calc(100%-53px)] overflow-y-auto bg-slate-50 p-4 sm:p-6">
                 <RealtorReviewsSection
                   realtorId={realtor.id}
                   initialAvgRating={realtor.avgRating}
@@ -1616,9 +1681,22 @@ export default function RealtorPublicLandingClient({
       </Drawer>
 
       {mobileMapOpen ? (
-        <div className="md:hidden fixed inset-0 z-[59990] bg-white">
-          <div className="h-14 px-3 flex items-center justify-center border-b bg-white/95 backdrop-blur relative">
-            <div className="text-sm text-gray-600 font-medium">{searchedList.length} imóveis</div>
+        <div className="fixed inset-0 z-[59990] bg-white md:hidden">
+          <div className="relative flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Mapa da vitrine</div>
+              <div className="mt-1 text-sm font-medium text-slate-700">{searchedList.length} imóvel{searchedList.length === 1 ? "" : "is"}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMapOpen(false);
+                setMapBounds(null);
+              }}
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Fechar
+            </button>
           </div>
           <button
             aria-label="Voltar para lista"
@@ -1627,12 +1705,12 @@ export default function RealtorPublicLandingClient({
               setMobileMapOpen(false);
               setMapBounds(null);
             }}
-            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[59999] px-5 py-3 rounded-full bg-white border-2 border-gray-200 shadow-lg hover:shadow-xl flex items-center gap-2 transition-all"
+            className="fixed bottom-24 left-1/2 z-[59999] flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 shadow-lg transition-all hover:shadow-xl"
           >
-            <Grid3X3 className="w-5 h-5 text-teal-600" />
-            <span className="font-semibold text-gray-800">Ver Lista</span>
+            <Grid3X3 className="h-5 w-5 text-slate-700" />
+            <span className="font-semibold text-slate-800">Ver lista</span>
           </button>
-          <div className="absolute inset-x-0 top-14 bottom-0">
+          <div className="absolute inset-x-0 bottom-0 top-16">
             <MapWithPriceBubbles
               items={
                 searchedList
@@ -1660,15 +1738,15 @@ export default function RealtorPublicLandingClient({
         </div>
       ) : null}
 
-      {whatsappDigits ? (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-3 bg-white/90 backdrop-blur border-t border-gray-200">
+      {whatsappDigits && !mobileMapOpen && !reviewsOpen && !overlayOpen ? (
+        <div className="fixed bottom-0 left-0 right-0 z-[60] border-t border-slate-200 bg-white/90 p-3 backdrop-blur md:hidden">
           <button
             type="button"
             onClick={() => handleWhatsApp(baseIntroMessage, "sticky_mobile")}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-400 hover:shadow"
           >
             <MessageCircle className="h-5 w-5" />
-            Enviar mensagem
+            Falar no WhatsApp
           </button>
         </div>
       ) : null}
@@ -1693,7 +1771,7 @@ function PropertyTile({
   return (
     <Link
       href={href}
-      className="group overflow-hidden rounded-[28px] border border-black/10 bg-white transition hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
+      className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
       onClick={(e) => {
         try {
           track({ name: "listing_click", payload: { propertyId: property.id } } as any);
@@ -1703,7 +1781,7 @@ function PropertyTile({
         onOpenOverlay(property.id);
       }}
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -1714,7 +1792,7 @@ function PropertyTile({
             priority={priority}
           />
         ) : (
-          <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-[#f6f1e8] text-neutral-400">
+          <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
             <MapPin className="h-8 w-8" />
           </div>
         )}
@@ -1722,7 +1800,7 @@ function PropertyTile({
         <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
 
         {badge ? (
-          <div className="absolute left-4 top-4 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-900 shadow-sm">
+          <div className="absolute left-4 top-4 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-900 shadow-sm">
             {badge}
           </div>
         ) : null}
@@ -1730,29 +1808,29 @@ function PropertyTile({
 
       <div className="space-y-4 p-5">
         <div>
-          <div className="font-serif text-2xl leading-none text-neutral-950">{formatBRL(property.price)}</div>
-          <div className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
+          <div className="font-serif text-2xl leading-none text-slate-950">{formatBRL(property.price)}</div>
+          <div className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
             {[humanizeToken(property.purpose), humanizeToken(property.type)].filter(Boolean).join(" • ")}
           </div>
         </div>
 
         <div>
-          <div className="line-clamp-2 text-base font-semibold leading-6 text-neutral-950">{property.title}</div>
-          <div className="mt-2 text-sm text-neutral-600">
+          <div className="line-clamp-2 text-base font-semibold leading-6 text-slate-950">{property.title}</div>
+          <div className="mt-2 text-sm text-slate-600">
             {[property.neighborhood, property.city, property.state].filter(Boolean).join(", ")}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-neutral-700">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700">
           {property.bedrooms != null ? <span>{property.bedrooms} quartos</span> : null}
           {property.bathrooms != null ? <span>{property.bathrooms} banhos</span> : null}
           {property.areaM2 != null ? <span>{property.areaM2} m²</span> : null}
           {property.parkingSpots != null ? <span>{property.parkingSpots} vaga{property.parkingSpots === 1 ? "" : "s"}</span> : null}
         </div>
 
-        <div className="flex items-center justify-between border-t border-black/10 pt-4 text-sm text-neutral-600">
+        <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-sm text-slate-600">
           <span>{property.neighborhood || property.city}</span>
-          <span className="inline-flex items-center gap-1 font-medium text-neutral-900">
+          <span className="inline-flex items-center gap-1 font-medium text-slate-900">
             Ver detalhes
             <ArrowUpRight className="h-4 w-4" />
           </span>

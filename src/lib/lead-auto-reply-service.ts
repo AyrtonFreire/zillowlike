@@ -3,13 +3,27 @@ import { leadAutoReplyQueue } from "@/lib/queue/queues";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
-import { applyOfflineAutoReplyGuardrails } from "@/lib/ai-guardrails";
+import { applyOfflineAutoReplyGuardrailsDetailed } from "@/lib/ai-guardrails";
 import {
   extractOfflineAssistantClientSlots,
   formatOfflineAssistantClientSlots,
   mergeOfflineAssistantClientSlots,
   type OfflineAssistantClientSlots,
 } from "@/lib/offline-assistant-slots";
+import {
+  buildCommercialSummary,
+  buildHandoffDecision,
+  buildOperationalPlaybook,
+  buildPropertyContextSignals,
+  chooseConversationPolicy,
+  computeQualification,
+  detectHandoffReason,
+  type OfflineAssistantConversationMode,
+  type OfflineAssistantHandoffDecision,
+  type OfflineAssistantOperationalPlaybook,
+  type OfflineAssistantPropertyContextSignals,
+  type OfflineAssistantQualification,
+} from "@/lib/offline-assistant-intelligence";
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -105,6 +119,10 @@ function detectGeneralHandoffHeuristic(message: string) {
     "caução",
     "garantia",
     /\bcondic[aã]o\s+(de\s+)?(loca|locac|pagamento|garantia)\b/,
+    /\bainda\s+(esta|ta)\s+disponivel\b/,
+    /\bcontinua\s+disponivel\b/,
+    /\bsegue\s+disponivel\b/,
+    /\bja\s+(vendeu|alugou)\b/,
   ];
   return includesAny(t, needsHandoff);
 }
@@ -115,6 +133,11 @@ type OfflineAssistantAiJson = {
   missing_info?: string[];
   next_question?: string;
   handoff_needed?: boolean;
+  conversation_mode?: string;
+  handoff_reason?: string;
+  recommended_next_step?: string;
+  lead_temperature_hint?: string;
+  objections_detected?: string[];
 };
 
 const OFFLINE_ASSISTANT_FACT_KEYS = [
@@ -138,7 +161,57 @@ const OFFLINE_ASSISTANT_FACT_KEYS = [
   "areaM2",
 ] as const;
 
-const OFFLINE_AUTO_REPLY_PROMPT_VERSION = "v4";
+const OFFLINE_AUTO_REPLY_PROMPT_VERSION = "v6";
+const OFFLINE_ASSISTANT_GUARDRAILS_VERSION = "v2";
+const OFFLINE_ASSISTANT_POLICY_VERSION = "v2";
+const OFFLINE_ASSISTANT_SCORING_VERSION = "v2";
+const OFFLINE_ASSISTANT_CONTEXT_VERSION = "v2";
+const OFFLINE_ASSISTANT_EXPERIMENT_NAME = "offline_assistant_copilot_v2";
+
+function safeEnvPercent(name: string, fallback: number) {
+  const raw = Number(process.env[name] ?? fallback);
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.max(0, Math.min(100, Math.floor(raw)));
+}
+
+function stableBucket(input: string) {
+  const s = safeString(input) || "default";
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return hash % 100;
+}
+
+function buildOfflineAssistantRolloutOverview(realtorId: string) {
+  const rolloutPercent = safeEnvPercent("OFFLINE_ASSISTANT_ROLLOUT_PERCENT", 100);
+  const experimentPercent = safeEnvPercent("OFFLINE_ASSISTANT_EXPERIMENT_PERCENT", 100);
+  const realtorBucket = stableBucket(`realtor:${realtorId}`);
+  const rolloutEnabled = realtorBucket < rolloutPercent;
+  return {
+    experimentName: OFFLINE_ASSISTANT_EXPERIMENT_NAME,
+    rolloutPercent,
+    experimentPercent,
+    realtorBucket,
+    rolloutEnabled,
+  };
+}
+
+function resolveOfflineAssistantExperiment(params: { realtorId: string; leadId: string }) {
+  const rollout = buildOfflineAssistantRolloutOverview(params.realtorId);
+  const leadBucket = stableBucket(`lead:${params.realtorId}:${params.leadId}`);
+  const variant = rollout.rolloutEnabled && leadBucket < rollout.experimentPercent ? "COPILOT_V2" : "CONTROL";
+  return {
+    ...rollout,
+    leadBucket,
+    variant,
+    promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+    guardrailsVersion: OFFLINE_ASSISTANT_GUARDRAILS_VERSION,
+    policyVersion: OFFLINE_ASSISTANT_POLICY_VERSION,
+    scoringVersion: OFFLINE_ASSISTANT_SCORING_VERSION,
+    contextVersion: OFFLINE_ASSISTANT_CONTEXT_VERSION,
+  };
+}
 
 function clampText(input: string, maxLen: number) {
   const s = String(input || "").trim();
@@ -189,6 +262,66 @@ function buildAmenitiesFromProperty(p: any) {
   }
 
   return Array.from(new Set(out));
+}
+
+function buildPropertyContextFromLead(params: {
+  lead: any;
+  propertyTitle: string;
+  slots?: OfflineAssistantClientSlots;
+}) : OfflineAssistantPropertyContextSignals {
+  const property = params.lead?.property;
+  return buildPropertyContextSignals({
+    slots: params.slots,
+    property: {
+      title: params.propertyTitle,
+      type: safeString(property?.type) || null,
+      purpose: safeString(property?.purpose) || null,
+      priceLabel: (property as any)?.hidePrice ? "Consulte" : formatBRLFromCents((property as any)?.price) || "Consulte",
+      condoFeeLabel: (property as any)?.hideCondoFee ? "Consulte" : formatBRLFromCents((property as any)?.condoFee) || null,
+      iptuLabel: (property as any)?.hideIPTU ? "Consulte" : formatBRLFromCents((property as any)?.iptuYearly) || null,
+      areaM2: typeof property?.areaM2 === "number" ? property.areaM2 : null,
+      bedrooms: typeof property?.bedrooms === "number" ? property.bedrooms : null,
+      bathrooms: typeof property?.bathrooms === "number" ? property.bathrooms : null,
+      parkingSpots: typeof (property as any)?.parkingSpots === "number" ? (property as any).parkingSpots : null,
+      suites: typeof (property as any)?.suites === "number" ? (property as any).suites : null,
+      floor: typeof (property as any)?.floor === "number" ? (property as any).floor : null,
+      furnished: typeof (property as any)?.furnished === "boolean" ? (property as any).furnished : null,
+      petFriendly: typeof (property as any)?.petFriendly === "boolean" ? (property as any).petFriendly : null,
+      neighborhood: safeString(property?.neighborhood) || null,
+      city: safeString(property?.city) || null,
+      amenities: buildAmenitiesFromProperty(property),
+      condoRules: clampText(safeString((property as any)?.condoRules), 240) || null,
+      nearbySummary: safeString(property?.neighborhood) && safeString(property?.city)
+        ? `região ${safeString(property?.neighborhood)}, ${safeString(property?.city)}`
+        : safeString(property?.city)
+          ? `região ${safeString(property?.city)}`
+          : null,
+    },
+  });
+}
+
+function buildOperationalPlaybookFromState(params: {
+  clientName: string;
+  propertyTitle: string;
+  slots?: OfflineAssistantClientSlots;
+  qualification: OfflineAssistantQualification;
+  handoff: OfflineAssistantHandoffDecision;
+  policy: ReturnType<typeof chooseConversationPolicy>;
+  visitRequested: boolean;
+  visitPreferences?: OfflineAssistantState["visitPreferences"] | null;
+  propertyContext: OfflineAssistantPropertyContextSignals;
+}) : OfflineAssistantOperationalPlaybook {
+  return buildOperationalPlaybook({
+    clientName: params.clientName,
+    propertyTitle: params.propertyTitle,
+    slots: params.slots,
+    qualification: params.qualification,
+    handoff: params.handoff,
+    policy: params.policy,
+    visitRequested: params.visitRequested,
+    visitPreferences: params.visitPreferences || null,
+    propertyContext: params.propertyContext,
+  });
 }
 
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -256,11 +389,6 @@ async function fetchPlacesNearby(params: { lat: number; lng: number; radiusM: nu
   if (!json || json.ok !== true) return null;
   return json;
 }
-
-type IntentClassifierResult = {
-  intent: OfflineAssistantIntent;
-  confidence: number;
-};
 
 async function callOpenAiIntentClassifier(params: { apiKey: string; message: string }) {
   const model = process.env.OPENAI_TEXT_MODEL || process.env.OPENAI_VISION_MODEL || "gpt-4o-mini";
@@ -362,8 +490,14 @@ function parseOfflineAssistantAiJson(raw: string): { ok: true; value: OfflineAss
     .filter((k: string) => (OFFLINE_ASSISTANT_FACT_KEYS as readonly string[]).includes(k));
   const missingInfoRaw = Array.isArray(parsed.missing_info) ? parsed.missing_info : [];
   const missingInfo = missingInfoRaw.map((x: any) => safeString(x)).filter(Boolean);
+  const objectionsDetectedRaw = Array.isArray(parsed.objections_detected) ? parsed.objections_detected : [];
+  const objectionsDetected = objectionsDetectedRaw.map((x: any) => safeString(x)).filter(Boolean);
   const nextQuestion = safeString(parsed.next_question);
   const handoffNeeded = typeof parsed.handoff_needed === "boolean" ? parsed.handoff_needed : false;
+  const conversationMode = safeString(parsed.conversation_mode).toUpperCase();
+  const handoffReason = safeString(parsed.handoff_reason).toUpperCase();
+  const recommendedNextStep = safeString(parsed.recommended_next_step);
+  const leadTemperatureHint = safeString(parsed.lead_temperature_hint).toUpperCase();
 
   if (!answer) return { ok: false, error: "EMPTY_ANSWER" };
 
@@ -375,6 +509,11 @@ function parseOfflineAssistantAiJson(raw: string): { ok: true; value: OfflineAss
       missing_info: missingInfo.length ? missingInfo : undefined,
       next_question: nextQuestion || undefined,
       handoff_needed: handoffNeeded,
+      conversation_mode: conversationMode || undefined,
+      handoff_reason: handoffReason || undefined,
+      recommended_next_step: recommendedNextStep || undefined,
+      lead_temperature_hint: leadTemperatureHint || undefined,
+      objections_detected: objectionsDetected.length ? objectionsDetected : undefined,
     },
   };
 }
@@ -415,6 +554,10 @@ type OfflineAssistantState = {
     moveTime?: boolean;
     bedrooms?: boolean;
     budget?: boolean;
+    region?: boolean;
+    financing?: boolean;
+    decisionStage?: boolean;
+    visitWindow?: boolean;
   };
   lastQuestion?: string;
   visitRequested?: boolean;
@@ -424,6 +567,12 @@ type OfflineAssistantState = {
     time?: string | null;
   };
   clientSlots?: OfflineAssistantClientSlots;
+  conversationMode?: OfflineAssistantConversationMode | null;
+  qualification?: OfflineAssistantQualification | null;
+  handoff?: OfflineAssistantHandoffDecision | null;
+  lastRecommendedAction?: string | null;
+  lastIntent?: OfflineAssistantIntent | null;
+  commercialSummary?: string | null;
 };
 
 function readOfflineAssistantState(metadata: any): OfflineAssistantState {
@@ -452,8 +601,38 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
   const bedroomsNeeded = cs ? toNumOrNull(cs.bedroomsNeeded) : null;
   const moveTime = cs ? safeString(cs.moveTime) : "";
   const budget = cs ? safeString(cs.budget) : "";
+  const searchRegion = cs ? safeString(cs.searchRegion) : "";
+  const financingIntentRaw = cs ? safeString(cs.financingIntent).toUpperCase() : "";
+  const financingIntent =
+    financingIntentRaw === "FINANCIAMENTO" || financingIntentRaw === "FGTS" || financingIntentRaw === "RECURSOS_PROPRIOS" || financingIntentRaw === "INDEFINIDO"
+      ? financingIntentRaw
+      : "";
+  const urgencyLevelRaw = cs ? safeString(cs.urgencyLevel).toUpperCase() : "";
+  const urgencyLevel = urgencyLevelRaw === "ALTA" || urgencyLevelRaw === "MEDIA" || urgencyLevelRaw === "BAIXA" ? urgencyLevelRaw : "";
+  const decisionStageRaw = cs ? safeString(cs.decisionStage).toUpperCase() : "";
+  const decisionStage =
+    decisionStageRaw === "PESQUISA" || decisionStageRaw === "COMPARANDO" || decisionStageRaw === "PRONTO_VISITAR" || decisionStageRaw === "PRONTO_PROPOSTA"
+      ? decisionStageRaw
+      : "";
+  const familyProfile = cs ? safeString(cs.familyProfile) : "";
+  const reasonForMove = cs ? safeString(cs.reasonForMove) : "";
+  const preferredContactWindow = cs ? safeString(cs.preferredContactWindow) : "";
+  const objections = cs && Array.isArray(cs.objections) ? cs.objections.map((x: any) => safeString(x)).filter(Boolean) : [];
   const clientSlots: OfflineAssistantClientSlots | undefined =
-    purpose || typeof hasPets === "boolean" || typeof parkingSpotsNeeded === "number" || typeof bedroomsNeeded === "number" || moveTime || budget
+    purpose ||
+    typeof hasPets === "boolean" ||
+    typeof parkingSpotsNeeded === "number" ||
+    typeof bedroomsNeeded === "number" ||
+    moveTime ||
+    budget ||
+    searchRegion ||
+    financingIntent ||
+    urgencyLevel ||
+    decisionStage ||
+    familyProfile ||
+    reasonForMove ||
+    preferredContactWindow ||
+    objections.length
       ? {
           purpose: (purpose as any) || null,
           hasPets: typeof hasPets === "boolean" ? hasPets : null,
@@ -461,8 +640,33 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
           bedroomsNeeded: typeof bedroomsNeeded === "number" ? bedroomsNeeded : null,
           moveTime: moveTime || null,
           budget: budget || null,
+          searchRegion: searchRegion || null,
+          financingIntent: (financingIntent as any) || null,
+          urgencyLevel: (urgencyLevel as any) || null,
+          decisionStage: (decisionStage as any) || null,
+          familyProfile: familyProfile || null,
+          reasonForMove: reasonForMove || null,
+          preferredContactWindow: preferredContactWindow || null,
+          objections: objections.length ? Array.from(new Set(objections)) : null,
         }
       : undefined;
+  const conversationModeRaw = safeString((s as any).conversationMode).toUpperCase();
+  const conversationMode =
+    conversationModeRaw === "INFO_MODE" ||
+    conversationModeRaw === "QUALIFICATION_MODE" ||
+    conversationModeRaw === "CONVERSION_MODE" ||
+    conversationModeRaw === "HANDOFF_MODE"
+      ? (conversationModeRaw as OfflineAssistantConversationMode)
+      : null;
+  const qualificationRaw = (s as any).qualification;
+  const qualification = qualificationRaw && typeof qualificationRaw === "object" ? (qualificationRaw as OfflineAssistantQualification) : null;
+  const handoffRaw = (s as any).handoff;
+  const handoff = handoffRaw && typeof handoffRaw === "object" ? (handoffRaw as OfflineAssistantHandoffDecision) : null;
+  const lastIntentRaw = safeString((s as any).lastIntent).toUpperCase();
+  const lastIntent =
+    lastIntentRaw === "PROPERTY" || lastIntentRaw === "SCHEDULING" || lastIntentRaw === "FINANCING" || lastIntentRaw === "OFF_TOPIC" || lastIntentRaw === "UNCLEAR"
+      ? (lastIntentRaw as OfflineAssistantIntent)
+      : null;
 
   return {
     asked: {
@@ -472,6 +676,10 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
       moveTime: toBool((asked as any).moveTime),
       bedrooms: toBool((asked as any).bedrooms),
       budget: toBool((asked as any).budget),
+      region: toBool((asked as any).region),
+      financing: toBool((asked as any).financing),
+      decisionStage: toBool((asked as any).decisionStage),
+      visitWindow: toBool((asked as any).visitWindow),
     },
     lastQuestion: safeString((s as any).lastQuestion) || "",
     visitRequested: toBool((s as any).visitRequested),
@@ -483,6 +691,12 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
         }
       : undefined,
     clientSlots,
+    conversationMode: conversationMode || undefined,
+    qualification: qualification || undefined,
+    handoff: handoff || undefined,
+    lastRecommendedAction: safeString((s as any).lastRecommendedAction) || undefined,
+    lastIntent: lastIntent || undefined,
+    commercialSummary: safeString((s as any).commercialSummary) || undefined,
   };
 }
 
@@ -500,6 +714,10 @@ function updateStateWithQuestion(prev: OfflineAssistantState, question: string):
   if (includesAny(t, ["quando pretende", "prazo", "se mudar", "mudanca", "mudança"])) asked.moveTime = true;
   if (includesAny(t, ["quartos", "quantos quartos", /\bquarto\b/])) asked.bedrooms = true;
   if (includesAny(t, ["orçamento", "orcamento", "faixa de preco", "faixa de preço", "até quanto", "ate quanto", "valor maximo", "valor máximo"])) asked.budget = true;
+  if (includesAny(t, ["bairro", "regiao", "região", "localizacao", "localização"])) asked.region = true;
+  if (includesAny(t, ["financiamento", "fgts", "recurso proprio", "recurso próprio", "a vista", "à vista"])) asked.financing = true;
+  if (includesAny(t, ["pesquisando", "comparando", "quer visitar", "já quer visitar", "momento da decisão"])) asked.decisionStage = true;
+  if (includesAny(t, ["periodo do dia", "período do dia", "dias da semana", "visita", "manha", "manhã", "tarde", "noite"])) asked.visitWindow = true;
 
   return {
     ...prev,
@@ -529,11 +747,37 @@ function updateStateVisitPreferences(prev: OfflineAssistantState, prefs: any): O
 
   return {
     ...prev,
+    asked: {
+      ...(prev.asked || {}),
+      visitWindow: true,
+    },
     visitPreferences: {
       period: period || (prevVp as any).period || null,
       time: time || (prevVp as any).time || null,
       days: days.length ? Array.from(new Set(days)) : (prevVp as any).days || null,
     },
+  };
+}
+
+function updateStateWithIntelligence(
+  prev: OfflineAssistantState,
+  intelligence: {
+    conversationMode?: OfflineAssistantConversationMode | null;
+    qualification?: OfflineAssistantQualification | null;
+    handoff?: OfflineAssistantHandoffDecision | null;
+    recommendedAction?: string | null;
+    intent?: OfflineAssistantIntent | null;
+    commercialSummary?: string | null;
+  }
+): OfflineAssistantState {
+  return {
+    ...prev,
+    conversationMode: intelligence.conversationMode ?? prev.conversationMode ?? null,
+    qualification: intelligence.qualification ?? prev.qualification ?? null,
+    handoff: intelligence.handoff ?? prev.handoff ?? null,
+    lastRecommendedAction: safeString(intelligence.recommendedAction) || prev.lastRecommendedAction || null,
+    lastIntent: intelligence.intent ?? prev.lastIntent ?? null,
+    commercialSummary: safeString(intelligence.commercialSummary) || prev.commercialSummary || null,
   };
 }
 
@@ -734,6 +978,10 @@ function chooseNextQuestion(params: {
   const hasMoveTime = Boolean(slots && safeString((slots as any).moveTime));
   const hasBedrooms = slots && typeof (slots as any).bedroomsNeeded === "number";
   const hasBudget = Boolean(slots && safeString((slots as any).budget));
+  const hasRegion = Boolean(slots && safeString((slots as any).searchRegion));
+  const hasFinancing = Boolean(slots && safeString((slots as any).financingIntent));
+  const hasDecisionStage = Boolean(slots && safeString((slots as any).decisionStage));
+  const isPurchase = safeString((slots as any)?.purpose).toUpperCase() === "COMPRA";
 
   const askedPurpose = Boolean(askedState.purpose) || includesAny(h, ["compra ou locacao", "compra ou locação", /\bcompra\b.*\blocacao\b/]);
   const askedPets = Boolean(askedState.pets) || includesAny(h, ["pets", "pet", "aceita pets", "tem pets"]);
@@ -741,13 +989,19 @@ function chooseNextQuestion(params: {
   const askedMove = Boolean(askedState.moveTime) || includesAny(h, ["quando pretende", "quando voce pretende", "prazo", "se mudar", "mudar", "mudanca", "mudança"]);
   const askedBedrooms = Boolean(askedState.bedrooms) || includesAny(h, ["quartos", "quantos quartos", /\bquarto\b/]);
   const askedBudget = Boolean(askedState.budget) || includesAny(h, ["orçamento", "orcamento", "faixa de preco", "faixa de preço", "até quanto", "ate quanto", "valor maximo", "valor máximo"]);
+  const askedRegion = Boolean(askedState.region) || includesAny(h, ["bairro", "regiao", "região", "localizacao", "localização"]);
+  const askedFinancing = Boolean(askedState.financing) || includesAny(h, ["financiamento", "fgts", "recurso proprio", "recurso próprio", "a vista", "à vista"]);
+  const askedDecisionStage = Boolean(askedState.decisionStage) || includesAny(h, ["pesquisando", "comparando", "quer visitar", "já quer visitar"]);
 
   if (!hasPurpose && !askedPurpose) return "Você busca compra ou locação?";
-  if (!hasPets && !askedPets) return "Você tem pets?";
-  if (!hasParking && !askedParking) return "Você precisa de vaga de garagem? Se sim, quantas?";
-  if (!hasMoveTime && !askedMove) return "Quando você pretende se mudar?";
-  if (!hasBedrooms && !askedBedrooms) return "Você precisa de quantos quartos?";
+  if (!hasRegion && !askedRegion) return "Qual bairro ou região faz mais sentido para você?";
   if (!hasBudget && !askedBudget) return "Você tem alguma faixa de orçamento?";
+  if (!hasMoveTime && !askedMove) return "Quando você pretende se mudar ou fechar negócio?";
+  if (!hasDecisionStage && !askedDecisionStage) return "Hoje você está mais pesquisando opções, comparando ou já quer visitar?";
+  if (isPurchase && !hasFinancing && !askedFinancing) return "Você pensa em financiamento, FGTS ou recurso próprio?";
+  if (!hasBedrooms && !askedBedrooms) return "Você precisa de quantos quartos?";
+  if (!hasParking && !askedParking) return "Você precisa de vaga de garagem? Se sim, quantas?";
+  if (!hasPets && !askedPets) return "Você tem pets?";
   return "";
 }
 
@@ -1010,6 +1264,14 @@ export class LeadAutoReplyService {
 
   static async getSettings(realtorId: string) {
     let row: any = null;
+    const rollout = buildOfflineAssistantRolloutOverview(realtorId);
+    const versions = {
+      promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+      guardrailsVersion: OFFLINE_ASSISTANT_GUARDRAILS_VERSION,
+      policyVersion: OFFLINE_ASSISTANT_POLICY_VERSION,
+      scoringVersion: OFFLINE_ASSISTANT_SCORING_VERSION,
+      contextVersion: OFFLINE_ASSISTANT_CONTEXT_VERSION,
+    };
     try {
       row = await (prisma as any).realtorAutoReplySettings.findUnique({ where: { realtorId } });
     } catch (error: any) {
@@ -1021,6 +1283,8 @@ export class LeadAutoReplyService {
           weekSchedule: this.defaultWeekSchedule(),
           cooldownMinutes: 3,
           maxRepliesPerLeadPer24h: 6,
+          rollout,
+          versions,
         };
       }
       throw error;
@@ -1033,6 +1297,8 @@ export class LeadAutoReplyService {
         weekSchedule: this.defaultWeekSchedule(),
         cooldownMinutes: 3,
         maxRepliesPerLeadPer24h: 6,
+        rollout,
+        versions,
       };
     }
 
@@ -1043,6 +1309,8 @@ export class LeadAutoReplyService {
       weekSchedule: normalizeWeekSchedule(row.weekSchedule),
       cooldownMinutes: typeof row.cooldownMinutes === "number" ? row.cooldownMinutes : 3,
       maxRepliesPerLeadPer24h: typeof row.maxRepliesPerLeadPer24h === "number" ? row.maxRepliesPerLeadPer24h : 6,
+      rollout,
+      versions,
     };
   }
 
@@ -1082,6 +1350,14 @@ export class LeadAutoReplyService {
       weekSchedule: normalizeWeekSchedule(res.weekSchedule),
       cooldownMinutes: typeof res.cooldownMinutes === "number" ? res.cooldownMinutes : 3,
       maxRepliesPerLeadPer24h: typeof res.maxRepliesPerLeadPer24h === "number" ? res.maxRepliesPerLeadPer24h : 6,
+      rollout: buildOfflineAssistantRolloutOverview(params.realtorId),
+      versions: {
+        promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+        guardrailsVersion: OFFLINE_ASSISTANT_GUARDRAILS_VERSION,
+        policyVersion: OFFLINE_ASSISTANT_POLICY_VERSION,
+        scoringVersion: OFFLINE_ASSISTANT_SCORING_VERSION,
+        contextVersion: OFFLINE_ASSISTANT_CONTEXT_VERSION,
+      },
     };
   }
 
@@ -1350,6 +1626,16 @@ export class LeadAutoReplyService {
 
       const clientName = safeString(lead.contact?.name) || "";
       const propertyTitle = safeString(lead.property?.title) || "";
+      const experiment = resolveOfflineAssistantExperiment({ realtorId: lead.realtorId, leadId: lead.id });
+      const propertyQualificationContext = {
+        purpose: safeString(lead.property?.purpose) || null,
+        price: typeof (lead.property as any)?.price === "number" ? Number((lead.property as any).price) : null,
+        bedrooms: typeof lead.property?.bedrooms === "number" ? lead.property.bedrooms : null,
+        parkingSpots: typeof (lead.property as any)?.parkingSpots === "number" ? (lead.property as any).parkingSpots : null,
+        petFriendly: typeof (lead.property as any)?.petFriendly === "boolean" ? (lead.property as any).petFriendly : null,
+        neighborhood: safeString(lead.property?.neighborhood) || null,
+        city: safeString(lead.property?.city) || null,
+      };
 
       const lastAi = await (prisma as any).leadClientMessage.findFirst({
         where: { leadId: lead.id, fromClient: false, source: "AUTO_REPLY_AI" as any },
@@ -1390,6 +1676,77 @@ export class LeadAutoReplyService {
               time: safeString((extractedPrefs as any)?.time) || safeString(prevState2WithSlots?.visitPreferences?.time) || null,
             }
           : null;
+        const refusalRequiresHandoff = isScheduling || intent === "FINANCING";
+        const refusalStateBase = isScheduling ? updateStateVisitRequested(prevState2WithSlots) : prevState2WithSlots;
+        const refusalStateWithVisit = isScheduling && mergedPrefs ? updateStateVisitPreferences(refusalStateBase, mergedPrefs) : refusalStateBase;
+        const refusalQualificationBase = computeQualification({
+          slots: refusalStateWithVisit.clientSlots,
+          visitRequested: Boolean(refusalStateWithVisit.visitRequested),
+          visitPreferences: refusalStateWithVisit.visitPreferences || null,
+          handoffNeeded: refusalRequiresHandoff,
+          message: msg.content,
+          property: propertyQualificationContext,
+        });
+        const refusalHandoffReason = detectHandoffReason({
+          message: msg.content,
+          intent,
+          visitRequested: Boolean(refusalStateWithVisit.visitRequested),
+          slots: refusalStateWithVisit.clientSlots,
+          finalHandoffNeeded: refusalRequiresHandoff,
+          missingInfo: refusalQualificationBase.missingCriticalInfo,
+        });
+        const refusalHandoff = buildHandoffDecision({
+          needed: refusalRequiresHandoff,
+          reason: refusalHandoffReason,
+          leadTemperature: refusalQualificationBase.leadTemperature,
+          visitRequested: Boolean(refusalStateWithVisit.visitRequested),
+          qualificationScore: refusalQualificationBase.score,
+          commercialSummary: refusalQualificationBase.commercialSummary,
+        });
+        const refusalCommercialSummary = buildCommercialSummary({
+          slots: refusalStateWithVisit.clientSlots,
+          qualification: refusalQualificationBase,
+          visitRequested: Boolean(refusalStateWithVisit.visitRequested),
+          visitPreferences: refusalStateWithVisit.visitPreferences || null,
+          handoff: refusalHandoff,
+        });
+        const refusalQualification: OfflineAssistantQualification = {
+          ...refusalQualificationBase,
+          commercialSummary: refusalCommercialSummary,
+        };
+        const refusalPropertyContext = buildPropertyContextFromLead({
+          lead,
+          propertyTitle,
+          slots: refusalStateWithVisit.clientSlots,
+        });
+        const refusalHandoffDecision = buildHandoffDecision({
+          needed: refusalRequiresHandoff,
+          reason: refusalHandoffReason,
+          leadTemperature: refusalQualification.leadTemperature,
+          visitRequested: Boolean(refusalStateWithVisit.visitRequested),
+          qualificationScore: refusalQualification.score,
+          commercialSummary: refusalCommercialSummary,
+        });
+        const refusalFallbackQuestion = isScheduling ? "" : extractLastQuestion(prevState2.lastQuestion || "");
+        const refusalPolicy = chooseConversationPolicy({
+          slots: refusalStateWithVisit.clientSlots,
+          qualification: refusalQualification,
+          handoff: refusalHandoffDecision,
+          visitRequested: Boolean(refusalStateWithVisit.visitRequested),
+          visitPreferences: refusalStateWithVisit.visitPreferences || null,
+          fallbackNextQuestion: refusalFallbackQuestion,
+        });
+        const refusalOperationalPlaybook = buildOperationalPlaybookFromState({
+          clientName,
+          propertyTitle,
+          slots: refusalStateWithVisit.clientSlots,
+          qualification: refusalQualification,
+          handoff: refusalHandoffDecision,
+          policy: refusalPolicy,
+          visitRequested: Boolean(refusalStateWithVisit.visitRequested),
+          visitPreferences: refusalStateWithVisit.visitPreferences || null,
+          propertyContext: refusalPropertyContext,
+        });
 
         const refusal = isScheduling
           ? buildSchedulingAutoReply({ clientName, propertyTitle, includeIntro: shouldIntroduce, preferences: mergedPrefs })
@@ -1399,14 +1756,18 @@ export class LeadAutoReplyService {
               includeIntro: shouldIntroduce,
               reason: intent === "FINANCING" ? "FINANCING" : intent === "OFF_TOPIC" ? "OFF_TOPIC" : "UNCLEAR",
             });
+        const refusalNextQuestion = refusalPolicy.shouldAskFollowUp ? safeString(refusalPolicy.nextQuestion) : "";
+        const refusalMessage = refusalNextQuestion ? `${refusal}\n\n${refusalNextQuestion}` : refusal;
 
-        const draft = applyOfflineAutoReplyGuardrails({
-          draft: refusal,
+        const refusalGuardrails = applyOfflineAutoReplyGuardrailsDetailed({
+          draft: refusalMessage,
           clientName,
           propertyTitle,
+          message: msg.content,
+          handoffReason: refusalHandoffReason,
         });
 
-        const finalText = draft || buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
+        const finalText = refusalGuardrails.draft || buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
 
         const assistantMessage = await (prisma as any).leadClientMessage.create({
           data: {
@@ -1436,9 +1797,15 @@ export class LeadAutoReplyService {
           },
         });
 
-        const stateAfterRefusalBase = updateStateWithQuestion(prevState2WithSlots, extractLastQuestion(finalText));
-        const stateAfterRefusal1 = isScheduling ? updateStateVisitRequested(stateAfterRefusalBase) : stateAfterRefusalBase;
-        const stateAfterRefusal = isScheduling && mergedPrefs ? updateStateVisitPreferences(stateAfterRefusal1, mergedPrefs) : stateAfterRefusal1;
+        const stateAfterRefusalBase = updateStateWithQuestion(refusalStateWithVisit, refusalNextQuestion || extractLastQuestion(finalText));
+        const stateAfterRefusal = updateStateWithIntelligence(stateAfterRefusalBase, {
+          conversationMode: refusalPolicy.conversationMode,
+          qualification: refusalQualification,
+          handoff: refusalHandoffDecision,
+          recommendedAction: refusalPolicy.recommendedAction,
+          intent,
+          commercialSummary: refusalCommercialSummary,
+        });
 
         await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
           clientMessageId,
@@ -1455,6 +1822,18 @@ export class LeadAutoReplyService {
           },
           promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
           offlineAssistantState: stateAfterRefusal,
+          qualification: refusalQualification,
+          handoff: refusalHandoffDecision,
+          policy: refusalPolicy,
+          commercialSummary: refusalCommercialSummary,
+          propertyContext: refusalPropertyContext,
+          operationalPlaybook: refusalOperationalPlaybook,
+          experiment,
+          guardrails: {
+            version: OFFLINE_ASSISTANT_GUARDRAILS_VERSION,
+            appliedRules: refusalGuardrails.appliedRules,
+            scenario: refusalGuardrails.scenario,
+          },
         });
 
         if (intent === "SCHEDULING") {
@@ -1654,14 +2033,81 @@ export class LeadAutoReplyService {
 
         const extractedSlots = extractOfflineAssistantClientSlots(msg.content);
         const stateWithSlots = updateStateClientSlots(prevState, extractedSlots);
-        const nextQuestion = chooseNextQuestion({ history, state: stateWithSlots });
+        const placesQualificationBase = computeQualification({
+          slots: stateWithSlots.clientSlots,
+          visitRequested: Boolean(stateWithSlots.visitRequested),
+          visitPreferences: stateWithSlots.visitPreferences || null,
+          handoffNeeded: false,
+          message: msg.content,
+          property: propertyQualificationContext,
+        });
+        const placesHandoff = buildHandoffDecision({
+          needed: false,
+          reason: null,
+          leadTemperature: placesQualificationBase.leadTemperature,
+          visitRequested: Boolean(stateWithSlots.visitRequested),
+          qualificationScore: placesQualificationBase.score,
+          commercialSummary: placesQualificationBase.commercialSummary,
+        });
+        const placesCommercialSummary = buildCommercialSummary({
+          slots: stateWithSlots.clientSlots,
+          qualification: placesQualificationBase,
+          visitRequested: Boolean(stateWithSlots.visitRequested),
+          visitPreferences: stateWithSlots.visitPreferences || null,
+          handoff: placesHandoff,
+        });
+        const placesQualification: OfflineAssistantQualification = {
+          ...placesQualificationBase,
+          commercialSummary: placesCommercialSummary,
+        };
+        const placesPolicy = chooseConversationPolicy({
+          slots: stateWithSlots.clientSlots,
+          qualification: placesQualification,
+          handoff: buildHandoffDecision({
+            needed: false,
+            reason: null,
+            leadTemperature: placesQualification.leadTemperature,
+            visitRequested: Boolean(stateWithSlots.visitRequested),
+            qualificationScore: placesQualification.score,
+            commercialSummary: placesCommercialSummary,
+          }),
+          visitRequested: Boolean(stateWithSlots.visitRequested),
+          visitPreferences: stateWithSlots.visitPreferences || null,
+          fallbackNextQuestion: chooseNextQuestion({ history, state: stateWithSlots }),
+        });
+        const nextQuestion = placesPolicy.shouldAskFollowUp ? safeString(placesPolicy.nextQuestion) : "";
+        const stateWithPlacesIntelligence = updateStateWithIntelligence(updateStateWithQuestion(stateWithSlots, nextQuestion), {
+          conversationMode: placesPolicy.conversationMode,
+          qualification: placesQualification,
+          handoff: placesHandoff,
+          recommendedAction: placesPolicy.recommendedAction,
+          intent: "PROPERTY",
+          commercialSummary: placesCommercialSummary,
+        });
+        const placesPropertyContext = buildPropertyContextFromLead({
+          lead,
+          propertyTitle,
+          slots: stateWithSlots.clientSlots,
+        });
+        const placesOperationalPlaybook = buildOperationalPlaybookFromState({
+          clientName,
+          propertyTitle,
+          slots: stateWithSlots.clientSlots,
+          qualification: placesQualification,
+          handoff: placesHandoff,
+          policy: placesPolicy,
+          visitRequested: Boolean(stateWithSlots.visitRequested),
+          visitPreferences: stateWithSlots.visitPreferences || null,
+          propertyContext: placesPropertyContext,
+        });
         const answer =
           intro +
           `${about}encontrei ${placesCat.label} próximos (distâncias aproximadas):\n` +
           (list || "(sem resultados no momento)") +
           (nextQuestion ? `\n\n${nextQuestion}` : "");
 
-        const draft = applyOfflineAutoReplyGuardrails({ draft: answer, clientName, propertyTitle });
+        const placesGuardrails = applyOfflineAutoReplyGuardrailsDetailed({ draft: answer, clientName, propertyTitle, message: msg.content });
+        const draft = placesGuardrails.draft;
         const finalText = draft || buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
 
         const assistantMessage = await (prisma as any).leadClientMessage.create({
@@ -1697,7 +2143,19 @@ export class LeadAutoReplyService {
           assistantMessageId: assistantMessage.id,
           model: null,
           promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
-          offlineAssistantState: updateStateWithQuestion(stateWithSlots, nextQuestion),
+          offlineAssistantState: stateWithPlacesIntelligence,
+          qualification: placesQualification,
+          handoff: placesHandoff,
+          policy: placesPolicy,
+          commercialSummary: placesCommercialSummary,
+          propertyContext: placesPropertyContext,
+          operationalPlaybook: placesOperationalPlaybook,
+          experiment,
+          guardrails: {
+            version: OFFLINE_ASSISTANT_GUARDRAILS_VERSION,
+            appliedRules: placesGuardrails.appliedRules,
+            scenario: placesGuardrails.scenario,
+          },
           tool: {
             name: "places-nearby",
             category: placesCat.key,
@@ -1789,14 +2247,18 @@ export class LeadAutoReplyService {
       const systemPrompt =
         "Você é um assistente de atendimento do chat do site (pt-BR) para corretores de imóveis no Brasil.\n" +
         "Você está respondendo enquanto o corretor está offline (fora do horário comercial configurado).\n" +
-        "Objetivo: manter o cliente engajado, esclarecer dúvidas básicas do imóvel usando SOMENTE os dados fornecidos e fazer 1 pergunta curta para qualificar.\n" +
+        "Objetivo: manter o cliente engajado, esclarecer dúvidas básicas do imóvel usando SOMENTE os dados fornecidos e coletar o próximo melhor passo comercial.\n" +
         "Política anti-chute: se a informação não estiver nos dados fornecidos, diga claramente que não consta no anúncio, liste o que faltou em missing_info e NÃO invente.\n" +
         "Estilo: seja formal, humano e direto; comece a resposta reconhecendo a mensagem do cliente (ex.: 'Entendi.' / 'Perfeito.'); evite iniciar com negação; não seja excessivamente robótico.\n" +
         "Se a pergunta do cliente for sobre algo que não consta no anúncio, responda de forma direta e não faça pergunta adicional (next_question vazio), encaminhando para o corretor confirmar.\n" +
         "Use handoff_needed=true quando o assunto depender do corretor (ex.: proposta/negociação, endereço exato, documentação/contrato, condições específicas de locação/garantias, disponibilidade/visita, ou qualquer confirmação fora do anúncio).\n" +
         "Regras: responda apenas sobre o anúncio; não invente informações; não use links/telefone; não agende/CONFIRME visitas; não sugira horários/dias; não prometa retorno em X minutos.\n" +
-        "Saída: responda SOMENTE com um objeto JSON válido (sem markdown, sem texto fora do JSON) com as chaves: answer, facts_used, missing_info, next_question, handoff_needed.\n" +
+        "Saída: responda SOMENTE com um objeto JSON válido (sem markdown, sem texto fora do JSON) com as chaves: answer, facts_used, missing_info, next_question, handoff_needed, conversation_mode, handoff_reason, recommended_next_step, lead_temperature_hint, objections_detected.\n" +
         "facts_used deve ser uma lista com as chaves dos dados realmente usados na resposta.\n" +
+        "conversation_mode deve ser um entre INFO_MODE, QUALIFICATION_MODE, CONVERSION_MODE ou HANDOFF_MODE.\n" +
+        "handoff_reason deve ser um entre SCHEDULING, NEGOTIATION, FINANCING, DOCUMENTATION, LOCATION_DETAILS, PROPERTY_LIMITATION, OFF_TOPIC ou OTHER.\n" +
+        "lead_temperature_hint deve ser HOT, WARM ou COLD.\n" +
+        "objections_detected deve ser uma lista curta de objeções percebidas do cliente, ou lista vazia.\n" +
         "answer deve ser curta, humana e direta (máximo ~5 linhas).";
 
       const lines: string[] = [];
@@ -1820,9 +2282,20 @@ export class LeadAutoReplyService {
       const description = clampText(safeString((lead.property as any)?.description), 700);
       const condoRules = clampText(safeString((lead.property as any)?.condoRules), 500);
       const amenities = buildAmenitiesFromProperty(lead.property);
+      const propertyContextForPrompt = buildPropertyContextFromLead({
+        lead,
+        propertyTitle,
+        slots: prevStateWithSlots.clientSlots,
+      });
       if (description) lines.push(`Descrição do anúncio: ${description}`);
       if (amenities.length) lines.push(`Itens/condomínio: ${amenities.join(", ")}`);
       if (condoRules) lines.push(`Regras do condomínio: ${condoRules}`);
+      if (experiment.variant === "COPILOT_V2") {
+        lines.push(`Resumo comercial do imóvel: ${propertyContextForPrompt.propertySummary}`);
+        lines.push(`Contexto de região e aderência: ${propertyContextForPrompt.regionSummary}`);
+        if (propertyContextForPrompt.fitHighlights.length) lines.push(`Sinais de aderência: ${propertyContextForPrompt.fitHighlights.join(", ")}`);
+        if (propertyContextForPrompt.attentionFlags.length) lines.push(`Pontos de atenção comerciais: ${propertyContextForPrompt.attentionFlags.join(", ")}`);
+      }
 
       const userPrompt =
         lines.join("\n") +
@@ -1832,6 +2305,8 @@ export class LeadAutoReplyService {
         (history || "(sem histórico)") +
         `\n\nEsta é sua primeira resposta nesta conversa? ${shouldIntroduce ? "Sim" : "Não"}.` +
         (prevStateWithSlots.clientSlots ? `\n\nPreferências já informadas pelo cliente (resumo): ${formatOfflineAssistantClientSlots(prevStateWithSlots.clientSlots)}` : "") +
+        (prevStateWithSlots.commercialSummary ? `\n\nResumo comercial atual: ${prevStateWithSlots.commercialSummary}` : "") +
+        (experiment.variant === "COPILOT_V2" ? "\n\nModo experimental ativo: priorize clareza comercial, contexto do imóvel/região e próximo melhor passo sem inventar informação." : "") +
         "\n\nAgora responda no formato JSON pedido.";
 
       const ai = await callOpenAiText({ apiKey, systemPrompt, userPrompt });
@@ -1873,18 +2348,128 @@ export class LeadAutoReplyService {
       const serverNextQuestion = chooseNextQuestion({ history, state: prevStateWithSlots });
       const modelNextQuestion = parsed.ok ? safeString(parsed.value.next_question) : "";
       const missingInfo = parsed.ok && Array.isArray(parsed.value.missing_info) ? parsed.value.missing_info : [];
-      const shouldAskFollowUp = !finalHandoffNeeded && missingInfo.length === 0;
-      const nextQuestion = shouldAskFollowUp ? modelNextQuestion || serverNextQuestion : "";
-
-      const nextState = updateStateWithQuestion(prevStateWithSlots, nextQuestion);
-      const nextStateWithVisit = visitHandoffNeeded
-        ? updateStateVisitPreferences(updateStateVisitRequested(nextState), mergedVisitPrefs || extractedVisitPrefs)
-        : nextState;
+      const aiObjections = parsed.ok && Array.isArray(parsed.value.objections_detected) ? parsed.value.objections_detected : [];
+      const mergedClientSlots = (() => {
+        const currentSlots = prevStateWithSlots.clientSlots;
+        const currentObjections = Array.isArray(currentSlots?.objections) ? currentSlots.objections.map((x: any) => safeString(x)).filter(Boolean) : [];
+        const nextObjections = Array.from(new Set([...currentObjections, ...aiObjections.map((x: any) => safeString(x)).filter(Boolean)]));
+        if (!nextObjections.length) return currentSlots;
+        return {
+          ...(currentSlots || {}),
+          objections: nextObjections,
+        } as OfflineAssistantClientSlots;
+      })();
+      const stateWithCommercialSignals = mergedClientSlots === prevStateWithSlots.clientSlots ? prevStateWithSlots : { ...prevStateWithSlots, clientSlots: mergedClientSlots };
+      const effectiveVisitRequested = Boolean(stateWithCommercialSignals.visitRequested || visitHandoffNeeded);
+      const effectiveVisitPreferences = visitHandoffNeeded
+        ? mergedVisitPrefs || extractedVisitPrefs
+        : stateWithCommercialSignals.visitPreferences || null;
 
       const rawAnswer = parsed.ok ? safeString(parsed.value.answer) : "";
       const factsUsed = parsed.ok ? parsed.value.facts_used : [];
       const likelyFactual = isLikelyFactualAnswer(rawAnswer);
       const factualWithoutFacts = Boolean(likelyFactual && factsUsed.length === 0);
+      const propertyLimitationHandoff = !finalHandoffNeeded && missingInfo.length > 0 && likelyFactual;
+      const qualificationDraft = computeQualification({
+        slots: stateWithCommercialSignals.clientSlots,
+        visitRequested: effectiveVisitRequested,
+        visitPreferences: effectiveVisitPreferences,
+        handoffNeeded: finalHandoffNeeded || propertyLimitationHandoff,
+        message: msg.content,
+        property: propertyQualificationContext,
+      });
+      const qualificationCompleteHandoff =
+        !finalHandoffNeeded &&
+        !propertyLimitationHandoff &&
+        qualificationDraft.recommendedAction === "REGISTER_AND_HANDOFF" &&
+        qualificationDraft.dataCompleteness >= 70 &&
+        qualificationDraft.leadTemperature !== "COLD";
+      const computedHandoffNeeded = finalHandoffNeeded || propertyLimitationHandoff || qualificationCompleteHandoff;
+      const qualificationBase =
+        computedHandoffNeeded === (finalHandoffNeeded || propertyLimitationHandoff)
+          ? qualificationDraft
+          : computeQualification({
+              slots: stateWithCommercialSignals.clientSlots,
+              visitRequested: effectiveVisitRequested,
+              visitPreferences: effectiveVisitPreferences,
+              handoffNeeded: computedHandoffNeeded,
+              message: msg.content,
+              property: propertyQualificationContext,
+            });
+      const handoffReason = computedHandoffNeeded
+        ? detectHandoffReason({
+            message: msg.content,
+            intent,
+            visitRequested: effectiveVisitRequested,
+            slots: stateWithCommercialSignals.clientSlots,
+            finalHandoffNeeded: computedHandoffNeeded,
+            missingInfo,
+          }) || (qualificationCompleteHandoff ? "QUALIFICATION_COMPLETE" : null)
+        : null;
+      const baseHandoffDecision = buildHandoffDecision({
+        needed: computedHandoffNeeded,
+        reason: handoffReason,
+        leadTemperature: qualificationBase.leadTemperature,
+        visitRequested: effectiveVisitRequested,
+        qualificationScore: qualificationBase.score,
+        commercialSummary: qualificationBase.commercialSummary,
+      });
+      const commercialSummary = buildCommercialSummary({
+        slots: stateWithCommercialSignals.clientSlots,
+        qualification: qualificationBase,
+        visitRequested: effectiveVisitRequested,
+        visitPreferences: effectiveVisitPreferences,
+        handoff: baseHandoffDecision,
+      });
+      const qualification: OfflineAssistantQualification = {
+        ...qualificationBase,
+        commercialSummary,
+      };
+      const propertyContext = buildPropertyContextFromLead({
+        lead,
+        propertyTitle,
+        slots: stateWithCommercialSignals.clientSlots,
+      });
+      const handoffDecision = buildHandoffDecision({
+        needed: computedHandoffNeeded,
+        reason: handoffReason,
+        leadTemperature: qualification.leadTemperature,
+        visitRequested: effectiveVisitRequested,
+        qualificationScore: qualification.score,
+        commercialSummary,
+      });
+      const policy = chooseConversationPolicy({
+        slots: stateWithCommercialSignals.clientSlots,
+        qualification,
+        handoff: handoffDecision,
+        visitRequested: effectiveVisitRequested,
+        visitPreferences: effectiveVisitPreferences,
+        fallbackNextQuestion: modelNextQuestion || serverNextQuestion,
+      });
+      const operationalPlaybook = buildOperationalPlaybookFromState({
+        clientName,
+        propertyTitle,
+        slots: stateWithCommercialSignals.clientSlots,
+        qualification,
+        handoff: handoffDecision,
+        policy,
+        visitRequested: effectiveVisitRequested,
+        visitPreferences: effectiveVisitPreferences,
+        propertyContext,
+      });
+      const nextQuestion = policy.shouldAskFollowUp ? safeString(policy.nextQuestion) : "";
+      const nextStateBase = updateStateWithQuestion(stateWithCommercialSignals, nextQuestion);
+      const nextStateWithVisit = effectiveVisitRequested
+        ? updateStateVisitPreferences(updateStateVisitRequested(nextStateBase), effectiveVisitPreferences)
+        : nextStateBase;
+      const nextStateWithIntelligence = updateStateWithIntelligence(nextStateWithVisit, {
+        conversationMode: policy.conversationMode,
+        qualification,
+        handoff: handoffDecision,
+        recommendedAction: policy.recommendedAction,
+        intent,
+        commercialSummary,
+      });
 
       const sendReason =
         !parsed.ok
@@ -1907,7 +2492,7 @@ export class LeadAutoReplyService {
           intro +
           `${about}essa informação não consta no anúncio.\n\n` +
           "Se você quiser, eu posso registrar essa dúvida para o corretor, que confirma com você assim que possível.";
-      } else if (finalHandoffNeeded && !visitHandoffNeeded) {
+      } else if (handoffDecision.needed && !visitHandoffNeeded) {
         answerText =
           `${safeString(answerText)}\n\n` +
           "Se você quiser, eu posso registrar sua solicitação para o corretor, que confirma com você assim que possível.";
@@ -1924,13 +2509,16 @@ export class LeadAutoReplyService {
       const answerWithIntro = shouldIntroduce && !alreadyIntroduced ? buildAssistantIntro(clientName) + answerText : answerText;
       const messageWithQuestion = nextQuestion ? `${answerWithIntro}\n\n${nextQuestion}` : answerWithIntro;
 
-      const draft = messageWithQuestion
-        ? applyOfflineAutoReplyGuardrails({
+      const guardrails = messageWithQuestion
+        ? applyOfflineAutoReplyGuardrailsDetailed({
             draft: messageWithQuestion,
             clientName,
             propertyTitle,
+            message: msg.content,
+            handoffReason,
           })
-        : "";
+        : { draft: "", appliedRules: [] as string[], scenario: null as string | null };
+      const draft = guardrails.draft;
 
       if (!draft) {
         const fallback = buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
@@ -1968,6 +2556,19 @@ export class LeadAutoReplyService {
           model: ai?.model || null,
           fallback: true,
           reason: "EMPTY_AI_OUTPUT",
+          offlineAssistantState: nextStateWithIntelligence,
+          qualification,
+          handoff: handoffDecision,
+          policy,
+          commercialSummary,
+          propertyContext,
+          operationalPlaybook,
+          experiment,
+          guardrails: {
+            version: OFFLINE_ASSISTANT_GUARDRAILS_VERSION,
+            appliedRules: guardrails.appliedRules,
+            scenario: guardrails.scenario,
+          },
         });
 
         try {
@@ -2024,7 +2625,19 @@ export class LeadAutoReplyService {
         assistantMessageId: assistantMessage.id,
         model: ai?.model || null,
         promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
-        offlineAssistantState: nextStateWithVisit,
+        offlineAssistantState: nextStateWithIntelligence,
+        qualification,
+        handoff: handoffDecision,
+        policy,
+        commercialSummary,
+        propertyContext,
+        operationalPlaybook,
+        experiment,
+        guardrails: {
+          version: OFFLINE_ASSISTANT_GUARDRAILS_VERSION,
+          appliedRules: guardrails.appliedRules,
+          scenario: guardrails.scenario,
+        },
         aiJson: {
           ok: parsed.ok,
           error: parsed.ok ? null : (parsed as any).error,
@@ -2036,8 +2649,13 @@ export class LeadAutoReplyService {
           serverNextQuestion: serverNextQuestion || null,
           missingInfo: parsed.ok ? parsed.value.missing_info || null : null,
           handoffNeeded: parsed.ok ? Boolean(parsed.value.handoff_needed) : null,
-          finalHandoffNeeded: finalHandoffNeeded,
+          finalHandoffNeeded: computedHandoffNeeded,
           visitHandoffNeeded: visitHandoffNeeded,
+          conversationMode: parsed.ok ? parsed.value.conversation_mode || null : null,
+          handoffReason: parsed.ok ? parsed.value.handoff_reason || null : null,
+          recommendedNextStep: parsed.ok ? parsed.value.recommended_next_step || null : null,
+          leadTemperatureHint: parsed.ok ? parsed.value.lead_temperature_hint || null : null,
+          objectionsDetected: parsed.ok ? parsed.value.objections_detected || null : null,
         },
       });
 

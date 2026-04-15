@@ -75,6 +75,9 @@ type AgencyInsightsResponse = {
     activeClients?: number;
     clientPendingReply?: number;
     clientNoFirstContact?: number;
+    avgFirstResponseMinutes?: number | null;
+    executionScore?: number;
+    workloadStatus?: "balanced" | "attention" | "overloaded";
   }>;
   highlights: AgencyInsight[];
 };
@@ -129,6 +132,12 @@ function formatDateTime(value: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function workloadBadgeClass(status: "balanced" | "attention" | "overloaded") {
+  if (status === "overloaded") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (status === "attention") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
 export default function AgencyDashboardPage() {
@@ -358,17 +367,23 @@ export default function AgencyDashboardPage() {
     };
   };
 
-  const teamActivityMembers = useMemo(() => {
+  const teamLoadMembers = useMemo(() => {
     return (Array.isArray(insights?.members) ? insights.members : [])
       .slice()
       .sort((a, b) => {
-        const aPending = Number(a.pendingReply || 0);
-        const bPending = Number(b.pendingReply || 0);
+        const aPending = Number(a.pendingReply || 0) + Number(a.clientPendingReply || 0);
+        const bPending = Number(b.pendingReply || 0) + Number(b.clientPendingReply || 0);
         if (bPending !== aPending) return bPending - aPending;
+        const aStalled = Number(a.stalledLeads || 0);
+        const bStalled = Number(b.stalledLeads || 0);
+        if (bStalled !== aStalled) return bStalled - aStalled;
         return Number(b.activeLeads || 0) - Number(a.activeLeads || 0);
       })
-      .slice(0, 6);
+      .slice(0, 5);
   }, [insights?.members]);
+
+  const teamMembersTotal = Array.isArray(insights?.members) ? insights.members.length : 0;
+  const hiddenTeamMembers = Math.max(0, teamMembersTotal - teamLoadMembers.length);
 
   const leadAttentionList = useMemo(() => {
     return Array.isArray(insights?.sla?.pendingReplyLeads) ? insights.sla.pendingReplyLeads.slice(0, 6) : [];
@@ -469,61 +484,6 @@ export default function AgencyDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <StatCard
-                title="Prioridades operacionais"
-                action={
-                  <Link href={`/agency/teams/${dashboardTeamId}/crm`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    Abrir leads
-                  </Link>
-                }
-              >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Distribuição</div>
-                    <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.funnel.unassigned}</div>
-                    <div className="mt-1 text-sm text-gray-600">lead(s) sem responsável no time</div>
-                  </div>
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50/60 px-4 py-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">SLA de leads</div>
-                    <div className="mt-1 text-2xl font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
-                    <div className="mt-1 text-sm text-gray-600">lead(s) aguardando retorno</div>
-                  </div>
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50/60 px-4 py-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">Estoque do time</div>
-                    <div className="mt-1 text-2xl font-semibold text-gray-900">{propertySummary.total}</div>
-                    <div className="mt-1 text-sm text-gray-600">{propertySummary.active} ativo(s), {propertySummary.paused} pausado(s) e {propertySummary.draft} rascunho(s)</div>
-                  </div>
-                </div>
-              </StatCard>
-            </div>
-
-            <div className="lg:col-span-1">
-              <StatCard title="Atualizações do time">
-                <div className="space-y-3">
-                  {teamActivityMembers.length > 0 ? (
-                    teamActivityMembers.map((member) => (
-                      <div key={member.userId} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.email || "Corretor"}</p>
-                            <p className="mt-1 text-xs text-gray-500">{member.activeLeads} lead(s) ativos no momento</p>
-                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
-                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
-                                {member.pendingReply} lead(s) pendente(s)
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-gray-600">Assim que o time começar a operar, as atualizações dos corretores aparecem aqui.</div>
-                  )}
-                </div>
-              </StatCard>
-            </div>
-
-            <div className="lg:col-span-2">
-              <StatCard
                 title="Leads que pedem ação"
                 action={
                   <Link href={`/agency/teams/${dashboardTeamId}/crm`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
@@ -555,6 +515,83 @@ export default function AgencyDashboardPage() {
                 ) : (
                   <div className="text-sm text-gray-600">Nenhum lead aguardando resposta neste momento.</div>
                 )}
+              </StatCard>
+            </div>
+
+            <div className="lg:col-span-1">
+              <StatCard
+                title="Carga do time"
+                action={
+                  <Link href="/agency/team" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Ver todos
+                  </Link>
+                }
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3 text-xs text-gray-500">
+                    <div>
+                      <p className="font-semibold text-gray-700">Ordenado por pendências e carga</p>
+                      <p className="mt-1">
+                        Mostrando {teamLoadMembers.length} de {teamMembersTotal} corretores
+                        {hiddenTeamMembers > 0 ? ` · ${hiddenTeamMembers} fora deste resumo` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  {teamLoadMembers.length > 0 ? (
+                    <div className="space-y-3">
+                      {teamLoadMembers.map((member) => {
+                        const totalPending = Number(member.pendingReply || 0) + Number(member.clientPendingReply || 0);
+                        const attentionPoints = Number(member.stalledLeads || 0) + Number(member.clientNoFirstContact || 0);
+                        const workloadStatus = member.workloadStatus || "balanced";
+                        return (
+                          <Link
+                            key={member.userId}
+                            href={`/agency/teams/${dashboardTeamId}/crm?realtorId=${encodeURIComponent(member.userId)}`}
+                            className="block rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 hover:border-gray-300 hover:bg-white transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.email || "Corretor"}</p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  {member.activeLeads} lead(s) ativos · {Number(member.activeClients || 0)} cliente(s) ativos
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
+                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
+                                    {totalPending} pendência(s)
+                                  </span>
+                                  {member.stalledLeads ? (
+                                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
+                                      {member.stalledLeads} parado(s)
+                                    </span>
+                                  ) : null}
+                                  {member.clientNoFirstContact ? (
+                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-700">
+                                      {member.clientNoFirstContact} sem 1º contato
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end gap-2 text-right">
+                                <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${workloadBadgeClass(workloadStatus)}`}>
+                                  {workloadStatus === "overloaded" ? "Sobrecarregado" : workloadStatus === "attention" ? "Atenção" : "Equilibrado"}
+                                </span>
+                                <span className="text-[11px] font-medium text-gray-500">
+                                  Score {typeof member.executionScore === "number" ? member.executionScore : "-"}
+                                  {typeof member.avgFirstResponseMinutes === "number" ? ` · ${member.avgFirstResponseMinutes} min` : ""}
+                                  {attentionPoints > 0 ? ` · ${attentionPoints} ponto(s) de atenção` : ""}
+                                </span>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600">Assim que o time começar a operar, a carga dos corretores aparece aqui.</div>
+                  )}
+                </div>
               </StatCard>
             </div>
 

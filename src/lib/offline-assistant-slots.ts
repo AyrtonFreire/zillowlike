@@ -5,6 +5,14 @@ export type OfflineAssistantClientSlots = {
   moveTime?: string | null;
   bedroomsNeeded?: number | null;
   budget?: string | null;
+  searchRegion?: string | null;
+  financingIntent?: "FINANCIAMENTO" | "FGTS" | "RECURSOS_PROPRIOS" | "INDEFINIDO" | null;
+  urgencyLevel?: "ALTA" | "MEDIA" | "BAIXA" | null;
+  decisionStage?: "PESQUISA" | "COMPARANDO" | "PRONTO_VISITAR" | "PRONTO_PROPOSTA" | null;
+  familyProfile?: string | null;
+  reasonForMove?: string | null;
+  preferredContactWindow?: string | null;
+  objections?: string[] | null;
 };
 
 function safeString(x: any) {
@@ -32,6 +40,10 @@ function toNumberOrNull(v: any) {
   return Number.isFinite(n) ? n : null;
 }
 
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map((x) => safeString(x)).filter(Boolean)));
+}
+
 function extractBudgetRaw(t: string) {
   const raw = t;
   const m1 = raw.match(/\b(ate|até)\s+r?\$?\s*([0-9\.\,]+)\s*(mil|milhao|milhoes|k)?\b/);
@@ -39,6 +51,78 @@ function extractBudgetRaw(t: string) {
   const m2 = raw.match(/\br?\$\s*([0-9\.\,]+)\s*(mil|milhao|milhoes|k)?\b/);
   if (m2) return safeString(m2[0]);
   return "";
+}
+
+function extractSearchRegion(t: string) {
+  const patterns = [
+    /\b(?:bairro|regiao|região|zona|localidade|proximo|próximo)\s+(?:do|da|de)?\s*([a-z0-9\s\-]{3,40})\b/,
+    /\b(?:na\s+regiao|na\s+região|na\s+zona|no\s+bairro)\s+(?:do|da|de)?\s*([a-z0-9\s\-]{3,40})\b/,
+  ];
+  for (const pattern of patterns) {
+    const match = t.match(pattern);
+    if (match?.[1]) return safeString(match[1]).replace(/\s{2,}/g, " ");
+  }
+  return "";
+}
+
+function extractFamilyProfile(t: string) {
+  const patterns = [
+    /\b(casal(?:\s+com\s+filhos?)?|familia\s+com\s+filhos?|moro\s+sozinh[oa]|sou\s+sozinh[oa]|tenho\s+filh[oa]s?|idosos?)\b/,
+  ];
+  for (const pattern of patterns) {
+    const match = t.match(pattern);
+    if (match?.[1]) return safeString(match[1]);
+  }
+  return "";
+}
+
+function extractReasonForMove(t: string) {
+  const patterns = [
+    /\b(trabalho|investimento|casamento|divorcio|divórcio|faculdade|filhos?|sair\s+do\s+aluguel|mudanca\s+de\s+cidade|mudança\s+de\s+cidade|novo\s+emprego)\b/,
+  ];
+  for (const pattern of patterns) {
+    const match = t.match(pattern);
+    if (match?.[1]) return safeString(match[1]);
+  }
+  return "";
+}
+
+function detectDecisionStage(t: string): OfflineAssistantClientSlots["decisionStage"] {
+  if (/\b(proposta|oferta|fechar\s+negocio|fechar\s+negócio|vamos\s+fechar|tenho\s+interesse\s+em\s+fechar)\b/.test(t)) return "PRONTO_PROPOSTA";
+  if (/\b(visita|visitar|agendar|marcar|conhecer\s+o\s+imovel|conhecer\s+o\s+imóvel)\b/.test(t)) return "PRONTO_VISITAR";
+  if (/\b(comparando|comparar|avaliando\s+opcoes|avaliando\s+opções|vendo\s+outras\s+opcoes|vendo\s+outras\s+opções)\b/.test(t)) return "COMPARANDO";
+  if (/\b(pesquisando|olhando|dando\s+uma\s+olhada|só\s+pesquisando|só\s+olhando|ainda\s+estou\s+vendo)\b/.test(t)) return "PESQUISA";
+  return null;
+}
+
+function detectFinancingIntent(t: string): OfflineAssistantClientSlots["financingIntent"] {
+  if (/\b(fgts)\b/.test(t)) return "FGTS";
+  if (/\b(a\s+vista|à\s+vista|recurso\s+proprio|recurso\s+próprio|dinheiro\s+proprio|dinheiro\s+próprio)\b/.test(t)) return "RECURSOS_PROPRIOS";
+  if (/\b(financi|parcel|credito\s+imobiliario|crédito\s+imobiliário|banco)\b/.test(t)) return "FINANCIAMENTO";
+  if (/\b(ainda\s+nao\s+sei|ainda\s+não\s+sei|nao\s+decidi|não\s+decidi)\b/.test(t)) return "INDEFINIDO";
+  return null;
+}
+
+function detectUrgencyLevel(t: string, moveTime: string | null): OfflineAssistantClientSlots["urgencyLevel"] {
+  if (/\b(urgente|urgencia|urgência|imediat[oa]|o\s+quanto\s+antes|essa\s+semana|nos\s+proximos\s+dias|nos\s+próximos\s+dias)\b/.test(t)) return "ALTA";
+  if (moveTime && /\b(dia|dias|semana|semanas|mes|meses)\b/.test(moveTime)) return "MEDIA";
+  if (/\b(sem\s+pressa|com\s+calma|sem\s+urgencia|sem\s+urgência)\b/.test(t)) return "BAIXA";
+  return null;
+}
+
+function extractPreferredContactWindow(t: string) {
+  const match = t.match(/\b(manha|manhã|tarde|noite|apos\s+as\s+\d{1,2}h?|após\s+as\s+\d{1,2}h?|depois\s+das\s+\d{1,2}h?)\b/);
+  return match?.[0] ? safeString(match[0]) : "";
+}
+
+function extractObjections(t: string) {
+  const objections: string[] = [];
+  if (/\b(caro|cara|apertado\s+no\s+orcamento|apertado\s+no\s+orçamento|fora\s+do\s+orcamento|fora\s+do\s+orçamento)\b/.test(t)) objections.push("preço");
+  if (/\b(localizacao|localização|bairro|distante|longe)\b/.test(t)) objections.push("localização");
+  if (/\b(condominio|condomínio|iptu)\b/.test(t)) objections.push("custos adicionais");
+  if (/\b(vaga|garagem)\b/.test(t) && /\b(sem|pouca|insuficiente)\b/.test(t)) objections.push("vaga");
+  if (/\b(quarto|quartos|pequeno|metragem|area|área)\b/.test(t) && /\b(pouco|menor|apertado|insuficiente)\b/.test(t)) objections.push("espaço");
+  return uniqueStrings(objections);
 }
 
 export function extractOfflineAssistantClientSlots(message: string): OfflineAssistantClientSlots {
@@ -77,6 +161,15 @@ export function extractOfflineAssistantClientSlots(message: string): OfflineAssi
   const b = extractBudgetRaw(t);
   if (b) budget = clampText(b, 60);
 
+  const searchRegion = clampText(extractSearchRegion(t), 60) || null;
+  const financingIntent = detectFinancingIntent(t);
+  const decisionStage = detectDecisionStage(t);
+  const urgencyLevel = detectUrgencyLevel(t, moveTime);
+  const familyProfile = clampText(extractFamilyProfile(t), 60) || null;
+  const reasonForMove = clampText(extractReasonForMove(t), 60) || null;
+  const preferredContactWindow = clampText(extractPreferredContactWindow(t), 40) || null;
+  const objections = extractObjections(t);
+
   const out: OfflineAssistantClientSlots = {};
   if (purpose) out.purpose = purpose;
   if (hasPets !== null) out.hasPets = hasPets;
@@ -84,6 +177,14 @@ export function extractOfflineAssistantClientSlots(message: string): OfflineAssi
   if (bedroomsNeeded !== null) out.bedroomsNeeded = bedroomsNeeded;
   if (moveTime) out.moveTime = moveTime;
   if (budget) out.budget = budget;
+  if (searchRegion) out.searchRegion = searchRegion;
+  if (financingIntent) out.financingIntent = financingIntent;
+  if (urgencyLevel) out.urgencyLevel = urgencyLevel;
+  if (decisionStage) out.decisionStage = decisionStage;
+  if (familyProfile) out.familyProfile = familyProfile;
+  if (reasonForMove) out.reasonForMove = reasonForMove;
+  if (preferredContactWindow) out.preferredContactWindow = preferredContactWindow;
+  if (objections.length) out.objections = objections;
   return out;
 }
 
@@ -108,6 +209,14 @@ export function mergeOfflineAssistantClientSlots(
     bedroomsNeeded:
       typeof n?.bedroomsNeeded === "number" ? n.bedroomsNeeded : typeof p?.bedroomsNeeded === "number" ? p.bedroomsNeeded : null,
     budget: safeString(n?.budget) || safeString(p?.budget) || null,
+    searchRegion: safeString(n?.searchRegion) || safeString(p?.searchRegion) || null,
+    financingIntent: (n?.financingIntent ?? null) || (p?.financingIntent ?? null) || null,
+    urgencyLevel: (n?.urgencyLevel ?? null) || (p?.urgencyLevel ?? null) || null,
+    decisionStage: (n?.decisionStage ?? null) || (p?.decisionStage ?? null) || null,
+    familyProfile: safeString(n?.familyProfile) || safeString(p?.familyProfile) || null,
+    reasonForMove: safeString(n?.reasonForMove) || safeString(p?.reasonForMove) || null,
+    preferredContactWindow: safeString(n?.preferredContactWindow) || safeString(p?.preferredContactWindow) || null,
+    objections: uniqueStrings([...(p?.objections || []), ...(n?.objections || [])]),
   };
 
   const hasAny =
@@ -116,7 +225,15 @@ export function mergeOfflineAssistantClientSlots(
     typeof merged.parkingSpotsNeeded === "number" ||
     Boolean(merged.moveTime) ||
     typeof merged.bedroomsNeeded === "number" ||
-    Boolean(merged.budget);
+    Boolean(merged.budget) ||
+    Boolean(merged.searchRegion) ||
+    Boolean(merged.financingIntent) ||
+    Boolean(merged.urgencyLevel) ||
+    Boolean(merged.decisionStage) ||
+    Boolean(merged.familyProfile) ||
+    Boolean(merged.reasonForMove) ||
+    Boolean(merged.preferredContactWindow) ||
+    Boolean(merged.objections?.length);
 
   return hasAny ? merged : undefined;
 }
@@ -132,5 +249,13 @@ export function formatOfflineAssistantClientSlots(slots: OfflineAssistantClientS
   if (typeof s.bedroomsNeeded === "number") parts.push(`quartos: ${s.bedroomsNeeded}`);
   if (safeString(s.moveTime)) parts.push(`prazo: ${safeString(s.moveTime)}`);
   if (safeString(s.budget)) parts.push(`orçamento: ${safeString(s.budget)}`);
+  if (safeString(s.searchRegion)) parts.push(`região: ${safeString(s.searchRegion)}`);
+  if (safeString(s.financingIntent)) parts.push(`pagamento: ${safeString(s.financingIntent).toLowerCase()}`);
+  if (safeString(s.urgencyLevel)) parts.push(`urgência: ${safeString(s.urgencyLevel).toLowerCase()}`);
+  if (safeString(s.decisionStage)) parts.push(`estágio: ${safeString(s.decisionStage).toLowerCase()}`);
+  if (safeString(s.familyProfile)) parts.push(`perfil: ${safeString(s.familyProfile)}`);
+  if (safeString(s.reasonForMove)) parts.push(`motivo: ${safeString(s.reasonForMove)}`);
+  if (safeString(s.preferredContactWindow)) parts.push(`janela: ${safeString(s.preferredContactWindow)}`);
+  if (Array.isArray(s.objections) && s.objections.length) parts.push(`objeções: ${s.objections.join(", ")}`);
   return parts.filter(Boolean).join(" | ");
 }

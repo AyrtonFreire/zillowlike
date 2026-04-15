@@ -54,6 +54,12 @@ function readOfflineAssistantStateFromEventMeta(meta: any) {
       : null,
     clientSlots: clientSlots || null,
     asked: asked || null,
+    conversationMode: safeString(state?.conversationMode) || null,
+    qualification: asObject(state?.qualification) || null,
+    handoff: asObject(state?.handoff) || null,
+    lastRecommendedAction: safeString(state?.lastRecommendedAction) || null,
+    lastIntent: safeString(state?.lastIntent) || null,
+    commercialSummary: safeString(state?.commercialSummary) || null,
   };
 }
 
@@ -64,7 +70,50 @@ function readAiJsonFromEventMeta(meta: any) {
   return {
     nextQuestion: safeString(aiJson?.nextQuestion) || null,
     handoffNeeded: aiJson?.handoffNeeded === null || aiJson?.handoffNeeded === undefined ? null : Boolean(aiJson?.handoffNeeded),
+    finalHandoffNeeded:
+      aiJson?.finalHandoffNeeded === null || aiJson?.finalHandoffNeeded === undefined ? null : Boolean(aiJson?.finalHandoffNeeded),
+    visitHandoffNeeded:
+      aiJson?.visitHandoffNeeded === null || aiJson?.visitHandoffNeeded === undefined ? null : Boolean(aiJson?.visitHandoffNeeded),
     missingInfo: Array.isArray(aiJson?.missingInfo) ? aiJson?.missingInfo.map((x: any) => safeString(x)).filter(Boolean) : null,
+    conversationMode: safeString(aiJson?.conversationMode) || null,
+    handoffReason: safeString(aiJson?.handoffReason) || null,
+    recommendedNextStep: safeString(aiJson?.recommendedNextStep) || null,
+    leadTemperatureHint: safeString(aiJson?.leadTemperatureHint) || null,
+    objectionsDetected: Array.isArray(aiJson?.objectionsDetected) ? aiJson.objectionsDetected.map((x: any) => safeString(x)).filter(Boolean) : null,
+  };
+}
+
+function readQualificationFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.qualification) || null;
+}
+
+function readHandoffFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.handoff) || null;
+}
+
+function readPolicyFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.policy) || null;
+}
+
+function readPropertyContextFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.propertyContext) || null;
+}
+
+function readOperationalPlaybookFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.operationalPlaybook) || null;
+}
+
+function readExperimentFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.experiment) || null;
+}
+
+function readGuardrailsFromEventMeta(meta: any) {
+  const guardrails = asObject(asObject(meta)?.guardrails);
+  if (!guardrails) return null;
+  return {
+    version: safeString(guardrails?.version) || null,
+    scenario: safeString(guardrails?.scenario) || null,
+    appliedRules: Array.isArray(guardrails?.appliedRules) ? guardrails.appliedRules.map((x: any) => safeString(x)).filter(Boolean) : [],
   };
 }
 
@@ -146,6 +195,8 @@ export async function GET(req: NextRequest) {
         range: label,
         since,
         enabled: Boolean(settings.enabled),
+        rollout: (settings as any)?.rollout || null,
+        versions: (settings as any)?.versions || null,
         items: [],
       });
     }
@@ -277,13 +328,28 @@ export async function GET(req: NextRequest) {
         const sentMeta = lastSentEvent ? asObject(lastSentEvent?.metadata) : null;
         const aiJson = sentMeta ? readAiJsonFromEventMeta(sentMeta) : null;
         const stateFromSent = sentMeta ? readOfflineAssistantStateFromEventMeta(sentMeta) : null;
+        const qualification = sentMeta ? readQualificationFromEventMeta(sentMeta) : null;
+        const handoff = sentMeta ? readHandoffFromEventMeta(sentMeta) : null;
+        const policy = sentMeta ? readPolicyFromEventMeta(sentMeta) : null;
+        const propertyContext = sentMeta ? readPropertyContextFromEventMeta(sentMeta) : null;
+        const operationalPlaybook = sentMeta ? readOperationalPlaybookFromEventMeta(sentMeta) : null;
+        const experiment = sentMeta ? readExperimentFromEventMeta(sentMeta) : null;
+        const guardrails = sentMeta ? readGuardrailsFromEventMeta(sentMeta) : null;
 
         const visitPrefsFromVisitRequested = lastVisitRequested ? readVisitPreferencesFromVisitRequestedEventMeta(lastVisitRequested?.metadata) : null;
         const visitRequested = Boolean(stateFromSent?.visitRequested) || Boolean(visitPrefsFromVisitRequested);
         const visitPreferences = visitPrefsFromVisitRequested || stateFromSent?.visitPreferences || null;
 
-        const handoffNeeded = aiJson?.handoffNeeded === true;
-        const nextQuestion = aiJson?.nextQuestion || stateFromSent?.lastQuestion || null;
+        const handoffNeeded =
+          handoff?.needed === true ||
+          aiJson?.finalHandoffNeeded === true ||
+          (aiJson?.finalHandoffNeeded == null && aiJson?.handoffNeeded === true);
+        const nextQuestion = safeString(policy?.nextQuestion) || aiJson?.nextQuestion || stateFromSent?.lastQuestion || null;
+        const commercialSummary =
+          safeString(sentMeta?.commercialSummary) ||
+          safeString(stateFromSent?.commercialSummary) ||
+          safeString(qualification?.commercialSummary) ||
+          null;
 
         const lastActivityAt = (() => {
           const candidates = [
@@ -308,6 +374,15 @@ export async function GET(req: NextRequest) {
           visitRequested,
           visitPreferences,
           clientSlots: stateFromSent?.clientSlots || null,
+          conversationMode: safeString(policy?.conversationMode) || stateFromSent?.conversationMode || aiJson?.conversationMode || null,
+          qualification,
+          handoff,
+          policy,
+          commercialSummary,
+          propertyContext,
+          operationalPlaybook,
+          experiment,
+          guardrails,
         };
       })
       .sort((a: any, b: any) => {
@@ -320,6 +395,8 @@ export async function GET(req: NextRequest) {
       range: label,
       since,
       enabled: Boolean(settings.enabled),
+      rollout: (settings as any)?.rollout || null,
+      versions: (settings as any)?.versions || null,
       items,
     });
   } catch (error) {

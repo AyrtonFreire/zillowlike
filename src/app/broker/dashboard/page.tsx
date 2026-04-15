@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,9 +11,7 @@ import {
   Users,
   Clock,
   Plus,
-  Eye,
   Activity,
-  MessageCircle,
   Sparkles,
 } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
@@ -22,6 +20,7 @@ import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import LeadListItem from "@/components/dashboard/LeadListItem";
 import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding/BrokerOnboarding";
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
+import { formatConversationModeLabel, formatLeadTemperatureLabel, formatPipelineStageLabel, formatPriorityLabel } from "@/lib/offline-assistant-intelligence";
 import { motion } from "framer-motion";
 import {
   Cell,
@@ -48,39 +47,15 @@ interface Metrics {
   leadsWithReminders: number;
 }
 
-function formatMinutesCompact(totalMinutes: number) {
-  const minutes = Math.max(0, Math.round(totalMinutes || 0));
-  if (minutes < 60) return `${minutes}min`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours < 24) return mins > 0 ? `${hours}h${String(mins).padStart(2, "0")}` : `${hours}h`;
-  const days = Math.floor(hours / 24);
-  const remHours = hours % 24;
-  if (days <= 0) return `${hours}h`;
-  if (remHours <= 0) return `${days}d`;
-  return `${days}d${remHours}h`;
-}
-
-function clampNumber(n: number) {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, n);
-}
-
-function formatPercent(value: number) {
-  const v = clampNumber(value);
-  if (v <= 0) return "0%";
-  if (v >= 100) return "100%";
-  return `${Math.round(v)}%`;
-}
-
-function hexToRgba(hex: string, alpha: number) {
-  const raw = String(hex || "").replace("#", "").trim();
-  if (raw.length !== 6) return `rgba(148, 163, 184, ${alpha})`;
-  const r = parseInt(raw.slice(0, 2), 16);
-  const g = parseInt(raw.slice(2, 4), 16);
-  const b = parseInt(raw.slice(4, 6), 16);
-  if (![r, g, b].every((x) => Number.isFinite(x))) return `rgba(148, 163, 184, ${alpha})`;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+function formatTokenLabel(value: string | null | undefined) {
+  const raw = String(value || "").trim();
+  if (!raw) return "—";
+  return raw
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function Skeleton({ className = "" }: { className?: string }) {
@@ -131,6 +106,15 @@ interface Lead {
 type OfflineAssistantDashboardSummary = {
   success: boolean;
   enabled: boolean;
+  rollout?: {
+    rolloutPercent?: number | null;
+    experimentPercent?: number | null;
+    rolloutEnabled?: boolean | null;
+  } | null;
+  versions?: {
+    promptVersion?: string | null;
+    guardrailsVersion?: string | null;
+  } | null;
   range: "24h" | "7d";
   windowSince: string;
   seenAt: string | null;
@@ -141,6 +125,12 @@ type OfflineAssistantDashboardSummary = {
     lastActivityAt: string | null;
     handoffLeads: number;
     visitRequestedLeads: number;
+    hotLeads: number;
+    urgentLeads: number;
+    qualifiedLeads: number;
+    avgDataCompleteness: number;
+    topVariant: string | null;
+    topGuardrailScenario: string | null;
   };
   newTotals: {
     leads: number;
@@ -156,6 +146,24 @@ type OfflineAssistantDashboardSummary = {
     counts: { sent: number; failed: number };
     handoffNeeded: boolean;
     visitRequested: boolean;
+    conversationMode: string | null;
+    leadTemperature: string | null;
+    responsePriority: string | null;
+    commercialSummary: string | null;
+    propertyContext?: {
+      propertySummary?: string | null;
+      regionSummary?: string | null;
+    } | null;
+    operationalPlaybook?: {
+      headline?: string | null;
+      pipelineStage?: string | null;
+    } | null;
+    experiment?: {
+      variant?: string | null;
+    } | null;
+    guardrails?: {
+      scenario?: string | null;
+    } | null;
   }>;
 };
 
@@ -199,54 +207,14 @@ export default function BrokerDashboard() {
 
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
-  const [unreadMessages, setUnreadMessages] = useState(0);
-
-  const BROKER_CHAT_LAST_READ_PREFIX = "zlw_broker_chat_last_read_";
+  const [, setUnreadMessages] = useState(0);
 
   const userId = (session?.user as any)?.id as string | undefined;
 
   const myPipelineEtagRef = useRef<string | null>(null);
   const brokerChatsEtagRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (userId) {
-      fetchDashboardData();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchOfflineAssistantSummary();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchMyLeads();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchUnreadMessages();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    const onFocus = () => fetchUnreadMessages();
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") fetchUnreadMessages();
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [userId]);
-
-  const fetchUnreadMessages = async () => {
+  const fetchUnreadMessages = useCallback(async () => {
     try {
       const headers: Record<string, string> = {};
       if (brokerChatsEtagRef.current) headers["If-None-Match"] = brokerChatsEtagRef.current;
@@ -269,9 +237,9 @@ export default function BrokerDashboard() {
     } catch (err) {
       console.error("Error fetching unread messages:", err);
     }
-  };
+  }, []);
 
-  const fetchOfflineAssistantSummary = async () => {
+  const fetchOfflineAssistantSummary = useCallback(async () => {
     try {
       if (typeof window === "undefined") return;
       const key = "zlw_offline_assistant_seen_at";
@@ -292,22 +260,21 @@ export default function BrokerDashboard() {
     } finally {
       setOfflineSummaryLoading(false);
     }
-  };
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
-      // Use real userId from session, or previewUserId for admin preview
       const effectiveUserId = previewUserId || userId;
       if (!effectiveUserId) return;
-      
+
       setDashboardError(null);
       setLoading(true);
       const response = await fetch(`/api/metrics/realtor?userId=${effectiveUserId}`);
-      
+
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
-      
+
       const data = await response.json();
 
       setMetrics(data.metrics || null);
@@ -316,7 +283,6 @@ export default function BrokerDashboard() {
       setDashboardError(null);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      // Set empty arrays to prevent undefined errors
       setMetrics(null);
       setProperties([]);
       setLeads([]);
@@ -324,9 +290,9 @@ export default function BrokerDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [previewUserId, userId]);
 
-  const fetchMyLeads = async () => {
+  const fetchMyLeads = useCallback(async () => {
     try {
       setMyLeadsError(null);
       setMyLeadsLoading(true);
@@ -355,9 +321,9 @@ export default function BrokerDashboard() {
     } finally {
       setMyLeadsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchMyLeadsSilent = async () => {
+  const fetchMyLeadsSilent = useCallback(async () => {
     try {
       const headers: Record<string, string> = {};
       if (myPipelineEtagRef.current) headers["If-None-Match"] = myPipelineEtagRef.current;
@@ -375,7 +341,49 @@ export default function BrokerDashboard() {
       setMyLeads(Array.isArray(data) ? (data as MyLead[]) : []);
     } catch {
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      void fetchDashboardData();
+    }
+  }, [userId, fetchDashboardData]);
+
+  useEffect(() => {
+    if (userId) {
+      void fetchOfflineAssistantSummary();
+    }
+  }, [userId, fetchOfflineAssistantSummary]);
+
+  useEffect(() => {
+    if (userId) {
+      void fetchMyLeads();
+    }
+  }, [userId, fetchMyLeads]);
+
+  useEffect(() => {
+    if (userId) {
+      void fetchUnreadMessages();
+    }
+  }, [userId, fetchUnreadMessages]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const onFocus = () => {
+      void fetchUnreadMessages();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void fetchUnreadMessages();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [userId, fetchUnreadMessages]);
 
   useEffect(() => {
     if (!userId) return;
@@ -411,15 +419,7 @@ export default function BrokerDashboard() {
     } catch {
       return;
     }
-  }, [userId]);
-
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bom dia";
-    if (hour < 18) return "Boa tarde";
-    return "Boa noite";
-  };
+  }, [userId, fetchUnreadMessages, fetchMyLeadsSilent]);
 
   const isSameDay = (a: Date, b: Date) => {
     return (
@@ -465,7 +465,7 @@ export default function BrokerDashboard() {
     .map((m) => ({
       key: m.stage.toLowerCase(),
       name: m.label,
-      value: clampNumber(pipelineCounts[m.stage] || 0),
+      value: Math.max(0, Number(pipelineCounts[m.stage] || 0)),
       color: m.color,
     }))
     .filter((x) => x.value > 0);
@@ -544,11 +544,36 @@ export default function BrokerDashboard() {
 
         {(() => {
           const totals = offlineSummary?.windowTotals || null;
+          if (offlineSummaryLoading && !offlineSummary) {
+            return (
+              <div className="mb-8">
+                <StatCard title="Assistente offline">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-5 rounded-2xl border border-gray-100 bg-white p-4">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="mt-3 h-3 w-72" />
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Skeleton className="h-7 w-28" />
+                        <Skeleton className="h-7 w-24" />
+                        <Skeleton className="h-7 w-32" />
+                      </div>
+                    </div>
+                    <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <Skeleton className="h-28" />
+                      <Skeleton className="h-28" />
+                      <Skeleton className="h-28" />
+                    </div>
+                  </div>
+                </StatCard>
+              </div>
+            );
+          }
           const shouldShow = !!totals && totals.leads > 0;
           if (!shouldShow) return null;
 
           const newLeads = offlineSummary?.newTotals?.leads || 0;
           const lastActivityAt = totals?.lastActivityAt || null;
+          const periodLabel = offlineSummary?.range === "7d" ? "últimos 7 dias" : "últimas 24h";
 
           return (
             <div className="mb-8">
@@ -588,7 +613,7 @@ export default function BrokerDashboard() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-gray-900">
-                          Atividade em {totals.leads} lead{totals.leads > 1 ? "s" : ""} (últimas 24h)
+                          Atividade em {totals.leads} lead{totals.leads > 1 ? "s" : ""} ({periodLabel})
                         </p>
                         {newLeads > 0 ? (
                           <span className="inline-flex items-center rounded-full bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 text-[11px] font-bold">
@@ -601,6 +626,19 @@ export default function BrokerDashboard() {
                         {totals.failed > 0 ? ` · ${totals.failed} falha${totals.failed > 1 ? "s" : ""}` : ""}
                         {totals.handoffLeads > 0 ? ` · ${totals.handoffLeads} precisam retorno` : ""}
                         {totals.visitRequestedLeads > 0 ? ` · ${totals.visitRequestedLeads} pediram visita` : ""}
+                        {totals.hotLeads > 0 ? ` · ${totals.hotLeads} quentes` : ""}
+                        {totals.urgentLeads > 0 ? ` · ${totals.urgentLeads} urgentes` : ""}
+                        {totals.qualifiedLeads > 0 ? ` · ${totals.qualifiedLeads} qualificados` : ""}
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Rollout {offlineSummary?.rollout?.rolloutEnabled ? "ativo" : "controle"} · {offlineSummary?.rollout?.rolloutPercent ?? 0}% corretores · {offlineSummary?.rollout?.experimentPercent ?? 0}% leads · prompt {offlineSummary?.versions?.promptVersion || "—"}
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Completude média {totals.avgDataCompleteness}%
+                        {totals.topVariant ? ` · variante ${formatTokenLabel(totals.topVariant)}` : ""}
+                        {totals.topGuardrailScenario ? ` · guardrail ${formatTokenLabel(totals.topGuardrailScenario)}` : ""}
                       </p>
 
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -619,6 +657,31 @@ export default function BrokerDashboard() {
                         {totals.failed > 0 ? (
                           <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
                             Falhas
+                          </span>
+                        ) : null}
+                        {totals.hotLeads > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-700">
+                            Leads quentes
+                          </span>
+                        ) : null}
+                        {totals.urgentLeads > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
+                            Prioridade urgente
+                          </span>
+                        ) : null}
+                        {totals.qualifiedLeads > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                            Qualificados
+                          </span>
+                        ) : null}
+                        {totals.topVariant ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                            {formatTokenLabel(totals.topVariant)}
+                          </span>
+                        ) : null}
+                        {totals.topGuardrailScenario ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
+                            Guardrail {formatTokenLabel(totals.topGuardrailScenario)}
                           </span>
                         ) : null}
                       </div>
@@ -646,6 +709,47 @@ export default function BrokerDashboard() {
                               {row.handoffNeeded && row.visitRequested ? " · " : ""}
                               {row.visitRequested ? "Visita" : ""}
                             </p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {row.leadTemperature ? (
+                                <span className="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700">
+                                  {formatLeadTemperatureLabel(row.leadTemperature)}
+                                </span>
+                              ) : null}
+                              {row.responsePriority ? (
+                                <span className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
+                                  {formatPriorityLabel(row.responsePriority)}
+                                </span>
+                              ) : null}
+                              {row.conversationMode ? (
+                                <span className="inline-flex items-center rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                                  {formatConversationModeLabel(row.conversationMode)}
+                                </span>
+                              ) : null}
+                              {row.experiment?.variant ? (
+                                <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                  {formatTokenLabel(row.experiment.variant)}
+                                </span>
+                              ) : null}
+                              {row.guardrails?.scenario ? (
+                                <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+                                  {formatTokenLabel(row.guardrails.scenario)}
+                                </span>
+                              ) : null}
+                            </div>
+                            {row.commercialSummary ? (
+                              <p className="mt-1 text-[11px] text-gray-600 line-clamp-2">{row.commercialSummary}</p>
+                            ) : null}
+                            {row.operationalPlaybook?.headline ? (
+                              <p className="mt-1 text-[11px] text-gray-600 line-clamp-2">
+                                {row.operationalPlaybook.headline}
+                                {row.operationalPlaybook?.pipelineStage ? ` · ${formatPipelineStageLabel(row.operationalPlaybook.pipelineStage)}` : ""}
+                              </p>
+                            ) : null}
+                            {row.propertyContext?.propertySummary ? (
+                              <p className="mt-1 text-[11px] text-gray-500 line-clamp-2">{row.propertyContext.propertySummary}</p>
+                            ) : row.propertyContext?.regionSummary ? (
+                              <p className="mt-1 text-[11px] text-gray-500 line-clamp-2">{row.propertyContext.regionSummary}</p>
+                            ) : null}
                           </div>
                         );
                       })}

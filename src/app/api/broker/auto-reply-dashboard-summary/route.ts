@@ -44,7 +44,36 @@ function readAiJsonFromEventMeta(meta: any) {
       aiJson?.visitHandoffNeeded === null || aiJson?.visitHandoffNeeded === undefined
         ? null
         : Boolean(aiJson?.visitHandoffNeeded),
+    conversationMode: safeString(aiJson?.conversationMode) || null,
   };
+}
+
+function readQualificationFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.qualification) || null;
+}
+
+function readHandoffFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.handoff) || null;
+}
+
+function readPolicyFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.policy) || null;
+}
+
+function readPropertyContextFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.propertyContext) || null;
+}
+
+function readOperationalPlaybookFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.operationalPlaybook) || null;
+}
+
+function readExperimentFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.experiment) || null;
+}
+
+function readGuardrailsFromEventMeta(meta: any) {
+  return asObject(asObject(meta)?.guardrails) || null;
 }
 
 export async function GET(req: NextRequest) {
@@ -137,6 +166,12 @@ export async function GET(req: NextRequest) {
       lastActivityAt: windowLeads.length ? windowLeads[0].lastActivityAt.toISOString() : null,
       handoffLeads: 0,
       visitRequestedLeads: 0,
+      hotLeads: 0,
+      urgentLeads: 0,
+      qualifiedLeads: 0,
+      avgDataCompleteness: 0,
+      topVariant: null as string | null,
+      topGuardrailScenario: null as string | null,
     };
 
     const windowLeadIds = windowLeads.map((x) => x.leadId);
@@ -172,24 +207,58 @@ export async function GET(req: NextRequest) {
 
     const handoffLeadIds = new Set<string>();
     const visitLeadIds = new Set<string>(Array.from(hasVisitRequestedByLead));
+    const hotLeadIds = new Set<string>();
+    const urgentLeadIds = new Set<string>();
+    const qualifiedLeadIds = new Set<string>();
+    const variantCounts = new Map<string, number>();
+    const guardrailScenarioCounts = new Map<string, number>();
+    let completenessTotal = 0;
+    let completenessCount = 0;
 
     for (const leadId of windowLeadIds) {
       const sentEvt = latestSentByLead.get(leadId);
+      const sentMeta = asObject(sentEvt?.metadata) || null;
       const aiJson = readAiJsonFromEventMeta(sentEvt?.metadata);
+      const qualification = readQualificationFromEventMeta(sentMeta);
+      const handoff = readHandoffFromEventMeta(sentMeta);
+      const experiment = readExperimentFromEventMeta(sentMeta);
+      const guardrails = readGuardrailsFromEventMeta(sentMeta);
       const finalHandoffNeeded = aiJson?.finalHandoffNeeded;
       const handoffNeeded = aiJson?.handoffNeeded;
+      const leadTemperature = safeString(qualification?.leadTemperature).toUpperCase();
+      const responsePriority = safeString(handoff?.priority || qualification?.responsePriority).toUpperCase();
+      const completeness = Number(qualification?.dataCompleteness);
+      const variant = safeString(experiment?.variant) || "CONTROL";
+      const guardrailScenario = safeString(guardrails?.scenario) || "NONE";
 
-      if (finalHandoffNeeded === true || (finalHandoffNeeded === null && handoffNeeded === true)) {
+      if (handoff?.needed === true || finalHandoffNeeded === true || (finalHandoffNeeded === null && handoffNeeded === true)) {
         handoffLeadIds.add(leadId);
       }
 
       if (aiJson?.visitHandoffNeeded === true) {
         visitLeadIds.add(leadId);
       }
+
+      if (leadTemperature === "HOT") hotLeadIds.add(leadId);
+      if (responsePriority === "URGENT") urgentLeadIds.add(leadId);
+      if (Number.isFinite(completeness) && completeness >= 70) qualifiedLeadIds.add(leadId);
+
+      variantCounts.set(variant, Number(variantCounts.get(variant) || 0) + 1);
+      guardrailScenarioCounts.set(guardrailScenario, Number(guardrailScenarioCounts.get(guardrailScenario) || 0) + 1);
+      if (Number.isFinite(completeness)) {
+        completenessTotal += completeness;
+        completenessCount += 1;
+      }
     }
 
     windowTotals.handoffLeads = handoffLeadIds.size;
     windowTotals.visitRequestedLeads = visitLeadIds.size;
+    windowTotals.hotLeads = hotLeadIds.size;
+    windowTotals.urgentLeads = urgentLeadIds.size;
+    windowTotals.qualifiedLeads = qualifiedLeadIds.size;
+    windowTotals.avgDataCompleteness = completenessCount ? Math.round(completenessTotal / completenessCount) : 0;
+    windowTotals.topVariant = Array.from(variantCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    windowTotals.topGuardrailScenario = Array.from(guardrailScenarioCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
     const topLeadIds = windowLeadIds.slice(0, 3);
 
@@ -216,12 +285,25 @@ export async function GET(req: NextRequest) {
         const info = infoById.get(leadId) || null;
 
         const sentEvt = latestSentByLead.get(leadId);
+        const sentMeta = asObject(sentEvt?.metadata) || null;
         const aiJson = readAiJsonFromEventMeta(sentEvt?.metadata);
+        const qualification = readQualificationFromEventMeta(sentMeta);
+        const handoff = readHandoffFromEventMeta(sentMeta);
+        const policy = readPolicyFromEventMeta(sentMeta);
+        const propertyContext = readPropertyContextFromEventMeta(sentMeta);
+        const operationalPlaybook = readOperationalPlaybookFromEventMeta(sentMeta);
+        const experiment = readExperimentFromEventMeta(sentMeta);
+        const guardrails = readGuardrailsFromEventMeta(sentMeta);
         const finalHandoffNeeded = aiJson?.finalHandoffNeeded;
         const handoffNeeded = aiJson?.handoffNeeded;
-        const needsHandoff = finalHandoffNeeded === true || (finalHandoffNeeded === null && handoffNeeded === true);
+        const needsHandoff = handoff?.needed === true || finalHandoffNeeded === true || (finalHandoffNeeded === null && handoffNeeded === true);
 
         const visitRequested = visitLeadIds.has(leadId);
+        const commercialSummary =
+          safeString(sentMeta?.commercialSummary) ||
+          safeString(asObject(sentMeta?.offlineAssistantState)?.commercialSummary) ||
+          safeString(qualification?.commercialSummary) ||
+          null;
 
         return {
           leadId,
@@ -234,6 +316,14 @@ export async function GET(req: NextRequest) {
           },
           handoffNeeded: needsHandoff,
           visitRequested,
+          conversationMode: safeString(policy?.conversationMode) || aiJson?.conversationMode || null,
+          leadTemperature: safeString(qualification?.leadTemperature) || null,
+          responsePriority: safeString(handoff?.priority || qualification?.responsePriority) || null,
+          commercialSummary,
+          propertyContext,
+          operationalPlaybook,
+          experiment,
+          guardrails,
         };
       })
       .filter(Boolean);
@@ -308,6 +398,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       enabled: Boolean(settings.enabled),
+      rollout: (settings as any)?.rollout || null,
+      versions: (settings as any)?.versions || null,
       range: windowLabel,
       windowSince: windowSince.toISOString(),
       seenAt: seenAtForNew ? seenAtForNew.toISOString() : null,
