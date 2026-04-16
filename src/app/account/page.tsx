@@ -152,10 +152,17 @@ export default function AccountPage() {
 
   const roleActions = (() => {
     const canBecomeAgency = role !== "AGENCY" && role !== "ADMIN";
+    const canBecomeDeveloper = role !== "DEVELOPER" && role !== "ADMIN";
     const becomeAgencyAction = {
       title: "Virar Agência",
       description: "Crie um workspace para monitorar leads e organizar corretores.",
       href: "/agency/register",
+      icon: <Building2 className="w-5 h-5" />,
+    };
+    const becomeDeveloperAction = {
+      title: "Virar Incorporadora",
+      description: "Crie um workspace para gerir empreendimentos, parceiros e leads de lançamentos.",
+      href: "/developer/register",
       icon: <Building2 className="w-5 h-5" />,
     };
 
@@ -182,6 +189,7 @@ export default function AccountPage() {
       ];
 
       if (canBecomeAgency) actions.push(becomeAgencyAction);
+      if (canBecomeDeveloper) actions.push(becomeDeveloperAction);
       return actions;
     }
 
@@ -214,6 +222,37 @@ export default function AccountPage() {
       ];
 
       if (canBecomeAgency) actions.push(becomeAgencyAction);
+      if (canBecomeDeveloper) actions.push(becomeDeveloperAction);
+      return actions;
+    }
+
+    if (role === "DEVELOPER") {
+      return [
+        {
+          title: "Painel da incorporadora",
+          description: "Acompanhe empreendimentos, parceiros e leads do workspace.",
+          href: "/developer",
+          icon: <LayoutDashboard className="w-5 h-5" />,
+        },
+        {
+          title: "Empreendimentos",
+          description: "Cadastre lançamentos e acompanhe a base inicial de unidades do workspace.",
+          href: "/developer/projects",
+          icon: <Building2 className="w-5 h-5" />,
+        },
+        {
+          title: "Configurar incorporadora",
+          description: "Revise os dados institucionais e o perfil operacional do workspace.",
+          href: "/developer/profile",
+          icon: <Settings className="w-5 h-5" />,
+        },
+      ];
+    }
+
+    if (role === "USER") {
+      const actions = [];
+      if (canBecomeAgency) actions.push(becomeAgencyAction);
+      if (canBecomeDeveloper) actions.push(becomeDeveloperAction);
       return actions;
     }
 
@@ -232,10 +271,6 @@ export default function AccountPage() {
           icon: <Settings className="w-5 h-5" />,
         },
       ];
-    }
-
-    if (role === "USER") {
-      return canBecomeAgency ? [becomeAgencyAction] : [];
     }
 
     return [];

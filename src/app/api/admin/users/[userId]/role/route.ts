@@ -7,7 +7,7 @@ import { z } from "zod";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 const updateRoleSchema = z.object({
-  role: z.enum(["ADMIN", "REALTOR", "OWNER", "USER"]),
+  role: z.enum(["ADMIN", "REALTOR", "OWNER", "USER", "DEVELOPER"]),
 });
 
 export async function PATCH(
@@ -46,7 +46,7 @@ export async function PATCH(
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { role },
+      data: { role: role as any },
       select: {
         id: true,
         name: true,

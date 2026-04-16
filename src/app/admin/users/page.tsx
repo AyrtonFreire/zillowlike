@@ -113,6 +113,7 @@ export default function AdminUsersPage() {
     const styles = {
       ADMIN: "bg-red-100 text-red-700",
       REALTOR: "bg-blue-100 text-blue-700",
+      DEVELOPER: "bg-amber-100 text-amber-700",
       OWNER: "bg-green-100 text-green-700",
       USER: "bg-gray-100 text-gray-700",
     };
@@ -123,6 +124,7 @@ export default function AdminUsersPage() {
     const labels = {
       ADMIN: "Administrador",
       REALTOR: "Corretor",
+      DEVELOPER: "Incorporadora",
       OWNER: "Proprietário",
       USER: "Usuário",
     };
@@ -181,6 +183,7 @@ export default function AdminUsersPage() {
               <option value="ALL">Todos os Roles</option>
               <option value="ADMIN">Administradores</option>
               <option value="REALTOR">Corretores</option>
+              <option value="DEVELOPER">Incorporadoras</option>
               <option value="OWNER">Proprietários</option>
               <option value="USER">Usuários</option>
             </select>
@@ -331,7 +334,7 @@ export default function AdminUsersPage() {
               Selecione o novo role para este usuário:
             </p>
             <div className="space-y-3">
-              {["ADMIN", "REALTOR", "OWNER", "USER"].map((role) => (
+              {["ADMIN", "REALTOR", "DEVELOPER", "OWNER", "USER"].map((role) => (
                 <button
                   key={role}
                   onClick={() => handleChangeRole(selectedUser.id, role)}

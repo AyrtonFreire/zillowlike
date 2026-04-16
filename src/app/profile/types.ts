@@ -89,6 +89,8 @@ export function formatRoleLabel(role?: string | null) {
       return "Corretor";
     case "AGENCY":
       return "Agência";
+    case "DEVELOPER":
+      return "Incorporadora";
     case "OWNER":
       return "Proprietário";
     case "USER":

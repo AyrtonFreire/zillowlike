@@ -10,6 +10,7 @@ const protectedPaths = [
   "/realtor",
   "/broker",
   "/agency",
+  "/developer",
   "/auth/force-change-password",
 ];
 
@@ -20,7 +21,8 @@ const roleBasedPaths: Record<string, string[]> = {
   "/broker": ["REALTOR", "ADMIN"],
   "/owner": ["OWNER", "REALTOR", "AGENCY", "ADMIN"],
   "/agency": ["AGENCY", "ADMIN"],
-  "/dashboard": ["USER", "REALTOR", "AGENCY", "OWNER", "ADMIN"], // Todos autenticados
+  "/developer": ["DEVELOPER", "ADMIN"],
+  "/dashboard": ["USER", "REALTOR", "AGENCY", "DEVELOPER", "OWNER", "ADMIN"], // Todos autenticados
 };
 
 export async function middleware(request: NextRequest) {
@@ -111,6 +113,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname.startsWith("/developer/register")) {
+    return NextResponse.next();
+  }
+
   // Removido: fluxo automático de onboarding que promovia USER para OWNER/REALTOR
 
   // Checa role-based access
@@ -147,6 +153,7 @@ export const config = {
     "/dashboard/:path*",
     "/broker/:path*",
     "/agency/:path*",
+    "/developer/:path*",
     "/auth/force-change-password/:path*",
     "/owner/dashboard/:path*",
     "/owner/analytics/:path*",

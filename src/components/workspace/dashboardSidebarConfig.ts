@@ -47,6 +47,12 @@ export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
   { href: "/admin/settings", label: "Configurações", icon: Settings },
 ];
 
+export const DEVELOPER_NAV_ITEMS: SidebarNavItem[] = [
+  { href: "/developer", label: "Painel", icon: LayoutDashboard },
+  { href: "/developer/projects", label: "Empreendimentos", icon: Home },
+  { href: "/developer/profile", label: "Dados da empresa", icon: Settings },
+];
+
 function normalizePath(pathname: string) {
   if (!pathname) return "/";
   const clean = pathname.split("?")[0] || "/";
@@ -140,6 +146,25 @@ export function isAdminNavItemActive(pathname: string, item: SidebarNavItem) {
   return p === h || p.startsWith(`${h}/`);
 }
 
+export function isDeveloperNavItemActive(pathname: string, item: SidebarNavItem) {
+  const p = normalizePath(pathname);
+  const h = normalizePath(item.href);
+
+  if (h === "/developer") {
+    return p === "/developer";
+  }
+
+  if (h === "/developer/register") {
+    return p === "/developer/register";
+  }
+
+  if (h === "/developer/profile") {
+    return p === "/developer/profile";
+  }
+
+  return p === h || p.startsWith(`${h}/`);
+}
+
 export function getDashboardSidebarConfig(pathname: string | null | undefined): DashboardSidebarConfig | null {
   const p = normalizePath(pathname || "/");
 
@@ -170,6 +195,15 @@ export function getDashboardSidebarConfig(pathname: string | null | undefined): 
       storageKey: "oggahub_sidebar_collapsed_admin",
       items: ADMIN_NAV_ITEMS,
       isItemActive: isAdminNavItemActive,
+    };
+  }
+
+  if (p === "/developer" || p.startsWith("/developer/")) {
+    return {
+      workspaceLabel: "Incorporadora",
+      storageKey: "oggahub_sidebar_collapsed_developer",
+      items: DEVELOPER_NAV_ITEMS,
+      isItemActive: isDeveloperNavItemActive,
     };
   }
 

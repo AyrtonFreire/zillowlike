@@ -30,7 +30,32 @@ enum Role {
   OWNER
   REALTOR
   AGENCY
+  DEVELOPER
   ADMIN
+}
+
+enum DeveloperBusinessType {
+  CONSTRUTORA
+  INCORPORADORA
+  LOTEADORA
+  URBANIZADORA
+  MISTA
+}
+
+enum DevelopmentProjectStatus {
+  DRAFT
+  PRE_LAUNCH
+  LAUNCH
+  ACTIVE
+  SOLD_OUT
+  ARCHIVED
+}
+
+enum DevelopmentUnitStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  BLOCKED
 }
 
 enum ReviewStatus {
@@ -550,6 +575,7 @@ model User {
   teamChatThreadsOwned TeamChatThread[] @relation("TeamChatOwner")
   teamChatThreadsRealtor TeamChatThread[] @relation("TeamChatRealtor")
   agencyProfile        AgencyProfile?
+  developerProfile     DeveloperProfile?
   phone                String?
   phoneNormalized      String?   @unique
   phoneVerifiedAt      DateTime?
@@ -1394,6 +1420,8 @@ model Team {
   members   TeamMember[]
   invites   TeamInvite[]
   agencyProfile AgencyProfile?
+  developerProfile DeveloperProfile?
+  developmentProjects DevelopmentProject[]
   properties Property[]
   leads      Lead[]
   clients    Client[]
@@ -1470,6 +1498,82 @@ model AgencyProfile {
   @@index([userId])
   @@index([teamId])
   @@map("agency_profiles")
+}
+
+model DeveloperProfile {
+  id           String                @id @default(cuid())
+  legalName    String
+  brandName    String?
+  cnpj         String                @unique
+  phone        String?
+  website      String?
+  businessType DeveloperBusinessType @default(MISTA)
+  description  String?
+  logoUrl      String?
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([teamId])
+  @@map("developer_profiles")
+}
+
+model DevelopmentProject {
+  id               String                   @id @default(cuid())
+  team             Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId           String
+  name             String
+  slug             String?
+  status           DevelopmentProjectStatus @default(DRAFT)
+  description      String?
+  city             String?
+  state            String?
+  neighborhood     String?
+  coverImageUrl    String?
+  expectedLaunchAt DateTime?
+  createdByUserId  String?
+  updatedByUserId  String?
+  units            DevelopmentUnit[]
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  @@unique([teamId, name])
+  @@index([teamId, status])
+  @@index([teamId, createdAt])
+  @@map("development_projects")
+}
+
+model DevelopmentUnit {
+  id            String                @id @default(cuid())
+  project       DevelopmentProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  reference     String
+  title         String?
+  status        DevelopmentUnitStatus @default(AVAILABLE)
+  typology      String?
+  bedrooms      Int?
+  bathrooms     Float?
+  parkingSpots  Int?
+  privateAreaM2 Int?
+  price         BigInt?
+  floor         Int?
+  block         String?
+  tower         String?
+  notes         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([projectId, reference])
+  @@index([projectId, status])
+  @@index([projectId, price])
+  @@map("development_units")
 }
 
 model Client {
