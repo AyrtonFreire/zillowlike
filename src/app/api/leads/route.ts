@@ -8,6 +8,7 @@ import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
+import { resolveDevelopmentLeadLink } from "@/lib/development-lead-linking";
 import { createPublicCode } from "@/lib/public-code";
 
 // Gera um token único para chat do cliente
@@ -48,6 +49,8 @@ function checkRate(ip: string) {
 
 const LeadSchema = z.object({
   propertyId: z.string().min(1),
+  developmentProjectId: z.string().min(1).optional(),
+  developmentUnitId: z.string().min(1).optional(),
   name: z.string().min(2),
   email: z.string().email(),
   phone: z.string().optional(),
@@ -97,7 +100,7 @@ export async function POST(req: NextRequest) {
     if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
   }
 
-  const { propertyId, name, email, phone, message, visitDate, visitTime, isDirect } = parsed.data;
+  const { propertyId, developmentProjectId, developmentUnitId, name, email, phone, message, visitDate, visitTime, isDirect } = parsed.data;
   const isDirectFlag = isDirect ?? false;
 
   const propertyWithOwner = await prisma.property.findUnique({
@@ -112,6 +115,15 @@ export async function POST(req: NextRequest) {
   const teamId = (propertyWithOwner as any)?.teamId ? String((propertyWithOwner as any).teamId) : null;
   const ownerRole = String((propertyWithOwner as any)?.owner?.role || "").toUpperCase();
   const shouldForceTeamDistribution = !!teamId && ownerRole === "AGENCY";
+  const developmentLeadLink = await resolveDevelopmentLeadLink({
+    propertyTeamId: teamId,
+    developmentProjectId,
+    developmentUnitId,
+  }).catch((error: any) => ({ error }));
+
+  if ((developmentLeadLink as any)?.error) {
+    return NextResponse.json({ error: (developmentLeadLink as any).error?.message || "Não foi possível vincular o lead ao empreendimento." }, { status: 400 });
+  }
 
   // 🆕 Se tiver visitDate e visitTime, usar VisitSchedulingService
   if (visitDate && visitTime) {
@@ -126,6 +138,8 @@ export async function POST(req: NextRequest) {
         visitDate: new Date(visitDate),
         visitTime,
         clientNotes: message,
+        developmentProjectId: (developmentLeadLink as any).developmentProjectId,
+        developmentUnitId: (developmentLeadLink as any).developmentUnitId,
       });
 
       return NextResponse.json({ 
@@ -144,6 +158,8 @@ export async function POST(req: NextRequest) {
       const existing: any = await (prisma as any).lead.findFirst({
         where: {
           propertyId,
+          developmentProjectId: (developmentLeadLink as any).developmentProjectId ?? null,
+          developmentUnitId: (developmentLeadLink as any).developmentUnitId ?? null,
           isDirect: isDirectFlag,
           OR: [
             { userId: String(sessionUserId) },
@@ -256,6 +272,8 @@ export async function POST(req: NextRequest) {
       lead = await (prisma as any).lead.create({
         data: {
           propertyId,
+          developmentProjectId: (developmentLeadLink as any).developmentProjectId,
+          developmentUnitId: (developmentLeadLink as any).developmentUnitId,
           contactId: contact.id,
           userId: sessionUserId ? String(sessionUserId) : undefined,
           publicCode: createPublicCode("L"),
@@ -339,6 +357,8 @@ export async function POST(req: NextRequest) {
     metadata: {
       source: "CONTACT_FORM",
       propertyId,
+      developmentProjectId: (developmentLeadLink as any).developmentProjectId || null,
+      developmentUnitId: (developmentLeadLink as any).developmentUnitId || null,
       email,
       isDirect: isDirect ?? false,
     },

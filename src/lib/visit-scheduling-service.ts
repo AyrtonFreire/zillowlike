@@ -5,6 +5,7 @@ import { RealtorAssistantService } from "./realtor-assistant-service";
 import { LeadAutoReplyService } from "./lead-auto-reply-service";
 import { randomBytes } from "crypto";
 import { LeadDistributionService } from "./lead-distribution-service";
+import { resolveDevelopmentLeadLink } from "./development-lead-linking";
 import { createPublicCode } from "./public-code";
 
 // Gera um token único para chat do cliente
@@ -32,6 +33,8 @@ export class VisitSchedulingService {
    */
   static async createVisitRequest(params: {
     propertyId: string;
+    developmentProjectId?: string;
+    developmentUnitId?: string;
     clientName: string;
     clientEmail: string;
     clientPhone?: string;
@@ -40,7 +43,7 @@ export class VisitSchedulingService {
     clientNotes?: string;
     realtorId?: string; // Opcional - para visitas diretas agendadas por corretor
   }) {
-    const { propertyId, clientName, clientEmail, clientPhone, visitDate, visitTime, clientNotes, realtorId } = params;
+    const { propertyId, developmentProjectId, developmentUnitId, clientName, clientEmail, clientPhone, visitDate, visitTime, clientNotes, realtorId } = params;
 
     logger.info("Creating visit request", { propertyId, visitDate, visitTime, realtorId, isDirect: !!realtorId });
 
@@ -70,6 +73,11 @@ export class VisitSchedulingService {
     const hasTeam = !!(property as any)?.teamId;
     const effectiveRealtorId = realtorId || (!hasTeam && isOwnerRealtor ? (property as any).ownerId : undefined);
     const isDirect = !!effectiveRealtorId;
+    const developmentLeadLink = await resolveDevelopmentLeadLink({
+      propertyTeamId: (property as any)?.teamId ? String((property as any).teamId) : null,
+      developmentProjectId,
+      developmentUnitId,
+    });
     
     logger.info("Visit request owner check", { 
       isOwnerRealtor, 
@@ -111,6 +119,8 @@ export class VisitSchedulingService {
         lead = await (prisma as any).lead.create({
           data: {
             propertyId,
+            developmentProjectId: developmentLeadLink.developmentProjectId,
+            developmentUnitId: developmentLeadLink.developmentUnitId,
             contactId: contact.id,
             realtorId: effectiveRealtorId, // Atribui ao corretor (auto se owner é REALTOR/AGENCY)
             publicCode: createPublicCode("L"),
@@ -201,6 +211,8 @@ export class VisitSchedulingService {
       metadata: {
         source: "VISIT_REQUEST",
         propertyId,
+        developmentProjectId: developmentLeadLink.developmentProjectId || null,
+        developmentUnitId: developmentLeadLink.developmentUnitId || null,
         clientEmail,
         visitDate: visitDate.toISOString(),
         visitTime,

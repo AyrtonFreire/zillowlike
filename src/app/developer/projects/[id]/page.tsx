@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Building2, CalendarDays, DoorOpen, Loader2, MapPin, PlusCircle } from "lucide-react";
+import { ArrowLeft, Building2, CalendarDays, DoorOpen, Loader2, MapPin, Pencil, PlusCircle, Save, Trash2, X } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Toast from "@/components/Toast";
 import Input from "@/components/ui/Input";
@@ -82,11 +82,36 @@ type UnitForm = {
   notes: string;
 };
 
+type ProjectForm = {
+  name: string;
+  status: string;
+  city: string;
+  state: string;
+  neighborhood: string;
+  expectedLaunchAt: string;
+  coverImageUrl: string;
+  description: string;
+};
+
 const unitStatusOptions = [
   { value: "AVAILABLE", label: "Disponível" },
   { value: "RESERVED", label: "Reservada" },
   { value: "SOLD", label: "Vendida" },
   { value: "BLOCKED", label: "Bloqueada" },
+] as const;
+
+const unitStatusFilterOptions = [
+  { value: "ALL", label: "Todos os status" },
+  ...unitStatusOptions,
+] as const;
+
+const projectStatusOptions = [
+  { value: "DRAFT", label: "Rascunho" },
+  { value: "PRE_LAUNCH", label: "Pré-lançamento" },
+  { value: "LAUNCH", label: "Lançamento" },
+  { value: "ACTIVE", label: "Ativo" },
+  { value: "SOLD_OUT", label: "Esgotado" },
+  { value: "ARCHIVED", label: "Arquivado" },
 ] as const;
 
 const emptyForm: UnitForm = {
@@ -103,6 +128,17 @@ const emptyForm: UnitForm = {
   block: "",
   tower: "",
   notes: "",
+};
+
+const emptyProjectForm: ProjectForm = {
+  name: "",
+  status: "DRAFT",
+  city: "",
+  state: "",
+  neighborhood: "",
+  expectedLaunchAt: "",
+  coverImageUrl: "",
+  description: "",
 };
 
 function formatProjectStatus(value?: string | null) {
@@ -160,6 +196,37 @@ function summarizeUnits(units: DeveloperUnit[]) {
   );
 }
 
+function buildProjectForm(project: DeveloperProject): ProjectForm {
+  return {
+    name: project.name || "",
+    status: project.status || "DRAFT",
+    city: project.city || "",
+    state: project.state || "",
+    neighborhood: project.neighborhood || "",
+    expectedLaunchAt: project.expectedLaunchAt ? String(project.expectedLaunchAt).slice(0, 10) : "",
+    coverImageUrl: project.coverImageUrl || "",
+    description: project.description || "",
+  };
+}
+
+function buildUnitForm(unit: DeveloperUnit): UnitForm {
+  return {
+    reference: unit.reference || "",
+    title: unit.title || "",
+    status: unit.status || "AVAILABLE",
+    typology: unit.typology || "",
+    bedrooms: unit.bedrooms !== null ? String(unit.bedrooms) : "",
+    bathrooms: unit.bathrooms !== null ? String(unit.bathrooms) : "",
+    parkingSpots: unit.parkingSpots !== null ? String(unit.parkingSpots) : "",
+    privateAreaM2: unit.privateAreaM2 !== null ? String(unit.privateAreaM2) : "",
+    price: unit.priceInCents ? String(Number(unit.priceInCents) / 100) : "",
+    floor: unit.floor !== null ? String(unit.floor) : "",
+    block: unit.block || "",
+    tower: unit.tower || "",
+    notes: unit.notes || "",
+  };
+}
+
 function MetricCard({ label, value, helper }: { label: string; value: string | number; helper: string }) {
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
@@ -176,9 +243,19 @@ export default function DeveloperProjectDetailPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
+  const [projectSaving, setProjectSaving] = useState(false);
+  const [editingProject, setEditingProject] = useState(false);
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [editingUnitSaving, setEditingUnitSaving] = useState(false);
+  const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<DeveloperProjectDetailResponse | null>(null);
   const [form, setForm] = useState<UnitForm>(emptyForm);
+  const [projectForm, setProjectForm] = useState<ProjectForm>(emptyProjectForm);
+  const [editingUnitForm, setEditingUnitForm] = useState<UnitForm>(emptyForm);
+  const [unitSearch, setUnitSearch] = useState("");
+  const [unitStatusFilter, setUnitStatusFilter] = useState("ALL");
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null);
 
   const role = useMemo(() => {
@@ -213,6 +290,7 @@ export default function DeveloperProjectDetailPage() {
 
         if (!active) return;
         setResponse(data as DeveloperProjectDetailResponse);
+        setProjectForm(buildProjectForm((data as DeveloperProjectDetailResponse).project));
       } catch {
         if (!active) return;
         setError("Erro inesperado ao carregar o empreendimento.");
@@ -230,8 +308,26 @@ export default function DeveloperProjectDetailPage() {
   }, [params?.id, router, status]);
 
   const canManageWorkspace = Boolean(response?.workspace.canManageWorkspace);
-  const units = response?.project.units || [];
+  const units = useMemo(() => response?.project.units || [], [response?.project.units]);
   const unitsSummary = response?.project.unitsSummary || summarizeUnits([]);
+  const filteredUnits = useMemo(() => {
+    const query = unitSearch.trim().toLowerCase();
+
+    return units.filter((unit) => {
+      const matchesStatus = unitStatusFilter === "ALL" || unit.status === unitStatusFilter;
+
+      if (!matchesStatus) return false;
+      if (!query) return true;
+
+      const haystack = [unit.reference, unit.title, unit.typology, unit.block, unit.tower, unit.notes]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [unitSearch, unitStatusFilter, units]);
+  const hasUnitFilters = Boolean(unitSearch.trim()) || unitStatusFilter !== "ALL";
 
   async function handleCreateUnit() {
     if (!params?.id || saving || !canManageWorkspace) return;
@@ -273,6 +369,172 @@ export default function DeveloperProjectDetailPage() {
     }
   }
 
+  async function handleSaveProject() {
+    if (!params?.id || projectSaving || !canManageWorkspace) return;
+
+    setProjectSaving(true);
+    setToast(null);
+
+    try {
+      const result = await fetch(`/api/developer/projects/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(projectForm),
+      });
+      const data = await result.json().catch(() => null);
+
+      if (!result.ok || !data?.success || !data?.project) {
+        setToast({ message: data?.error || "Não foi possível atualizar o empreendimento.", type: "error" });
+        return;
+      }
+
+      const nextProject = data.project as DeveloperProject;
+      setResponse((current) => (current ? { ...current, project: nextProject } : current));
+      setProjectForm(buildProjectForm(nextProject));
+      setEditingProject(false);
+      setToast({ message: "Empreendimento atualizado com sucesso.", type: "success" });
+    } catch {
+      setToast({ message: "Erro inesperado ao atualizar o empreendimento.", type: "error" });
+    } finally {
+      setProjectSaving(false);
+    }
+  }
+
+  function startEditingUnit(unit: DeveloperUnit) {
+    setEditingUnitId(unit.id);
+    setEditingUnitForm(buildUnitForm(unit));
+  }
+
+  function cancelEditingUnit() {
+    setEditingUnitId(null);
+    setEditingUnitForm(emptyForm);
+  }
+
+  async function handleSaveUnit(unitId: string) {
+    if (!params?.id || !editingUnitId || editingUnitId !== unitId || editingUnitSaving || !canManageWorkspace) return;
+
+    setEditingUnitSaving(true);
+    setToast(null);
+
+    try {
+      const result = await fetch(`/api/developer/projects/${params.id}/units/${unitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingUnitForm),
+      });
+      const data = await result.json().catch(() => null);
+
+      if (!result.ok || !data?.success || !data?.unit) {
+        setToast({ message: data?.error || "Não foi possível atualizar a unidade.", type: "error" });
+        return;
+      }
+
+      const nextUnit = data.unit as DeveloperUnit;
+      setResponse((current) => {
+        if (!current) return current;
+        const nextUnits = (current.project.units || []).map((unit) => (unit.id === unitId ? nextUnit : unit));
+        return {
+          ...current,
+          project: {
+            ...current.project,
+            units: nextUnits,
+            unitsSummary: summarizeUnits(nextUnits),
+          },
+        };
+      });
+      cancelEditingUnit();
+      setToast({ message: "Unidade atualizada com sucesso.", type: "success" });
+    } catch {
+      setToast({ message: "Erro inesperado ao atualizar a unidade.", type: "error" });
+    } finally {
+      setEditingUnitSaving(false);
+    }
+  }
+
+  async function handleDeleteUnit(unit: DeveloperUnit) {
+    if (!params?.id || !canManageWorkspace || deletingUnitId) return;
+
+    const confirmed = window.confirm(
+      `Excluir a unidade ${unit.reference}? Essa ação não poderá ser desfeita.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingUnitId(unit.id);
+    setToast(null);
+
+    try {
+      const result = await fetch(`/api/developer/projects/${params.id}/units/${unit.id}`, {
+        method: "DELETE",
+      });
+      const data = await result.json().catch(() => null);
+
+      if (!result.ok || !data?.success) {
+        setToast({ message: data?.error || "Não foi possível excluir a unidade.", type: "error" });
+        return;
+      }
+
+      setResponse((current) => {
+        if (!current) return current;
+        const nextUnits = (current.project.units || []).filter((item) => item.id !== unit.id);
+        return {
+          ...current,
+          project: {
+            ...current.project,
+            units: nextUnits,
+            unitsSummary: summarizeUnits(nextUnits),
+          },
+        };
+      });
+
+      if (editingUnitId === unit.id) {
+        cancelEditingUnit();
+      }
+
+      setToast({ message: "Unidade excluída com sucesso.", type: "success" });
+    } catch {
+      setToast({ message: "Erro inesperado ao excluir a unidade.", type: "error" });
+    } finally {
+      setDeletingUnitId(null);
+    }
+  }
+
+  async function handleDeleteProject() {
+    if (!params?.id || !response?.project || !canManageWorkspace || deletingProject) return;
+
+    if ((response.project.unitsSummary?.total || 0) > 0) {
+      setToast({ message: "Exclua todas as unidades antes de remover o empreendimento.", type: "error" });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Excluir o empreendimento ${response.project.name}? Essa ação não poderá ser desfeita.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingProject(true);
+    setToast(null);
+
+    try {
+      const result = await fetch(`/api/developer/projects/${params.id}`, {
+        method: "DELETE",
+      });
+      const data = await result.json().catch(() => null);
+
+      if (!result.ok || !data?.success) {
+        setToast({ message: data?.error || "Não foi possível excluir o empreendimento.", type: "error" });
+        return;
+      }
+
+      router.push("/developer/projects");
+    } catch {
+      setToast({ message: "Erro inesperado ao excluir o empreendimento.", type: "error" });
+    } finally {
+      setDeletingProject(false);
+    }
+  }
+
   if (status === "loading" || loading) {
     return (
       <DashboardLayout
@@ -307,6 +569,17 @@ export default function DeveloperProjectDetailPage() {
         ]}
         actions={
           <div className="flex flex-wrap gap-3">
+            {canManageWorkspace ? (
+              <button
+                type="button"
+                onClick={handleDeleteProject}
+                disabled={deletingProject}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingProject ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Excluir empreendimento
+              </button>
+            ) : null}
             <Link
               href="/developer/projects"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
@@ -366,60 +639,211 @@ export default function DeveloperProjectDetailPage() {
                     </div>
                   </div>
 
-                  {response.project.description ? (
-                    <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
-                      {response.project.description}
+                  <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">Dados do empreendimento</h3>
+                      {canManageWorkspace ? (
+                        editingProject ? (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProjectForm(buildProjectForm(response.project));
+                                setEditingProject(false);
+                              }}
+                              className="inline-flex items-center gap-2 rounded-full border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-white"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSaveProject}
+                              disabled={projectSaving}
+                              className="inline-flex items-center gap-2 rounded-full bg-neutral-950 px-3 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {projectSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                              Salvar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setEditingProject(true)}
+                            className="inline-flex items-center gap-2 rounded-full border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-white"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar empreendimento
+                          </button>
+                        )
+                      ) : null}
                     </div>
-                  ) : null}
+
+                    {editingProject ? (
+                      <div className="mt-4 space-y-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <Input label="Nome do empreendimento" value={projectForm.name} onChange={(event) => setProjectForm((current) => ({ ...current, name: event.target.value }))} disabled={projectSaving} />
+                          <Select label="Status" value={projectForm.status} onChange={(event) => setProjectForm((current) => ({ ...current, status: event.target.value }))} disabled={projectSaving}>
+                            {projectStatusOptions.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </Select>
+                          <Input label="Cidade" value={projectForm.city} onChange={(event) => setProjectForm((current) => ({ ...current, city: event.target.value }))} disabled={projectSaving} />
+                          <Input label="Estado" value={projectForm.state} onChange={(event) => setProjectForm((current) => ({ ...current, state: event.target.value }))} disabled={projectSaving} />
+                          <Input label="Bairro" value={projectForm.neighborhood} onChange={(event) => setProjectForm((current) => ({ ...current, neighborhood: event.target.value }))} disabled={projectSaving} />
+                          <Input label="Previsão de lançamento" type="date" value={projectForm.expectedLaunchAt} onChange={(event) => setProjectForm((current) => ({ ...current, expectedLaunchAt: event.target.value }))} disabled={projectSaving} />
+                        </div>
+                        <Input label="Imagem de capa" value={projectForm.coverImageUrl} onChange={(event) => setProjectForm((current) => ({ ...current, coverImageUrl: event.target.value }))} disabled={projectSaving} placeholder="https://..." />
+                        <Textarea label="Descrição" value={projectForm.description} onChange={(event) => setProjectForm((current) => ({ ...current, description: event.target.value }))} disabled={projectSaving} rows={4} />
+                      </div>
+                    ) : response.project.description ? (
+                      <div className="mt-4 text-sm text-neutral-700">{response.project.description}</div>
+                    ) : (
+                      <div className="mt-4 text-sm text-neutral-500">Nenhuma descrição institucional cadastrada para este empreendimento.</div>
+                    )}
+                  </div>
 
                   <div className="mt-6 space-y-4">
                     <div className="flex items-center justify-between gap-4">
                       <h3 className="text-base font-semibold text-neutral-950">Unidades do empreendimento</h3>
-                      <div className="text-sm text-neutral-500">{units.length} cadastro(s)</div>
+                      <div className="text-sm text-neutral-500">
+                        {hasUnitFilters ? `${filteredUnits.length} de ${units.length} cadastro(s)` : `${units.length} cadastro(s)`}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-[minmax(0,1.5fr)_minmax(220px,0.7fr)_auto] md:items-end">
+                      <Input
+                        label="Buscar unidade"
+                        value={unitSearch}
+                        onChange={(event) => setUnitSearch(event.target.value)}
+                        placeholder="Referência, título, tipologia, bloco..."
+                      />
+                      <Select
+                        label="Status"
+                        value={unitStatusFilter}
+                        onChange={(event) => setUnitStatusFilter(event.target.value)}
+                      >
+                        {unitStatusFilterOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </Select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUnitSearch("");
+                          setUnitStatusFilter("ALL");
+                        }}
+                        disabled={!hasUnitFilters}
+                        className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Limpar filtros
+                      </button>
                     </div>
 
                     {units.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-sm text-neutral-600">
                         Nenhuma unidade cadastrada ainda. Use o formulário ao lado para iniciar a tabela do lançamento.
                       </div>
+                    ) : filteredUnits.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-sm text-neutral-600">
+                        Nenhuma unidade encontrada com os filtros atuais.
+                      </div>
                     ) : (
                       <div className="space-y-4">
-                        {units.map((unit) => (
+                        {filteredUnits.map((unit) => (
                           <article key={unit.id} className="rounded-2xl border border-neutral-200 p-5">
-                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                              <div>
-                                <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
-                                  <DoorOpen className="h-3.5 w-3.5" />
-                                  {formatUnitStatus(unit.status)}
+                            {editingUnitId === unit.id ? (
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="text-sm font-semibold text-neutral-950">Editando unidade {unit.reference}</div>
+                                  <div className="flex gap-2">
+                                    <button type="button" onClick={cancelEditingUnit} className="inline-flex items-center gap-2 rounded-full border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50">
+                                      <X className="h-3.5 w-3.5" />
+                                      Cancelar
+                                    </button>
+                                    <button type="button" onClick={() => handleSaveUnit(unit.id)} disabled={editingUnitSaving} className="inline-flex items-center gap-2 rounded-full bg-neutral-950 px-3 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60">
+                                      {editingUnitSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                      Salvar unidade
+                                    </button>
+                                  </div>
                                 </div>
-                                <h4 className="mt-3 text-lg font-semibold text-neutral-950">{unit.title || `Unidade ${unit.reference}`}</h4>
-                                <div className="mt-2 text-sm text-neutral-600">Ref.: {unit.reference}</div>
-                              </div>
-
-                              <div className="grid min-w-[250px] grid-cols-2 gap-3 text-sm">
-                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
-                                  <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Tipologia</div>
-                                  <div className="mt-1 font-semibold text-neutral-950">{unit.typology || "Não informada"}</div>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                  <Input label="Referência" value={editingUnitForm.reference} onChange={(event) => setEditingUnitForm((current) => ({ ...current, reference: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Select label="Status" value={editingUnitForm.status} onChange={(event) => setEditingUnitForm((current) => ({ ...current, status: event.target.value }))} disabled={editingUnitSaving}>
+                                    {unitStatusOptions.map((option) => (
+                                      <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                  </Select>
+                                  <Input label="Título comercial" value={editingUnitForm.title} onChange={(event) => setEditingUnitForm((current) => ({ ...current, title: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Tipologia" value={editingUnitForm.typology} onChange={(event) => setEditingUnitForm((current) => ({ ...current, typology: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Quartos" value={editingUnitForm.bedrooms} onChange={(event) => setEditingUnitForm((current) => ({ ...current, bedrooms: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Banheiros" value={editingUnitForm.bathrooms} onChange={(event) => setEditingUnitForm((current) => ({ ...current, bathrooms: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Vagas" value={editingUnitForm.parkingSpots} onChange={(event) => setEditingUnitForm((current) => ({ ...current, parkingSpots: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Área privativa (m²)" value={editingUnitForm.privateAreaM2} onChange={(event) => setEditingUnitForm((current) => ({ ...current, privateAreaM2: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Preço (R$)" value={editingUnitForm.price} onChange={(event) => setEditingUnitForm((current) => ({ ...current, price: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Andar" value={editingUnitForm.floor} onChange={(event) => setEditingUnitForm((current) => ({ ...current, floor: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Bloco" value={editingUnitForm.block} onChange={(event) => setEditingUnitForm((current) => ({ ...current, block: event.target.value }))} disabled={editingUnitSaving} />
+                                  <Input label="Torre" value={editingUnitForm.tower} onChange={(event) => setEditingUnitForm((current) => ({ ...current, tower: event.target.value }))} disabled={editingUnitSaving} />
                                 </div>
-                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
-                                  <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Preço</div>
-                                  <div className="mt-1 font-semibold text-neutral-950">{formatCurrencyFromCents(unit.priceInCents) || "Não informado"}</div>
+                                <Textarea label="Observações" value={editingUnitForm.notes} onChange={(event) => setEditingUnitForm((current) => ({ ...current, notes: event.target.value }))} disabled={editingUnitSaving} rows={4} />
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                  <div>
+                                    <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
+                                      <DoorOpen className="h-3.5 w-3.5" />
+                                      {formatUnitStatus(unit.status)}
+                                    </div>
+                                    <h4 className="mt-3 text-lg font-semibold text-neutral-950">{unit.title || `Unidade ${unit.reference}`}</h4>
+                                    <div className="mt-2 text-sm text-neutral-600">Ref.: {unit.reference}</div>
+                                  </div>
+
+                                  <div className="flex flex-col items-end gap-3">
+                                    <div className="grid min-w-[250px] grid-cols-2 gap-3 text-sm">
+                                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                                        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Tipologia</div>
+                                        <div className="mt-1 font-semibold text-neutral-950">{unit.typology || "Não informada"}</div>
+                                      </div>
+                                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                                        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Preço</div>
+                                        <div className="mt-1 font-semibold text-neutral-950">{formatCurrencyFromCents(unit.priceInCents) || "Não informado"}</div>
+                                      </div>
+                                    </div>
+                                    {canManageWorkspace ? (
+                                      <div className="flex items-center gap-4">
+                                        <button type="button" onClick={() => startEditingUnit(unit)} className="inline-flex items-center gap-2 text-sm font-semibold text-red-700 underline">
+                                          <Pencil className="h-4 w-4" />
+                                          Editar unidade
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteUnit(unit)}
+                                          disabled={deletingUnitId === unit.id}
+                                          className="inline-flex items-center gap-2 text-sm font-semibold text-red-700 underline disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                          {deletingUnitId === unit.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                          Excluir unidade
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
 
-                            <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-neutral-700 md:grid-cols-4">
-                              <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.privateAreaM2 ? `${unit.privateAreaM2} m² privativos` : "Área não informada"}</div>
-                              <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.bedrooms !== null ? `${unit.bedrooms} quarto(s)` : "Quartos não informados"}</div>
-                              <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.bathrooms !== null ? `${unit.bathrooms} banheiro(s)` : "Banheiros não informados"}</div>
-                              <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.parkingSpots !== null ? `${unit.parkingSpots} vaga(s)` : "Vagas não informadas"}</div>
-                            </div>
+                                <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-neutral-700 md:grid-cols-4">
+                                  <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.privateAreaM2 ? `${unit.privateAreaM2} m² privativos` : "Área não informada"}</div>
+                                  <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.bedrooms !== null ? `${unit.bedrooms} quarto(s)` : "Quartos não informados"}</div>
+                                  <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.bathrooms !== null ? `${unit.bathrooms} banheiro(s)` : "Banheiros não informados"}</div>
+                                  <div className="rounded-xl bg-neutral-50 px-3 py-3">{unit.parkingSpots !== null ? `${unit.parkingSpots} vaga(s)` : "Vagas não informadas"}</div>
+                                </div>
 
-                            {unit.notes ? (
-                              <div className="mt-4 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-                                {unit.notes}
-                              </div>
-                            ) : null}
+                                {unit.notes ? (
+                                  <div className="mt-4 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                                    {unit.notes}
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
                           </article>
                         ))}
                       </div>
@@ -504,7 +928,7 @@ export default function DeveloperProjectDetailPage() {
                     <h2 className="text-base font-semibold text-neutral-950">Próximas extensões</h2>
                     <div className="mt-4 space-y-3 text-sm text-neutral-700">
                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                        Edição de unidades, espelho de tabela e regras comerciais por tipologia.
+                        Próxima camada: exclusão controlada de unidades, espelho de tabela e regras comerciais por tipologia.
                       </div>
                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
                         Integração de leads diretamente neste empreendimento e nas unidades disponíveis.

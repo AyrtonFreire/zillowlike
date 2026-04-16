@@ -36,6 +36,8 @@ export const updatePipelineStageSchema = z.object({
 // Schema para criar lead (contact form)
 export const createLeadSchema = z.object({
   propertyId: z.string().min(1, "propertyId é obrigatório"),
+  developmentProjectId: z.string().min(1, "developmentProjectId é obrigatório").optional(),
+  developmentUnitId: z.string().min(1, "developmentUnitId é obrigatório").optional(),
   userId: z.string().optional(),
   contact: z.object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),

@@ -703,6 +703,10 @@ model Lead {
   publicCode String?    @unique
   property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   propertyId String
+  developmentProject   DevelopmentProject? @relation(fields: [developmentProjectId], references: [id], onDelete: SetNull)
+  developmentProjectId String?
+  developmentUnit      DevelopmentUnit?    @relation(fields: [developmentUnitId], references: [id], onDelete: SetNull)
+  developmentUnitId    String?
   user       User?      @relation(fields: [userId], references: [id])
   userId     String?
   realtor    User?      @relation("RealtorLeads", fields: [realtorId], references: [id])
@@ -786,6 +790,8 @@ model Lead {
   assistantChatThreads  RealtorAssistantChatThread[]
 
   @@index([propertyId])
+  @@index([developmentProjectId])
+  @@index([developmentUnitId])
   @@index([userId])
   @@index([realtorId])
   @@index([status])
@@ -1541,6 +1547,7 @@ model DevelopmentProject {
   createdByUserId  String?
   updatedByUserId  String?
   units            DevelopmentUnit[]
+  leads            Lead[]
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 
@@ -1567,6 +1574,7 @@ model DevelopmentUnit {
   block         String?
   tower         String?
   notes         String?
+  leads         Lead[]
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 
