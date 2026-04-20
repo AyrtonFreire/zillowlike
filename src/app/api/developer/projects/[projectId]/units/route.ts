@@ -204,6 +204,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ projec
         notes: true,
         createdAt: true,
         updatedAt: true,
+        _count: {
+          select: {
+            leads: true,
+          },
+        },
       },
     });
 

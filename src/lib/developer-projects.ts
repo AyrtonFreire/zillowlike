@@ -12,6 +12,7 @@ export type SerializedDeveloperUnit = {
   reference: string;
   title: string | null;
   status: string;
+  leadCount: number;
   typology: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -32,6 +33,7 @@ export type SerializedDeveloperProject = {
   name: string;
   slug: string | null;
   status: string;
+  leadCount: number;
   description: string | null;
   city: string | null;
   state: string | null;
@@ -56,6 +58,16 @@ export function toStringOrNull(value: unknown) {
   return String(value);
 }
 
+export function toCount(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "bigint") return Number(value);
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
 export function countUnitsByStatus(units: Array<{ status: string | null | undefined }>): DeveloperUnitsSummary {
   const summary: DeveloperUnitsSummary = {
     total: units.length,
@@ -75,23 +87,27 @@ export function countUnitsByStatus(units: Array<{ status: string | null | undefi
   return summary;
 }
 
-export function summarizeProjects(projects: Array<Pick<SerializedDeveloperProject, "status" | "unitsSummary">>) {
+export function summarizeProjects(projects: Array<Pick<SerializedDeveloperProject, "status" | "unitsSummary" | "leadCount">>) {
   return {
     totalProjects: projects.length,
     activeProjects: projects.filter((project) => project.status === "ACTIVE" || project.status === "LAUNCH").length,
     draftProjects: projects.filter((project) => project.status === "DRAFT").length,
     totalUnits: projects.reduce((sum, project) => sum + project.unitsSummary.total, 0),
     availableUnits: projects.reduce((sum, project) => sum + project.unitsSummary.available, 0),
+    totalLeads: projects.reduce((sum, project: any) => sum + toCount(project.leadCount), 0),
   };
 }
 
 export function serializeDeveloperUnit(unit: any): SerializedDeveloperUnit {
+  const leadCount = toCount(unit?._count?.leads) || (Array.isArray(unit?.leads) ? unit.leads.length : 0);
+
   return {
     id: String(unit.id),
     projectId: String(unit.projectId),
     reference: String(unit.reference || ""),
     title: unit.title ? String(unit.title) : null,
     status: String(unit.status || "AVAILABLE"),
+    leadCount,
     typology: unit.typology ? String(unit.typology) : null,
     bedrooms: typeof unit.bedrooms === "number" ? unit.bedrooms : unit.bedrooms ? Number(unit.bedrooms) : null,
     bathrooms: typeof unit.bathrooms === "number" ? unit.bathrooms : unit.bathrooms ? Number(unit.bathrooms) : null,
@@ -111,6 +127,7 @@ export function serializeDeveloperProject(project: any, options?: { includeUnits
   const includeUnits = Boolean(options?.includeUnits);
   const rawUnits = Array.isArray(project.units) ? project.units : [];
   const unitsSummary = countUnitsByStatus(rawUnits);
+  const leadCount = toCount(project?._count?.leads) || (Array.isArray(project?.leads) ? project.leads.length : 0);
 
   return {
     id: String(project.id),
@@ -118,6 +135,7 @@ export function serializeDeveloperProject(project: any, options?: { includeUnits
     name: String(project.name || ""),
     slug: project.slug ? String(project.slug) : null,
     status: String(project.status || "DRAFT"),
+    leadCount,
     description: project.description ? String(project.description) : null,
     city: project.city ? String(project.city) : null,
     state: project.state ? String(project.state) : null,

@@ -130,6 +130,16 @@ export async function GET(_: Request, context: { params: Promise<{ projectId: st
             notes: true,
             createdAt: true,
             updatedAt: true,
+            _count: {
+              select: {
+                leads: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            leads: true,
           },
         },
       },
@@ -309,6 +319,16 @@ export async function PATCH(req: Request, context: { params: Promise<{ projectId
             notes: true,
             createdAt: true,
             updatedAt: true,
+            _count: {
+              select: {
+                leads: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            leads: true,
           },
         },
       },

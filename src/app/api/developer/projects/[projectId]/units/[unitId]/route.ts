@@ -216,6 +216,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ proje
         notes: true,
         createdAt: true,
         updatedAt: true,
+        _count: {
+          select: {
+            leads: true,
+          },
+        },
       },
     });
 

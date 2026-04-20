@@ -17,6 +17,7 @@ type DeveloperUnit = {
   reference: string;
   title: string | null;
   status: string;
+  leadCount: number;
   typology: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -37,6 +38,7 @@ type DeveloperProject = {
   name: string;
   slug: string | null;
   status: string;
+  leadCount: number;
   description: string | null;
   city: string | null;
   state: string | null;
@@ -310,6 +312,10 @@ export default function DeveloperProjectDetailPage() {
   const canManageWorkspace = Boolean(response?.workspace.canManageWorkspace);
   const units = useMemo(() => response?.project.units || [], [response?.project.units]);
   const unitsSummary = response?.project.unitsSummary || summarizeUnits([]);
+  const totalProjectLeads = response?.project.leadCount || 0;
+  const totalUnitLeads = useMemo(() => units.reduce((sum, unit) => sum + (unit.leadCount || 0), 0), [units]);
+  const projectOnlyLeads = Math.max(0, totalProjectLeads - totalUnitLeads);
+  const unitsWithLeads = useMemo(() => units.filter((unit) => (unit.leadCount || 0) > 0).length, [units]);
   const filteredUnits = useMemo(() => {
     const query = unitSearch.trim().toLowerCase();
 
@@ -569,6 +575,12 @@ export default function DeveloperProjectDetailPage() {
         ]}
         actions={
           <div className="flex flex-wrap gap-3">
+            <Link
+              href={response?.project?.id ? `/developer/leads?projectId=${response.project.id}` : "/developer/leads"}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Leads do empreendimento
+            </Link>
             {canManageWorkspace ? (
               <button
                 type="button"
@@ -603,11 +615,12 @@ export default function DeveloperProjectDetailPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <MetricCard label="Unidades" value={unitsSummary.total} helper="Inventário do lançamento" />
                 <MetricCard label="Disponíveis" value={unitsSummary.available} helper="Base pronta para comercialização" />
                 <MetricCard label="Reservadas" value={unitsSummary.reserved} helper="Em negociação" />
                 <MetricCard label="Vendidas" value={unitsSummary.sold} helper="Fechamentos registrados" />
+                <MetricCard label="Leads" value={totalProjectLeads} helper="Interesses vinculados ao empreendimento" />
               </div>
 
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.95fr]">
@@ -701,6 +714,27 @@ export default function DeveloperProjectDetailPage() {
                     ) : (
                       <div className="mt-4 text-sm text-neutral-500">Nenhuma descrição institucional cadastrada para este empreendimento.</div>
                     )}
+
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+                        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Leads totais</div>
+                        <div className="mt-1 text-lg font-semibold text-neutral-950">{totalProjectLeads}</div>
+                        {totalProjectLeads > 0 ? (
+                          <Link href={`/developer/leads?projectId=${response.project.id}`} className="mt-2 inline-flex text-xs font-semibold text-red-700 underline">
+                            Abrir leads do empreendimento
+                          </Link>
+                        ) : null}
+                      </div>
+                      <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+                        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Leads por unidade</div>
+                        <div className="mt-1 text-lg font-semibold text-neutral-950">{totalUnitLeads}</div>
+                      </div>
+                      <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+                        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Leads do projeto</div>
+                        <div className="mt-1 text-lg font-semibold text-neutral-950">{projectOnlyLeads}</div>
+                        <div className="mt-1 text-xs text-neutral-500">{unitsWithLeads} unidade(s) com interesse</div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-6 space-y-4">
@@ -796,11 +830,14 @@ export default function DeveloperProjectDetailPage() {
                                       {formatUnitStatus(unit.status)}
                                     </div>
                                     <h4 className="mt-3 text-lg font-semibold text-neutral-950">{unit.title || `Unidade ${unit.reference}`}</h4>
-                                    <div className="mt-2 text-sm text-neutral-600">Ref.: {unit.reference}</div>
+                                    <div className="mt-2 flex flex-wrap gap-3 text-sm text-neutral-600">
+                                      <span>Ref.: {unit.reference}</span>
+                                      <span>Leads: {unit.leadCount || 0}</span>
+                                    </div>
                                   </div>
 
                                   <div className="flex flex-col items-end gap-3">
-                                    <div className="grid min-w-[250px] grid-cols-2 gap-3 text-sm">
+                                    <div className="grid min-w-[360px] grid-cols-3 gap-3 text-sm">
                                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
                                         <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Tipologia</div>
                                         <div className="mt-1 font-semibold text-neutral-950">{unit.typology || "Não informada"}</div>
@@ -808,6 +845,18 @@ export default function DeveloperProjectDetailPage() {
                                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
                                         <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Preço</div>
                                         <div className="mt-1 font-semibold text-neutral-950">{formatCurrencyFromCents(unit.priceInCents) || "Não informado"}</div>
+                                      </div>
+                                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                                        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Leads</div>
+                                        <div className="mt-1 font-semibold text-neutral-950">{unit.leadCount || 0}</div>
+                                        {unit.leadCount > 0 ? (
+                                          <Link
+                                            href={`/developer/leads?projectId=${response.project.id}&unitId=${unit.id}`}
+                                            className="mt-2 inline-flex text-[11px] font-semibold text-red-700 underline"
+                                          >
+                                            Ver leads
+                                          </Link>
+                                        ) : null}
                                       </div>
                                     </div>
                                     {canManageWorkspace ? (

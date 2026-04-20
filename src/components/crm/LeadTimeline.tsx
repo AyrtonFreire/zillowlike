@@ -68,6 +68,7 @@ interface LeadTimelineProps {
   pipelineStage?: string;
   notes?: Array<{ id: string; content: string; createdAt: string }>;
   messages?: Array<{ id: string; content: string; createdAt: string; senderId?: string }>;
+  eventsPath?: string;
 }
 
 const iconMap = {
@@ -373,17 +374,19 @@ export default function LeadTimeline({
   pipelineStage,
   notes = [],
   messages = [],
+  eventsPath,
 }: LeadTimelineProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const lastEtagRef = useRef<string | null>(null);
+  const resolvedEventsPath = eventsPath || `/api/leads/${leadId}/events`;
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadEvents() {
       try {
-        const response = await fetch(`/api/leads/${leadId}/events`, {
+        const response = await fetch(resolvedEventsPath, {
           headers: lastEtagRef.current ? { "if-none-match": lastEtagRef.current } : undefined,
         });
 
@@ -505,7 +508,7 @@ export default function LeadTimeline({
     return () => {
       cancelled = true;
     };
-  }, [leadId, createdAt, respondedAt, completedAt, pipelineStage, notes, messages]);
+  }, [leadId, createdAt, respondedAt, completedAt, pipelineStage, notes, messages, resolvedEventsPath]);
 
   const visibleEvents = isExpanded ? events : events.slice(0, 4);
   const hasMore = events.length > 4;

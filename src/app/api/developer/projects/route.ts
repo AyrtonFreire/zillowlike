@@ -134,6 +134,11 @@ export async function GET() {
             status: true,
           },
         },
+        _count: {
+          select: {
+            leads: true,
+          },
+        },
       },
     });
 
@@ -246,6 +251,11 @@ export async function POST(req: NextRequest) {
         units: {
           select: {
             status: true,
+          },
+        },
+        _count: {
+          select: {
+            leads: true,
           },
         },
       },

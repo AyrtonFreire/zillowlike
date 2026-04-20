@@ -26,6 +26,7 @@ type DeveloperProject = {
   name: string;
   slug: string | null;
   status: string;
+  leadCount: number;
   description: string | null;
   city: string | null;
   state: string | null;
@@ -58,6 +59,7 @@ type DeveloperProjectsResponse = {
     draftProjects: number;
     totalUnits: number;
     availableUnits: number;
+    totalLeads: number;
   };
 };
 
@@ -203,6 +205,7 @@ export default function DeveloperProjectsPage() {
             draftProjects: nextProjects.filter((project) => project.status === "DRAFT").length,
             totalUnits: nextProjects.reduce((sum, project) => sum + project.unitsSummary.total, 0),
             availableUnits: nextProjects.reduce((sum, project) => sum + project.unitsSummary.available, 0),
+            totalLeads: nextProjects.reduce((sum, project) => sum + (project.leadCount || 0), 0),
           },
         };
       });
@@ -248,6 +251,12 @@ export default function DeveloperProjectsPage() {
         actions={
           <div className="flex flex-wrap gap-3">
             <Link
+              href="/developer/leads"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Leads do workspace
+            </Link>
+            <Link
               href="/developer"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
             >
@@ -270,11 +279,12 @@ export default function DeveloperProjectsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <MetricCard label="Empreendimentos" value={response.summary.totalProjects} helper="Base inicial do portfólio de lançamentos" />
                 <MetricCard label="Projetos ativos" value={response.summary.activeProjects} helper="Lançamentos em fase comercial" />
                 <MetricCard label="Rascunhos" value={response.summary.draftProjects} helper="Estruturas ainda em preparação" />
                 <MetricCard label="Unidades cadastradas" value={response.summary.totalUnits} helper="Prontas para futura gestão granular" />
+                <MetricCard label="Leads vinculados" value={response.summary.totalLeads} helper="Interesses conectados aos lançamentos" />
               </div>
 
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.95fr]">
@@ -322,7 +332,7 @@ export default function DeveloperProjectsPage() {
                               </div>
                             </div>
 
-                            <div className="grid min-w-[220px] grid-cols-2 gap-3 text-sm">
+                            <div className="grid min-w-[320px] grid-cols-3 gap-3 text-sm">
                               <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
                                 <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Unidades</div>
                                 <div className="mt-1 font-semibold text-neutral-950">{project.unitsSummary.total}</div>
@@ -330,6 +340,10 @@ export default function DeveloperProjectsPage() {
                               <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
                                 <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Disponíveis</div>
                                 <div className="mt-1 font-semibold text-neutral-950">{project.unitsSummary.available}</div>
+                              </div>
+                              <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                                <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Leads</div>
+                                <div className="mt-1 font-semibold text-neutral-950">{project.leadCount}</div>
                               </div>
                             </div>
                           </div>
@@ -341,12 +355,20 @@ export default function DeveloperProjectsPage() {
                           ) : null}
 
                           <div className="mt-4">
-                            <Link
-                              href={`/developer/projects/${project.id}`}
-                              className="inline-flex items-center gap-2 text-sm font-semibold text-red-700 underline"
-                            >
-                              Gerenciar unidades
-                            </Link>
+                            <div className="flex flex-wrap items-center gap-4">
+                              <Link
+                                href={`/developer/projects/${project.id}`}
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-red-700 underline"
+                              >
+                                Gerenciar unidades
+                              </Link>
+                              <Link
+                                href={`/developer/leads?projectId=${project.id}`}
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 underline"
+                              >
+                                Ver leads do empreendimento
+                              </Link>
+                            </div>
                           </div>
                         </article>
                       ))
