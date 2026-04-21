@@ -33,6 +33,11 @@ export type UserProfile = {
   publicCity?: string | null;
   publicState?: string | null;
   publicPhoneOptIn?: boolean;
+  publicInstagram?: string | null;
+  publicLinkedIn?: string | null;
+  publicWhatsApp?: string | null;
+  publicFacebook?: string | null;
+  publicServiceAreas?: string[] | null;
   realtorCreci?: string | null;
   realtorCreciState?: string | null;
   realtorType?: "AUTONOMO" | "IMOBILIARIA" | string | null;
@@ -46,6 +51,11 @@ export type ProfileFormState = {
   publicCity: string;
   publicState: string;
   publicPhoneOptIn: boolean;
+  publicInstagram: string;
+  publicLinkedIn: string;
+  publicWhatsApp: string;
+  publicFacebook: string;
+  publicServiceAreas: string[];
 };
 
 export type ProfileFieldErrors = Partial<Record<keyof ProfileFormState | "general", string>>;
@@ -65,6 +75,11 @@ export function buildProfileForm(profile?: UserProfile | null): ProfileFormState
     publicCity: profile?.publicCity || "",
     publicState: profile?.publicState || "",
     publicPhoneOptIn: Boolean(profile?.publicPhoneOptIn),
+    publicInstagram: profile?.publicInstagram || "",
+    publicLinkedIn: profile?.publicLinkedIn || "",
+    publicWhatsApp: profile?.publicWhatsApp || "",
+    publicFacebook: profile?.publicFacebook || "",
+    publicServiceAreas: Array.isArray(profile?.publicServiceAreas) ? profile?.publicServiceAreas.filter(Boolean) : [],
   };
 }
 
@@ -116,6 +131,17 @@ export function normalizeProfileForm(form: ProfileFormState): ProfileFormState {
     publicCity: form.publicCity.trim(),
     publicState: form.publicState.trim().toUpperCase(),
     publicPhoneOptIn: Boolean(form.publicPhoneOptIn),
+    publicInstagram: form.publicInstagram.trim().replace(/^@+/, ""),
+    publicLinkedIn: form.publicLinkedIn.trim(),
+    publicWhatsApp: form.publicWhatsApp.replace(/\D/g, "").trim(),
+    publicFacebook: form.publicFacebook.trim(),
+    publicServiceAreas: Array.from(
+      new Set(
+        form.publicServiceAreas
+          .map((area) => area.trim())
+          .filter(Boolean)
+      )
+    ).slice(0, 12),
   };
 }
 
@@ -130,6 +156,11 @@ export function areProfileFormsEqual(a: ProfileFormState, b: ProfileFormState) {
     left.publicBio === right.publicBio &&
     left.publicCity === right.publicCity &&
     left.publicState === right.publicState &&
-    left.publicPhoneOptIn === right.publicPhoneOptIn
+    left.publicPhoneOptIn === right.publicPhoneOptIn &&
+    left.publicInstagram === right.publicInstagram &&
+    left.publicLinkedIn === right.publicLinkedIn &&
+    left.publicWhatsApp === right.publicWhatsApp &&
+    left.publicFacebook === right.publicFacebook &&
+    left.publicServiceAreas.join("|") === right.publicServiceAreas.join("|")
   );
 }

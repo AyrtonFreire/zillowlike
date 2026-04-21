@@ -12,6 +12,7 @@ import {
   Clock,
   Plus,
   Activity,
+  MessageSquare,
   Sparkles,
 } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
@@ -207,7 +208,7 @@ export default function BrokerDashboard() {
 
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
-  const [, setUnreadMessages] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const userId = (session?.user as any)?.id as string | undefined;
 
@@ -790,6 +791,84 @@ export default function BrokerDashboard() {
           />
         </div>
 
+        <div className="mb-8 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm shadow-black/5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Prioridades operacionais</div>
+              <h2 className="mt-2 text-lg font-semibold text-gray-900">Organize o dia do corretor por urgência e contexto.</h2>
+              <p className="mt-1 text-sm text-gray-600">Atalhos para o que pede ação imediata no funil, nas conversas e nos imóveis anunciados.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/profile?onboarding=broker" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                Revisar perfil profissional
+              </Link>
+              <Link href="/broker/leads" className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100">
+                Abrir leads
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <button
+              type="button"
+              onClick={() => setLeadFilter("NEW")}
+              className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-blue-700">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <span className="text-2xl font-semibold tabular-nums text-blue-900">{newLeads.length}</span>
+              </div>
+              <div className="mt-3 text-sm font-semibold text-blue-900">Novos para primeiro contato</div>
+              <p className="mt-1 text-xs leading-5 text-blue-800">Leads recém-chegados no topo do funil para responder primeiro.</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLeadFilter("IN_SERVICE")}
+              className="rounded-2xl border border-purple-200 bg-purple-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-purple-700">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <span className="text-2xl font-semibold tabular-nums text-purple-900">{inServiceLeads.length}</span>
+              </div>
+              <div className="mt-3 text-sm font-semibold text-purple-900">Em acompanhamento</div>
+              <p className="mt-1 text-xs leading-5 text-purple-800">Oportunidades já em contato, visita, proposta ou documentação.</p>
+            </button>
+
+            <Link
+              href="/broker/chats"
+              className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-rose-700">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <span className="text-2xl font-semibold tabular-nums text-rose-900">{unreadMessages}</span>
+              </div>
+              <div className="mt-3 text-sm font-semibold text-rose-900">Mensagens não lidas</div>
+              <p className="mt-1 text-xs leading-5 text-rose-800">Converse com clientes que aguardam retorno para não perder timing comercial.</p>
+            </Link>
+
+            <Link
+              href="/broker/crm"
+              className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-amber-700">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <span className="text-2xl font-semibold tabular-nums text-amber-900">{metrics?.leadsWithReminders || 0}</span>
+              </div>
+              <div className="mt-3 text-sm font-semibold text-amber-900">Próximas ações</div>
+              <p className="mt-1 text-xs leading-5 text-amber-800">Lembretes ativos e pendências que precisam ser movidas no CRM.</p>
+            </Link>
+          </div>
+        </div>
+
         {/* Resumo dos Leads */}
         <div className="mb-8">
           <StatCard
@@ -837,8 +916,17 @@ export default function BrokerDashboard() {
                 </div>
               </div>
             ) : activeMyLeads.length === 0 ? (
-              <div className="text-sm text-gray-600">
-                Nenhum lead ativo no momento. Quando você tiver leads gerados pelos imóveis que anunciar, um resumo rápido do seu dia aparece aqui.
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5">
+                <div className="text-sm font-semibold text-gray-900">Sua operação ainda não tem leads ativos</div>
+                <p className="mt-2 text-sm text-gray-600">Quando seus imóveis e seu perfil profissional começarem a gerar oportunidades, este resumo vira sua central rápida do dia.</p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Link href="/broker/properties/new" className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">
+                    Publicar imóvel
+                  </Link>
+                  <Link href="/profile?onboarding=broker" className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">
+                    Revisar perfil profissional
+                  </Link>
+                </div>
               </div>
             ) : (
               <motion.div
@@ -1004,15 +1092,24 @@ export default function BrokerDashboard() {
                   />
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-gray-500">
                   <Home className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Nenhum imóvel cadastrado ainda</p>
-                  <Link
-                    href="/broker/properties/new"
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium mt-2 inline-block"
-                  >
-                    Criar primeiro imóvel
-                  </Link>
+                  <p className="font-medium text-gray-700">Nenhum imóvel cadastrado ainda</p>
+                  <p className="mt-1 text-sm text-gray-500">Seu painel fica mais útil quando você publica o primeiro anúncio e começa a receber contatos.</p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                    <Link
+                      href="/broker/properties/new"
+                      className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Criar primeiro imóvel
+                    </Link>
+                    <Link
+                      href="/profile?onboarding=broker"
+                      className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700"
+                    >
+                      Revisar perfil
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
@@ -1062,15 +1159,30 @@ export default function BrokerDashboard() {
                   />
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>
+                  <p className="font-medium text-gray-700">
                     {leadFilter === "NEW"
-                      ? "Nenhum lead novo dos imóveis que você anunciou para esse filtro agora."
+                      ? "Nenhum lead novo neste momento."
                       : leadFilter === "IN_SERVICE"
-                      ? "Nenhum lead em atendimento no momento para esse filtro."
-                      : "Nenhum lead encontrado para esse filtro ainda. Assim que seus anúncios começarem a gerar contatos, eles aparecem aqui."}
+                      ? "Nenhum lead em acompanhamento neste momento."
+                      : "Nenhum lead encontrado para esse filtro ainda."}
                   </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {leadFilter === "NEW"
+                      ? "Quando novos contatos chegarem, eles aparecerão aqui para priorizar o primeiro retorno."
+                      : leadFilter === "IN_SERVICE"
+                        ? "Assim que você avançar contatos no CRM, eles passarão a compor este recorte operacional."
+                        : "Assim que seus anúncios começarem a gerar contatos, este bloco vira um atalho rápido para sua operação."}
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                    <Link href="/broker/leads" className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">
+                      Ver lista completa
+                    </Link>
+                    <Link href="/broker/crm" className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">
+                      Abrir CRM
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

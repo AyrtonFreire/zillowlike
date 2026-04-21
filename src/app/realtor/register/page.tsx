@@ -3,7 +3,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Briefcase, ShieldCheck } from "lucide-react";
 import { validateCRECI } from "@/lib/validators/creci";
 import { ModernNavbar } from "@/components/modern";
@@ -81,12 +80,12 @@ export default function RealtorRegisterPage() {
         return;
       }
 
-      setSuccess("Cadastro como corretor realizado com sucesso. Agora você pode configurar seu perfil público.");
+      setSuccess("Cadastro concluído. Agora complete seu perfil profissional para publicar sua apresentação, regiões de atuação e canais de contato.");
       await update();
       setTimeout(() => {
-        router.push("/profile");
-      }, 2000);
-    } catch (err) {
+        router.push("/profile?onboarding=broker");
+      }, 1200);
+    } catch {
       setError("Erro inesperado. Tente novamente.");
     } finally {
       setLoading(false);
@@ -103,9 +102,9 @@ export default function RealtorRegisterPage() {
               <Briefcase className="w-5 h-5 text-indigo-600" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Cadastro rápido de corretor</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Ativar perfil de corretor</h1>
               <p className="text-xs sm:text-sm text-gray-600">
-                Essas informações identificam você como profissional no site.
+                Depois da ativação, seu perfil profissional passa a ser editado na área central de perfil.
               </p>
             </div>
           </div>
@@ -168,8 +167,7 @@ export default function RealtorRegisterPage() {
 
             {creci && (
               <p className="text-[11px] text-gray-500">
-                Validamos o formato do CRECI (quantidade de dígitos e sufixo). Para atuar como corretor(a), é necessário informar
-                CRECI, UF e tipo de atuação.
+                Validamos o formato do CRECI antes da ativação. Em seguida, você será levado ao perfil profissional para completar headline, bio, regiões atendidas e canais públicos.
               </p>
             )}
 
@@ -178,12 +176,12 @@ export default function RealtorRegisterPage() {
               disabled={loading}
               className="mt-2 w-full inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Salvando..." : "Confirmar cadastro como corretor"}
+              {loading ? "Salvando..." : "Ativar perfil de corretor"}
             </button>
           </form>
 
           <p className="mt-4 text-[11px] text-gray-500">
-            Você pode completar seu perfil público a qualquer momento nas configurações da conta.
+            Você será redirecionado para <span className="font-semibold">/profile</span> para completar seu perfil profissional.
           </p>
         </div>
       </main>

@@ -235,7 +235,12 @@ export function useProfile() {
   const setField = useCallback(
     <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => {
       setForm((current) => {
-        const nextValue = field === "publicState" ? String(value).toUpperCase().slice(0, 2) : value;
+        const nextValue =
+          field === "publicState"
+            ? String(value).toUpperCase().slice(0, 2)
+            : field === "publicWhatsApp"
+              ? String(value).replace(/\D/g, "")
+              : value;
         return { ...current, [field]: nextValue };
       });
       setFieldErrors((current) => ({ ...current, [field]: undefined, general: undefined }));
@@ -286,6 +291,11 @@ export function useProfile() {
           publicBio: nextFieldErrors?.publicBio?.[0],
           publicCity: nextFieldErrors?.publicCity?.[0],
           publicState: nextFieldErrors?.publicState?.[0],
+          publicInstagram: nextFieldErrors?.publicInstagram?.[0],
+          publicLinkedIn: nextFieldErrors?.publicLinkedIn?.[0],
+          publicWhatsApp: nextFieldErrors?.publicWhatsApp?.[0],
+          publicFacebook: nextFieldErrors?.publicFacebook?.[0],
+          publicServiceAreas: nextFieldErrors?.publicServiceAreas?.[0],
           general: firstMessage,
         });
         setSaveError(firstMessage);

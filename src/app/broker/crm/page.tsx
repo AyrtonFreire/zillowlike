@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import {
@@ -304,8 +305,8 @@ export default function BrokerCrmPage() {
     setShowCrmHelp(false);
   };
 
-  const now = new Date();
-  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+  const nowTimestamp = Date.now();
+  const fortyEightHoursAgoTs = nowTimestamp - 48 * 60 * 60 * 1000;
 
   const openLeadPanel = (leadId: string) => {
     setSelectedLeadId(leadId);
@@ -443,14 +444,14 @@ export default function BrokerCrmPage() {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   };
 
-  const isLeadSla = (lead: PipelineLead) => {
+  const isLeadSla = useCallback((lead: PipelineLead) => {
     if (!lead.nextActionDate) return { overdue: false, today: false };
     const d = new Date(lead.nextActionDate);
     if (Number.isNaN(d.getTime())) return { overdue: false, today: false };
-    const today = isSameDay(d, now);
-    const overdue = d.getTime() < now.getTime() && !today;
+    const today = isSameDay(d, new Date(nowTimestamp));
+    const overdue = d.getTime() < nowTimestamp && !today;
     return { overdue, today };
-  };
+  }, [nowTimestamp]);
 
   const leadMatchesQuery = (lead: PipelineLead, q: string) => {
     const queryNorm = String(q || "").trim().toLowerCase();
@@ -470,7 +471,7 @@ export default function BrokerCrmPage() {
     return hay.includes(queryNorm);
   };
 
-  const leadPassesQuickFilter = (lead: PipelineLead) => {
+  const leadPassesQuickFilter = useCallback((lead: PipelineLead) => {
     if (quickFilter === "all") return true;
     if (quickFilter === "unread") return !!lead.hasUnreadMessages;
     if (quickFilter === "sla") {
@@ -481,12 +482,12 @@ export default function BrokerCrmPage() {
       if (!lead.lastContactAt) return true;
       const d = new Date(lead.lastContactAt);
       if (Number.isNaN(d.getTime())) return true;
-      return d.getTime() < fortyEightHoursAgo.getTime();
+      return d.getTime() < fortyEightHoursAgoTs;
     }
     return true;
-  };
+  }, [fortyEightHoursAgoTs, isLeadSla, quickFilter]);
 
-  const urgencySort = (a: PipelineLead, b: PipelineLead) => {
+  const urgencySort = useCallback((a: PipelineLead, b: PipelineLead) => {
     const au = a.hasUnreadMessages ? 1 : 0;
     const bu = b.hasUnreadMessages ? 1 : 0;
     if (au !== bu) return bu - au;
@@ -504,11 +505,15 @@ export default function BrokerCrmPage() {
     }
 
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  };
+  }, [isLeadSla]);
+
+  const searchScopedLeads = useMemo(() => {
+    return (leads || []).filter((lead) => leadMatchesQuery(lead, query));
+  }, [leads, query]);
 
   const filteredLeads = useMemo(() => {
-    return (leads || []).filter((lead) => leadMatchesQuery(lead, query)).filter((lead) => leadPassesQuickFilter(lead));
-  }, [leads, query, quickFilter]);
+    return searchScopedLeads.filter((lead) => leadPassesQuickFilter(lead));
+  }, [leadPassesQuickFilter, searchScopedLeads]);
 
   const toggleSelectLead = useCallback((leadId: string) => {
     setSelectedLeadIds((prev) => {
@@ -712,12 +717,37 @@ export default function BrokerCrmPage() {
     }
 
     return map;
-  }, [filteredLeads]);
+  }, [filteredLeads, urgencySort]);
 
   // Total de leads para cálculo de progresso
   const totalLeads = filteredLeads.length;
   const wonLeads = leadsByStage["WON"].length;
   const progressPercent = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
+  const quickCounts = useMemo(
+    () => ({
+      all: searchScopedLeads.length,
+      unread: searchScopedLeads.filter((lead) => !!lead.hasUnreadMessages).length,
+      sla: searchScopedLeads.filter((lead) => {
+        const { overdue, today } = isLeadSla(lead);
+        return overdue || today;
+      }).length,
+      noContact: searchScopedLeads.filter((lead) => {
+        if (!lead.lastContactAt) return true;
+        const d = new Date(lead.lastContactAt);
+        if (Number.isNaN(d.getTime())) return true;
+        return d.getTime() < fortyEightHoursAgoTs;
+      }).length,
+    }),
+    [fortyEightHoursAgoTs, isLeadSla, searchScopedLeads]
+  );
+  const activeQuickFilterLabel =
+    quickFilter === "all"
+      ? "Todas as oportunidades abertas"
+      : quickFilter === "unread"
+        ? "Conversas sem resposta"
+        : quickFilter === "sla"
+          ? "Próximas ações e atrasos"
+          : "Leads sem contato há 48h";
 
   if (loading) {
     return <CenteredSpinner message="Carregando sua jornada de leads..." />;
@@ -727,6 +757,42 @@ export default function BrokerCrmPage() {
     <div className="bg-gray-50 min-h-screen flex flex-col">
         <div className="hidden md:block bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="mb-4 rounded-2xl border border-gray-200 bg-gradient-to-r from-white via-white to-teal-50/60 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Contexto do funil</div>
+                  <h2 className="mt-2 text-lg font-semibold text-gray-900">{activeQuickFilterLabel}</h2>
+                  <p className="mt-1 text-sm text-gray-600">{filteredLeads.length} lead{filteredLeads.length === 1 ? "" : "s"} aparecem no board a partir da busca e do filtro rápido atual.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href="/broker/leads" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                    Ver lista
+                  </Link>
+                  <Link href="/broker/chats" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                    Abrir conversas
+                  </Link>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { key: "all" as const, label: "Abertos no recorte", count: quickCounts.all, tone: "border-teal-200 bg-teal-50 text-teal-800" },
+                  { key: "unread" as const, label: "Sem resposta", count: quickCounts.unread, tone: "border-blue-200 bg-blue-50 text-blue-800" },
+                  { key: "sla" as const, label: "Próxima ação", count: quickCounts.sla, tone: "border-amber-200 bg-amber-50 text-amber-800" },
+                  { key: "noContact" as const, label: "48h sem contato", count: quickCounts.noContact, tone: "border-gray-200 bg-gray-100 text-gray-700" },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setQuickFilter(item.key)}
+                    className={`rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${item.tone}`}
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">{item.label}</div>
+                    <div className="mt-2 text-2xl font-semibold tabular-nums">{item.count}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="relative">
@@ -1019,9 +1085,8 @@ export default function BrokerCrmPage() {
                     {stageLeads.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
                         <Icon className={`w-8 h-8 ${config.color} opacity-30 mb-2`} />
-                        <p className="text-[11px] text-gray-400">
-                          Nenhum lead
-                        </p>
+                        <p className="text-[11px] font-semibold text-gray-500">Nenhum lead nesta etapa</p>
+                        <p className="mt-1 max-w-[180px] text-[11px] leading-5 text-gray-400">Ajuste os filtros rápidos ou mova um lead para cá conforme a negociação avançar.</p>
                       </div>
                     ) : (
                       <>
@@ -1124,10 +1189,25 @@ export default function BrokerCrmPage() {
                       {stageLeads.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                           <Icon className={`w-12 h-12 ${config.color} opacity-20 mb-3`} />
-                          <p className="text-sm text-gray-500">Nenhum lead nesta etapa</p>
+                          <p className="text-sm font-semibold text-gray-600">Nenhum lead nesta etapa</p>
                           <p className="text-xs text-gray-400 mt-1">
-                            Arraste leads de outras etapas para cá
+                            Ajuste o filtro rápido, revise a lista ou mova oportunidades de outras etapas para cá.
                           </p>
+                          <div className="mt-4 flex flex-wrap justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setQuickFilter("all")}
+                              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700"
+                            >
+                              Ver todas
+                            </button>
+                            <Link
+                              href="/broker/leads"
+                              className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800"
+                            >
+                              Abrir lista
+                            </Link>
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-2">

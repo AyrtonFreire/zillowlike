@@ -34,12 +34,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/broker/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/broker/properties", label: "Imóveis", icon: Home },
   { href: "/broker/leads", label: "Leads", icon: ClipboardList },
-  { href: "/broker/chats", label: "Chats", icon: MessageSquare, badgeKey: "unreadChats" },
+  { href: "/broker/chats", label: "Conversas", icon: MessageSquare, badgeKey: "unreadChats" },
   { href: "/broker/crm", label: "Funil", icon: Kanban },
   { href: "/broker/assistant", label: "Assistente", icon: Sparkles, badgeKey: "assistantOpen" },
   { href: "/broker/assistant/offline", label: "Assistente offline", icon: Clock },
   { href: "/broker/teams", label: "Chat do time", icon: MessageCircle },
-  { href: "/broker/profile", label: "Perfil", icon: UserRound },
+  { href: "/profile?onboarding=broker", label: "Perfil profissional", icon: UserRound },
 ];
 
 function normalizePath(pathname: string) {
@@ -103,7 +103,7 @@ function sectionFromPath(pathname: string) {
     return {
       title: "Conversas com clientes",
       description: "Responda mensagens e acompanhe cada lead em tempo real.",
-      crumb: "Chats",
+      crumb: "Conversas",
     };
   }
 
@@ -133,8 +133,8 @@ function sectionFromPath(pathname: string) {
 
   if (p.startsWith("/broker/profile")) {
     return {
-      title: "Perfil público",
-      description: "Atualize seus dados e informações públicas.",
+      title: "Perfil profissional",
+      description: "Esta rota agora encaminha você para a área central de perfil.",
       crumb: "Perfil",
     };
   }

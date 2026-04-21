@@ -1075,6 +1075,13 @@ export default function RealtorPublicLandingClient({
                   <div className="min-w-0 flex-1">
                     <h1 className="font-serif text-3xl leading-tight text-white sm:text-5xl lg:text-6xl">{realtor.name}</h1>
                     <p className="mt-4 max-w-3xl text-sm leading-6 text-white/78 sm:text-base sm:leading-7">{realtor.publicHeadline || profileNarrative}</p>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-white/62 sm:text-[15px] sm:leading-7">
+                      {whatsappDigits
+                        ? "Use o WhatsApp para pedir opções, agendar visita ou iniciar uma conversa consultiva sem sair desta página."
+                        : telHref
+                          ? "Use este perfil para conhecer o portfólio, validar credenciais e iniciar contato direto com atendimento humano."
+                          : "Este perfil reúne portfólio, prova social e contexto local para ajudar você a decidir com mais segurança."}
+                    </p>
 
                     <div className="mt-5 flex flex-wrap gap-2">
                       {locationLabel ? (
@@ -1098,7 +1105,7 @@ export default function RealtorPublicLandingClient({
                           className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 sm:w-auto"
                         >
                           <MessageCircle className="h-4 w-4" />
-                          Falar no WhatsApp
+                          Pedir atendimento no WhatsApp
                         </button>
                       ) : null}
 
@@ -1113,7 +1120,7 @@ export default function RealtorPublicLandingClient({
                           }}
                         >
                           <Phone className="h-4 w-4" />
-                          Ligar agora
+                          Solicitar ligação
                         </a>
                       ) : null}
 
@@ -1122,7 +1129,7 @@ export default function RealtorPublicLandingClient({
                         className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15 sm:w-auto"
                       >
                         <Grid3X3 className="h-4 w-4" />
-                        Explorar imóveis
+                        Ver imóveis disponíveis
                       </a>
 
                       <button
@@ -1130,8 +1137,26 @@ export default function RealtorPublicLandingClient({
                         onClick={() => openReviews("hero_reviews_cta")}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-transparent px-5 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 sm:w-auto"
                       >
-                        Ver avaliações
+                        Conferir avaliações
                       </button>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/72">
+                      {realtor.avgResponseTime != null ? (
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                          Resposta média em {realtor.avgResponseTime} min
+                        </span>
+                      ) : null}
+                      {serviceAreaChips.length > 0 ? (
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                          Atendimento em {serviceAreaChips.slice(0, 2).join(" e ")}
+                        </span>
+                      ) : null}
+                      {properties.length > 0 ? (
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                          {properties.length} {properties.length === 1 ? "imóvel publicado" : "imóveis publicados"}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1153,7 +1178,7 @@ export default function RealtorPublicLandingClient({
                 </div>
 
                 <div className="mt-5 rounded-[24px] border border-white/10 bg-black/10 p-4 text-sm leading-7 text-white/75">
-                  Perfil público pensado para apresentar atendimento, confiança e portfólio em um único lugar.
+                  Perfil público pensado para transformar interesse em conversa: credenciais, tempo de resposta, regiões atendidas e imóveis ativos em um único lugar.
                 </div>
 
                 {teamPreview.length > 0 ? (

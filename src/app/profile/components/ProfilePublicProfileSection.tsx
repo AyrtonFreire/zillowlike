@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Copy, ExternalLink, MapPin, Phone, Sparkles } from "lucide-react";
+import { Copy, ExternalLink, Facebook, Instagram, Linkedin, MapPin, Phone, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Checkbox from "@/components/ui/Checkbox";
 import Input from "@/components/ui/Input";
@@ -39,17 +40,32 @@ export function ProfilePublicProfileSection({
   onFieldChange: <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => void;
   onCopyLink: () => Promise<boolean> | boolean;
 }) {
+  const [serviceAreaDraft, setServiceAreaDraft] = useState("");
   const roleLabel = formatRoleLabel(profile.role);
   const isBrokerProfile = isRealtorOrAgency(profile.role);
   const isOwnerProfile = isOwnerLike(profile.role);
+  const serviceAreas = form.publicServiceAreas || [];
   const checklist = [
     { label: "Headline preenchida", done: form.publicHeadline.trim().length > 0 },
     { label: "Bio preenchida", done: form.publicBio.trim().length > 0 },
     { label: "Cidade e UF informadas", done: form.publicCity.trim().length > 0 && form.publicState.trim().length === 2 },
-    ...(isBrokerProfile ? [{ label: "Telefone verificado para exibição", done: hasVerifiedPhone }] : []),
+    ...(isBrokerProfile
+      ? [
+          { label: "Telefone pronto para contato", done: hasVerifiedPhone || form.publicWhatsApp.trim().length >= 10 },
+          { label: "Áreas de atuação definidas", done: serviceAreas.length > 0 },
+          {
+            label: "Canal social ou profissional adicionado",
+            done: [form.publicInstagram, form.publicLinkedIn, form.publicFacebook].some((value) => value.trim().length > 0),
+          },
+        ]
+      : []),
   ];
+  const checklistDoneCount = checklist.filter((item) => item.done).length;
+  const completeness = checklist.length > 0 ? Math.round((checklistDoneCount / checklist.length) * 100) : 0;
   const publicLocation = [form.publicCity.trim(), form.publicState.trim()].filter(Boolean).join(", ");
   const canOpenPublicProfile = Boolean(publicUrl);
+  const publicWhatsApp = form.publicWhatsApp.trim();
+  const socialChannels = [form.publicInstagram, form.publicLinkedIn, form.publicFacebook].filter((value) => value.trim().length > 0).length;
   const phoneCheckboxDescription = hasVerifiedPhone
     ? "Quando ativo, o telefone só aparece no perfil público porque já está verificado."
     : "Verifique seu telefone primeiro para poder exibi-lo no perfil público e nas ações de contato.";
@@ -58,13 +74,28 @@ export function ProfilePublicProfileSection({
   const primaryActionClassName =
     "inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-teal-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30 focus-visible:ring-offset-2";
 
+  const addServiceArea = () => {
+    const nextArea = serviceAreaDraft.trim();
+    if (!nextArea) return;
+    if (serviceAreas.some((area) => area.toLowerCase() === nextArea.toLowerCase())) return;
+    onFieldChange("publicServiceAreas", [...serviceAreas, nextArea]);
+    setServiceAreaDraft("");
+  };
+
+  const removeServiceArea = (areaToRemove: string) => {
+    onFieldChange(
+      "publicServiceAreas",
+      serviceAreas.filter((area) => area !== areaToRemove)
+    );
+  };
+
   return (
     <SectionCard
       eyebrow="Perfil público"
       title={isBrokerProfile ? "Apresentação pública profissional" : "Perfil público do anunciante"}
       description={
         isBrokerProfile
-          ? "Controle a primeira impressão do seu perfil compartilhável, com texto, localização e disponibilidade real de contato."
+          ? "Centralize sua apresentação, regiões de atuação e canais de contato no mesmo lugar usado para operar leads e conversas."
           : "Organize como seu perfil público aparece para compradores e locatários, sem prometer contato que ainda não está validado."
       }
       actions={
@@ -117,7 +148,7 @@ export function ProfilePublicProfileSection({
             onChange={(event) => onFieldChange("publicHeadline", event.target.value)}
             error={fieldErrors.publicHeadline}
             maxLength={120}
-            placeholder={isBrokerProfile ? "Especialista em imóveis prontos para morar" : "Anunciante com foco em imóveis bem cuidados"}
+            placeholder={isBrokerProfile ? "Especialista em imóveis com atendimento consultivo e resposta rápida" : "Anunciante com foco em imóveis bem cuidados"}
           />
 
           <Textarea
@@ -160,6 +191,81 @@ export function ProfilePublicProfileSection({
               <p className="mt-2 text-sm text-neutral-600">{phoneCheckboxDescription}</p>
             </div>
           ) : null}
+
+          {isBrokerProfile ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <Input
+                label="WhatsApp"
+                value={form.publicWhatsApp}
+                onChange={(event) => onFieldChange("publicWhatsApp", event.target.value)}
+                error={fieldErrors.publicWhatsApp}
+                maxLength={20}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+          ) : null}
+
+          {isBrokerProfile ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <Input
+                label="Instagram"
+                value={form.publicInstagram}
+                onChange={(event) => onFieldChange("publicInstagram", event.target.value)}
+                error={fieldErrors.publicInstagram}
+                maxLength={50}
+                placeholder="@seuinstagram"
+              />
+            </div>
+          ) : null}
+
+          {isBrokerProfile ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <Input
+                label="LinkedIn"
+                value={form.publicLinkedIn}
+                onChange={(event) => onFieldChange("publicLinkedIn", event.target.value)}
+                error={fieldErrors.publicLinkedIn}
+                maxLength={50}
+                placeholder="seulinkedin"
+              />
+            </div>
+          ) : null}
+
+          {isBrokerProfile ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <Input
+                label="Facebook"
+                value={form.publicFacebook}
+                onChange={(event) => onFieldChange("publicFacebook", event.target.value)}
+                error={fieldErrors.publicFacebook}
+                maxLength={50}
+                placeholder="seufacebook"
+              />
+            </div>
+          ) : null}
+
+          {isBrokerProfile ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <Input
+                label="Área de atuação"
+                value={serviceAreaDraft}
+                onChange={(event) => setServiceAreaDraft(event.target.value)}
+                maxLength={50}
+                placeholder="Adicione uma área de atuação"
+              />
+              <Button type="button" variant="primary" onClick={addServiceArea}>
+                Adicionar
+              </Button>
+              <div className="mt-2">
+                {serviceAreas.map((area) => (
+                  <span key={area} className="inline-flex items-center rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
+                    {area}
+                    <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => removeServiceArea(area)} />
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="space-y-4">
@@ -182,15 +288,49 @@ export function ProfilePublicProfileSection({
                 <span>{publicLocation || "Adicione cidade e UF para contextualizar o perfil"}</span>
               </div>
               {isBrokerProfile ? (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-neutral-400" />
-                  <span>{hasVerifiedPhone && form.publicPhoneOptIn ? profile.phone || "Telefone pronto para exibição" : "Contato por telefone indisponível no perfil público"}</span>
-                </div>
+                <>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-neutral-400" />
+                    <span>
+                      {publicWhatsApp
+                        ? `WhatsApp ${publicWhatsApp}`
+                        : hasVerifiedPhone && form.publicPhoneOptIn
+                          ? profile.phone || "Telefone pronto para exibição"
+                          : "Contato por telefone indisponível no perfil público"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {form.publicInstagram.trim() ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700">
+                        <Instagram className="h-3.5 w-3.5" />@{form.publicInstagram.trim().replace(/^@+/, "")}
+                      </span>
+                    ) : null}
+                    {form.publicLinkedIn.trim() ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700">
+                        <Linkedin className="h-3.5 w-3.5" />LinkedIn
+                      </span>
+                    ) : null}
+                    {form.publicFacebook.trim() ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700">
+                        <Facebook className="h-3.5 w-3.5" />Facebook
+                      </span>
+                    ) : null}
+                  </div>
+                </>
               ) : null}
             </div>
             <div className="mt-4 rounded-2xl border border-dashed border-neutral-200 bg-white/80 p-4 text-sm leading-relaxed text-neutral-600">
               {form.publicBio.trim() || "Sua bio aparecerá aqui quando você preencher um resumo curto do seu perfil, estilo de atendimento e áreas de atuação."}
             </div>
+            {isBrokerProfile ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {serviceAreas.length > 0 ? serviceAreas.slice(0, 4).map((area) => (
+                  <span key={area} className="inline-flex items-center rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
+                    {area}
+                  </span>
+                )) : <span className="text-xs text-neutral-500">As áreas de atuação adicionadas aparecem aqui como prova de especialidade local.</span>}
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm shadow-black/5">
@@ -203,9 +343,33 @@ export function ProfilePublicProfileSection({
                 </div>
               ))}
             </div>
+            {isBrokerProfile ? (
+              <div className="mt-4 rounded-2xl border border-teal-100 bg-teal-50/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-teal-950">Prontidão comercial</div>
+                    <p className="mt-1 text-sm text-teal-800">
+                      {checklistDoneCount} de {checklist.length} pontos concluídos · {socialChannels} canal{socialChannels === 1 ? "" : "is"} público{socialChannels === 1 ? "" : "s"} ativo{socialChannels === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <StatusBadge tone={completeness >= 80 ? "success" : completeness >= 50 ? "info" : "warning"} label={`${completeness}%`} />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href="/broker/dashboard" className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50">
+                    Ver painel
+                  </Link>
+                  <Link href="/broker/leads" className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50">
+                    Abrir leads
+                  </Link>
+                  <Link href="/broker/chats" className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50">
+                    Abrir conversas
+                  </Link>
+                </div>
+              </div>
+            ) : null}
             <p className="mt-3 text-xs leading-relaxed text-neutral-500">
               {isBrokerProfile
-                ? "O link público só expõe telefone quando a conta mantém um número válido e verificado. Se o telefone mudar, a verificação precisa ser refeita."
+                ? "O link público só expõe telefone quando a conta mantém um número válido e verificado. Você também pode usar WhatsApp e redes para ampliar os pontos de entrada do cliente."
                 : "Mantenha nome, resumo e localização consistentes para que seu perfil público de anunciante fique claro e confiável."}
             </p>
           </div>

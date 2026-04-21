@@ -20,6 +20,32 @@ const normalizeOptionalState = (value: unknown) => {
   return normalized.toUpperCase();
 };
 
+const normalizeOptionalHandle = (value: unknown) => {
+  const normalized = normalizeOptionalText(value);
+  if (typeof normalized !== "string") return normalized;
+  return normalized.replace(/^@+/, "");
+};
+
+const normalizeOptionalDigits = (value: unknown) => {
+  const normalized = normalizeOptionalText(value);
+  if (typeof normalized !== "string") return normalized;
+  const digits = normalized.replace(/\D/g, "");
+  return digits.length > 0 ? digits : null;
+};
+
+const normalizeServiceAreas = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (value === null) return [];
+  if (!Array.isArray(value)) return value;
+  return Array.from(
+    new Set(
+      value
+        .map((item) => (typeof item === "string" ? item.trim() : item))
+        .filter((item) => typeof item === "string" && item.length > 0)
+    )
+  ).slice(0, 12);
+};
+
 const normalizeName = (value: unknown) => {
   if (value === undefined) return undefined;
   if (typeof value !== "string") return value;
@@ -66,6 +92,41 @@ const profilePatchSchema = z.object({
     ]).optional()
   ),
   publicPhoneOptIn: z.boolean().optional(),
+  publicInstagram: z.preprocess(
+    normalizeOptionalHandle,
+    z.union([
+      z.string().max(64, "O nome do usuário do Instagram é muito longo."),
+      z.null(),
+    ]).optional()
+  ),
+  publicLinkedIn: z.preprocess(
+    normalizeOptionalHandle,
+    z.union([
+      z.string().max(64, "O nome do usuário do LinkedIn é muito longo."),
+      z.null(),
+    ]).optional()
+  ),
+  publicWhatsApp: z.preprocess(
+    normalizeOptionalDigits,
+    z.union([
+      z.string().max(20, "O número do WhatsApp é muito longo."),
+      z.null(),
+    ]).optional()
+  ),
+  publicFacebook: z.preprocess(
+    normalizeOptionalHandle,
+    z.union([
+      z.string().max(64, "O nome do usuário do Facebook é muito longo."),
+      z.null(),
+    ]).optional()
+  ),
+  publicServiceAreas: z.preprocess(
+    normalizeServiceAreas,
+    z.union([
+      z.array(z.string().max(64, "A área de atuação é muito longa.")),
+      z.null(),
+    ]).optional()
+  ),
 }).strict();
 
 function slugifyProfileBase(value: string | null | undefined, fallback: string) {
@@ -124,6 +185,11 @@ async function buildProfileUserPayload(userId: string) {
       publicCity: true,
       publicState: true,
       publicPhoneOptIn: true,
+      publicInstagram: true,
+      publicLinkedIn: true,
+      publicWhatsApp: true,
+      publicFacebook: true,
+      publicServiceAreas: true,
       realtorCreci: true,
       realtorCreciState: true,
       realtorType: true,
@@ -338,6 +404,11 @@ export async function PATCH(req: NextRequest) {
       if (phoneChanged) {
         updateData.publicPhoneOptIn = false;
       }
+      if (payload.publicInstagram !== undefined) updateData.publicInstagram = payload.publicInstagram;
+      if (payload.publicLinkedIn !== undefined) updateData.publicLinkedIn = payload.publicLinkedIn;
+      if (payload.publicWhatsApp !== undefined) updateData.publicWhatsApp = payload.publicWhatsApp;
+      if (payload.publicFacebook !== undefined) updateData.publicFacebook = payload.publicFacebook;
+      if (payload.publicServiceAreas !== undefined) updateData.publicServiceAreas = payload.publicServiceAreas;
     }
 
     await (prisma as any).user.update({

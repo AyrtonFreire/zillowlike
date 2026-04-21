@@ -6,11 +6,11 @@ import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { 
-  Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
-  MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
-  ExternalLink, Columns3, Users, Handshake, Trophy, X,
+  Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock,
+  MessageCircle, ChevronDown, ChevronRight, Filter, User,
+  Columns3, Users, Handshake, Trophy, X,
   Bell, PhoneOff, CalendarClock, BedDouble, Bath, Ruler, Car
-} from "lucide-react";
+ } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import Image from "next/image";
 import Link from "next/link";
@@ -766,8 +766,9 @@ export default function MyLeadsPage() {
     );
   };
 
-  const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const nowTimestamp = Date.now();
+  const now = new Date(nowTimestamp);
+  const sevenDaysAgo = new Date(nowTimestamp - 7 * 24 * 60 * 60 * 1000);
 
   const getCanonicalStage = (lead: Lead): CanonicalStage => {
     const canonicalStage = (lead as any).pipelineStage as CanonicalStage | undefined;
@@ -833,7 +834,7 @@ export default function MyLeadsPage() {
 
   // Contadores inteligentes
   const smartCounters = useMemo(() => {
-    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const fortyEightHoursAgo = new Date(nowTimestamp - 48 * 60 * 60 * 1000);
     
     return {
       // Leads aguardando resposta (com mensagens não lidas)
@@ -846,7 +847,7 @@ export default function MyLeadsPage() {
         return new Date(l.lastContactAt) < fortyEightHoursAgo;
       }).length,
     };
-  }, [activeLeads, leadsWithTaskToday, now]);
+  }, [activeLeads, leadsWithTaskToday, nowTimestamp]);
 
   const leadsBaseForView = useMemo(() => {
     return activeLeads;
@@ -930,6 +931,83 @@ export default function MyLeadsPage() {
       ...grouped,
     };
   }, [leadsBaseForView]);
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
+
+    if (pipelineFilter !== "all") {
+      const stageLabel = PIPELINE_STAGES.find((stage) => stage.id === pipelineFilter)?.label || pipelineFilter;
+      chips.push({ key: "stage", label: `Etapa: ${stageLabel}`, onRemove: () => setPipelineFilter("all") });
+    }
+
+    if (dateFilter !== "all") {
+      const dateLabel = dateFilter === "today" ? "Hoje" : "Últimos 7 dias";
+      chips.push({ key: "date", label: `Data: ${dateLabel}`, onRemove: () => setDateFilter("all") });
+    }
+
+    if (nameFilter) {
+      chips.push({ key: "name", label: `Busca: ${nameFilter}`, onRemove: () => setNameFilter("") });
+    }
+
+    if (cityFilter) {
+      chips.push({ key: "city", label: `Cidade: ${cityFilter}`, onRemove: () => setCityFilter("") });
+    }
+
+    if (typeFilter) {
+      chips.push({ key: "type", label: `Tipo: ${PROPERTY_TYPES[typeFilter] || typeFilter}`, onRemove: () => setTypeFilter("") });
+    }
+
+    if (inCondominiumFilter) {
+      chips.push({ key: "condominium", label: "Em condomínio", onRemove: () => setInCondominiumFilter(false) });
+    }
+
+    return chips;
+  }, [pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter, inCondominiumFilter]);
+
+  const operationalHighlights = useMemo(
+    () => [
+      {
+        key: "new",
+        label: "Primeiro contato",
+        value: counts.NEW,
+        helper: "Leads no topo do funil para responder primeiro.",
+        className: "border-blue-200 bg-blue-50 text-blue-800",
+        icon: Users,
+        onClick: () => setPipelineFilter("NEW"),
+      },
+      {
+        key: "awaiting",
+        label: "Aguardando retorno",
+        value: smartCounters.awaitingResponse,
+        helper: "Clientes com mensagens não lidas ou esperando resposta.",
+        className: "border-rose-200 bg-rose-50 text-rose-800",
+        icon: Bell,
+        onClick: () => router.push("/broker/chats"),
+      },
+      {
+        key: "today",
+        label: "Tarefas de hoje",
+        value: smartCounters.taskToday,
+        helper: "Lembretes e próximas ações que vencem hoje.",
+        className: "border-amber-200 bg-amber-50 text-amber-800",
+        icon: CalendarClock,
+        onClick: () => {
+          setDateFilter("today");
+          setShowFilters(true);
+        },
+      },
+      {
+        key: "stale",
+        label: "Sem contato há 48h",
+        value: smartCounters.noContact48h,
+        helper: "Leads que precisam reativação no CRM.",
+        className: "border-gray-200 bg-gray-100 text-gray-700",
+        icon: PhoneOff,
+        onClick: () => router.push("/broker/crm"),
+      },
+    ],
+    [counts.NEW, router, smartCounters.awaitingResponse, smartCounters.noContact48h, smartCounters.taskToday]
+  );
 
   const stagePickerLead = stagePickerLeadId ? leads.find((l) => String(l.id) === String(stagePickerLeadId)) || null : null;
   const stagePickerCurrentStage = stagePickerLead ? getCanonicalStage(stagePickerLead) : null;
@@ -1077,6 +1155,77 @@ export default function MyLeadsPage() {
           </div>
         </div>
       )}
+
+      <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white via-white to-slate-50 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Resumo operacional</div>
+            <h2 className="mt-2 text-lg font-semibold text-gray-900">Priorize o que pede ação agora.</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              {filteredLeads.length} {filteredLeads.length === 1 ? "lead visível" : "leads visíveis"} de {counts.all} ativos no workspace.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/broker/crm"
+              className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <Columns3 className="w-4 h-4" />
+              Ver funil
+            </Link>
+            <Link
+              href="/broker/chats"
+              className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Abrir conversas
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {operationalHighlights.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={item.onClick}
+                className={`rounded-2xl border px-4 py-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${item.className}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className="text-2xl font-semibold tabular-nums">{item.value}</span>
+                </div>
+                <div className="mt-3 text-sm font-semibold">{item.label}</div>
+                <p className="mt-1 text-xs leading-5 opacity-90">{item.helper}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {activeFilterChips.length > 0 ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Recorte ativo</span>
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={chip.onRemove}
+                className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100"
+              >
+                {chip.label}
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-gray-500">Sem filtros avançados ativos. Você está vendo toda a operação aberta do corretor.</p>
+        )}
+      </div>
 
       {/* Barra de filtros e toggle de visualização */}
       <div className="sticky top-0 z-20 rounded-t-2xl border border-gray-200 border-b-0 bg-white shadow-sm lg:shadow-none">
@@ -1265,13 +1414,55 @@ export default function MyLeadsPage() {
           />
         ) : leads.length === 0 ? (
           <EmptyState
-            title="Nenhum lead ativo no momento"
-            description="Quando novos leads surgirem, eles aparecem aqui automaticamente."
+            title="Sua operação ainda não recebeu leads"
+            description="Assim que seus imóveis e seu perfil profissional começarem a gerar contatos, os leads ativos aparecem aqui automaticamente."
+            action={
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link
+                  href="/broker/properties/new"
+                  className="inline-flex items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Publicar imóvel
+                </Link>
+                <Link
+                  href="/profile?onboarding=broker"
+                  className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700"
+                >
+                  Revisar perfil profissional
+                </Link>
+              </div>
+            }
           />
         ) : filteredLeads.length === 0 ? (
           <EmptyState
-            title="Nenhum lead encontrado"
-            description="Tente ajustar os filtros para ver mais leads."
+            title="Nenhum lead combina com o recorte atual"
+            description="Ajuste os filtros, volte ao funil completo ou abra as conversas para recuperar contexto operacional."
+            action={
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {activeFilterChips.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPipelineFilter("all");
+                      setNameFilter("");
+                      setCityFilter("");
+                      setTypeFilter("");
+                      setInCondominiumFilter(false);
+                      setDateFilter("all");
+                    }}
+                    className="inline-flex items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Limpar recorte
+                  </button>
+                ) : null}
+                <Link
+                  href="/broker/crm"
+                  className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700"
+                >
+                  Abrir funil
+                </Link>
+              </div>
+            }
           />
         ) : (
           /* ===== MODO LISTA ===== */

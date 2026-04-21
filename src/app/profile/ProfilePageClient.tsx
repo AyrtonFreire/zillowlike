@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, RefreshCw, Save } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 import EmailChangeModal from "@/components/EmailChangeModal";
@@ -44,6 +45,15 @@ export default function ProfilePageClient() {
     dismissInlineFeedback,
   } = useProfile();
 
+  const searchParams = useSearchParams();
+  const brokerOnboarding = searchParams.get("onboarding") === "broker";
+  const isBrokerProfile = profile?.role === "REALTOR" || profile?.role === "AGENCY";
+  const pageTitle = isBrokerProfile ? "Perfil profissional" : "Meu Perfil";
+  const pageDescription = isBrokerProfile
+    ? "Gerencie identidade, segurança e sua presença pública profissional em um só lugar."
+    : "Gerencie sua identidade, segurança e perfil público em um só lugar.";
+  const breadcrumbs = [{ label: "Dashboard", href: isBrokerProfile ? "/broker/dashboard" : "/account" }, { label: pageTitle }];
+
   const layoutActions = profile ? (
     <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
       <div className="text-sm text-white/85">{hasChanges ? "Você tem alterações não salvas" : "Tudo salvo"}</div>
@@ -63,9 +73,9 @@ export default function ProfilePageClient() {
   if (loading && !profile) {
     return (
       <DashboardLayout
-        title="Meu Perfil"
-        description="Gerencie suas informações, segurança e presença pública."
-        breadcrumbs={[{ label: "Dashboard", href: "/account" }, { label: "Meu Perfil" }]}
+        title={pageTitle}
+        description={pageDescription}
+        breadcrumbs={breadcrumbs}
       >
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-16 shadow-sm shadow-black/5">
@@ -85,9 +95,9 @@ export default function ProfilePageClient() {
   if (loadError && !profile) {
     return (
       <DashboardLayout
-        title="Meu Perfil"
-        description="Gerencie suas informações, segurança e presença pública."
-        breadcrumbs={[{ label: "Dashboard", href: "/account" }, { label: "Meu Perfil" }]}
+        title={pageTitle}
+        description={pageDescription}
+        breadcrumbs={breadcrumbs}
       >
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-8 shadow-sm shadow-black/5">
@@ -109,9 +119,9 @@ export default function ProfilePageClient() {
   if (!profile) {
     return (
       <DashboardLayout
-        title="Meu Perfil"
-        description="Gerencie suas informações, segurança e presença pública."
-        breadcrumbs={[{ label: "Dashboard", href: "/account" }, { label: "Meu Perfil" }]}
+        title={pageTitle}
+        description={pageDescription}
+        breadcrumbs={breadcrumbs}
       >
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-8 shadow-sm shadow-black/5">
@@ -132,13 +142,21 @@ export default function ProfilePageClient() {
 
   return (
     <DashboardLayout
-      title="Meu Perfil"
-      description="Gerencie sua identidade, segurança e perfil público em um só lugar."
-      breadcrumbs={[{ label: "Dashboard", href: "/account" }, { label: "Meu Perfil" }]}
+      title={pageTitle}
+      description={pageDescription}
+      breadcrumbs={breadcrumbs}
       actions={layoutActions}
     >
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6">
+          {brokerOnboarding && isBrokerProfile ? (
+            <InlineFeedbackBanner
+              tone="info"
+              title="Seu perfil profissional agora é editado aqui"
+              message="Complete headline, bio, regiões de atuação e canais públicos para conectar sua apresentação com leads, conversas e portfólio."
+            />
+          ) : null}
+
           {inlineFeedback ? (
             <InlineFeedbackBanner
               tone={inlineFeedback.kind}
