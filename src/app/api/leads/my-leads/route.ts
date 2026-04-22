@@ -92,6 +92,60 @@ function pipelineGroupToStages(group: string | null): PipelineStage[] | null {
   return null;
 }
 
+const leadDetailSelect = {
+  id: true,
+  publicCode: true,
+  status: true,
+  message: true,
+  createdAt: true,
+  reservedUntil: true,
+  respondedAt: true,
+  completedAt: true,
+  nextActionDate: true,
+  nextActionNote: true,
+  pipelineStage: true,
+  clientChatToken: true,
+  property: {
+    select: {
+      id: true,
+      publicCode: true,
+      title: true,
+      price: true,
+      type: true,
+      city: true,
+      state: true,
+      neighborhood: true,
+      street: true,
+      bedrooms: true,
+      bathrooms: true,
+      areaM2: true,
+      builtAreaM2: true,
+      usableAreaM2: true,
+      lotAreaM2: true,
+      privateAreaM2: true,
+      suites: true,
+      parkingSpots: true,
+      floor: true,
+      furnished: true,
+      petFriendly: true,
+      condoFee: true,
+      inCondominium: true,
+      purpose: true,
+      images: {
+        take: 1,
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  },
+  contact: {
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+    },
+  },
+} as const;
+
 export async function GET(request: NextRequest) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -301,47 +355,7 @@ export async function GET(request: NextRequest) {
 
         const leads = await (prisma as any).lead.findMany({
           where: { id: { in: leadIds } },
-          include: {
-            property: {
-              select: {
-                id: true,
-                publicCode: true,
-                title: true,
-                price: true,
-                type: true,
-                city: true,
-                state: true,
-                neighborhood: true,
-                street: true,
-                bedrooms: true,
-                bathrooms: true,
-                areaM2: true,
-                builtAreaM2: true,
-                usableAreaM2: true,
-                lotAreaM2: true,
-                privateAreaM2: true,
-                suites: true,
-                parkingSpots: true,
-                floor: true,
-                furnished: true,
-                petFriendly: true,
-                condoFee: true,
-                inCondominium: true,
-                purpose: true,
-                images: {
-                  take: 1,
-                  orderBy: { sortOrder: "asc" },
-                },
-              },
-            },
-            contact: {
-              select: {
-                name: true,
-                email: true,
-                phone: true,
-              },
-            },
-          },
+          select: leadDetailSelect,
         });
 
         const leadById = new Map<string, any>((leads as any[]).map((lead) => [String(lead.id), lead]));
@@ -570,47 +584,7 @@ export async function GET(request: NextRequest) {
       where: {
         id: { in: pageLeadIds },
       },
-      include: {
-        property: {
-          select: {
-            id: true,
-            publicCode: true,
-            title: true,
-            price: true,
-            type: true,
-            city: true,
-            state: true,
-            neighborhood: true,
-            street: true,
-            bedrooms: true,
-            bathrooms: true,
-            areaM2: true,
-            builtAreaM2: true,
-            usableAreaM2: true,
-            lotAreaM2: true,
-            privateAreaM2: true,
-            suites: true,
-            parkingSpots: true,
-            floor: true,
-            furnished: true,
-            petFriendly: true,
-            condoFee: true,
-            inCondominium: true,
-            purpose: true,
-            images: {
-              take: 1,
-              orderBy: { sortOrder: "asc" },
-            },
-          },
-        },
-        contact: {
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-      },
+      select: leadDetailSelect,
     });
 
     const leadById = new Map<string, any>((leads as any[]).map((lead) => [String(lead.id), lead]));
