@@ -15,6 +15,51 @@ function clip(s: any, n: number) {
     .slice(0, n);
 }
 
+const pipelineLeadSelect = {
+  id: true,
+  status: true,
+  createdAt: true,
+  nextActionDate: true,
+  nextActionNote: true,
+  pipelineStage: true,
+  property: {
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      type: true,
+      city: true,
+      state: true,
+      neighborhood: true,
+      street: true,
+      bedrooms: true,
+      bathrooms: true,
+      areaM2: true,
+      builtAreaM2: true,
+      usableAreaM2: true,
+      lotAreaM2: true,
+      privateAreaM2: true,
+      suites: true,
+      parkingSpots: true,
+      floor: true,
+      furnished: true,
+      petFriendly: true,
+      condoFee: true,
+      purpose: true,
+      images: {
+        take: 1,
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  },
+  contact: {
+    select: {
+      name: true,
+      phone: true,
+    },
+  },
+} as const;
+
 export async function GET(_request: NextRequest) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -100,44 +145,7 @@ export async function GET(_request: NextRequest) {
       where: {
         realtorId: userId,
       },
-      include: {
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            type: true,
-            city: true,
-            state: true,
-            neighborhood: true,
-            street: true,
-            bedrooms: true,
-            bathrooms: true,
-            areaM2: true,
-            builtAreaM2: true,
-            usableAreaM2: true,
-            lotAreaM2: true,
-            privateAreaM2: true,
-            suites: true,
-            parkingSpots: true,
-            floor: true,
-            furnished: true,
-            petFriendly: true,
-            condoFee: true,
-            purpose: true,
-            images: {
-              take: 1,
-              orderBy: { sortOrder: "asc" },
-            },
-          },
-        },
-        contact: {
-          select: {
-            name: true,
-            phone: true,
-          },
-        },
-      },
+      select: pipelineLeadSelect,
       orderBy: { createdAt: "desc" },
     });
 

@@ -723,31 +723,6 @@ export default function BrokerCrmPage() {
   const totalLeads = filteredLeads.length;
   const wonLeads = leadsByStage["WON"].length;
   const progressPercent = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
-  const quickCounts = useMemo(
-    () => ({
-      all: searchScopedLeads.length,
-      unread: searchScopedLeads.filter((lead) => !!lead.hasUnreadMessages).length,
-      sla: searchScopedLeads.filter((lead) => {
-        const { overdue, today } = isLeadSla(lead);
-        return overdue || today;
-      }).length,
-      noContact: searchScopedLeads.filter((lead) => {
-        if (!lead.lastContactAt) return true;
-        const d = new Date(lead.lastContactAt);
-        if (Number.isNaN(d.getTime())) return true;
-        return d.getTime() < fortyEightHoursAgoTs;
-      }).length,
-    }),
-    [fortyEightHoursAgoTs, isLeadSla, searchScopedLeads]
-  );
-  const activeQuickFilterLabel =
-    quickFilter === "all"
-      ? "Todas as oportunidades abertas"
-      : quickFilter === "unread"
-        ? "Conversas sem resposta"
-        : quickFilter === "sla"
-          ? "Próximas ações e atrasos"
-          : "Leads sem contato há 48h";
 
   if (loading) {
     return <CenteredSpinner message="Carregando sua jornada de leads..." />;
@@ -757,42 +732,6 @@ export default function BrokerCrmPage() {
     <div className="bg-gray-50 min-h-screen flex flex-col">
         <div className="hidden md:block bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="mb-4 rounded-2xl border border-gray-200 bg-gradient-to-r from-white via-white to-teal-50/60 p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Contexto do funil</div>
-                  <h2 className="mt-2 text-lg font-semibold text-gray-900">{activeQuickFilterLabel}</h2>
-                  <p className="mt-1 text-sm text-gray-600">{filteredLeads.length} lead{filteredLeads.length === 1 ? "" : "s"} aparecem no board a partir da busca e do filtro rápido atual.</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link href="/broker/leads" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                    Ver lista
-                  </Link>
-                  <Link href="/broker/chats" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                    Abrir conversas
-                  </Link>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {[
-                  { key: "all" as const, label: "Abertos no recorte", count: quickCounts.all, tone: "border-teal-200 bg-teal-50 text-teal-800" },
-                  { key: "unread" as const, label: "Sem resposta", count: quickCounts.unread, tone: "border-blue-200 bg-blue-50 text-blue-800" },
-                  { key: "sla" as const, label: "Próxima ação", count: quickCounts.sla, tone: "border-amber-200 bg-amber-50 text-amber-800" },
-                  { key: "noContact" as const, label: "48h sem contato", count: quickCounts.noContact, tone: "border-gray-200 bg-gray-100 text-gray-700" },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setQuickFilter(item.key)}
-                    className={`rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${item.tone}`}
-                  >
-                    <div className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">{item.label}</div>
-                    <div className="mt-2 text-2xl font-semibold tabular-nums">{item.count}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="relative">

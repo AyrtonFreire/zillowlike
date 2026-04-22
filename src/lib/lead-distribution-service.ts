@@ -24,6 +24,25 @@ function normalizeTeamLeadDistributionMode(raw: unknown): TeamLeadDistributionMo
   return null;
 }
 
+const distributionLeadSelect = {
+  id: true,
+  status: true,
+  realtorId: true,
+  teamId: true,
+  property: {
+    select: {
+      capturerRealtorId: true,
+      ownerId: true,
+    },
+  },
+} as const;
+
+const expiredReservationLeadSelect = {
+  id: true,
+  realtorId: true,
+  teamId: true,
+} as const;
+
 /**
  * Serviço de distribuição de leads
  */
@@ -171,7 +190,7 @@ export class LeadDistributionService {
   static async distributeNewLead(leadId: string) {
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
-      include: { property: true },
+      select: distributionLeadSelect,
     });
 
     if (!lead) {
@@ -502,9 +521,7 @@ export class LeadDistributionService {
     await QueueService.moveToEnd(realtorId);
 
     // Adiciona pontos se resposta rápida (< 5 min)
-    let pointsEarned = 0;
     if (responseTime < 5) {
-      pointsEarned = 5;
       await QueueService.updateScore(
         realtorId,
         5,
@@ -1314,6 +1331,7 @@ export class LeadDistributionService {
           lt: now,
         },
       },
+      select: expiredReservationLeadSelect,
     });
 
     for (const lead of expiredLeads) {
