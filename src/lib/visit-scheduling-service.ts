@@ -78,10 +78,19 @@ export class VisitSchedulingService {
       developmentProjectId,
       developmentUnitId,
     });
+    const developmentLeadData = {
+      ...(developmentLeadLink.developmentProjectId
+        ? { developmentProjectId: String(developmentLeadLink.developmentProjectId) }
+        : {}),
+      ...(developmentLeadLink.developmentUnitId
+        ? { developmentUnitId: String(developmentLeadLink.developmentUnitId) }
+        : {}),
+    };
     
     logger.info("Visit request owner check", { 
-      isOwnerRealtor, 
-      ownerId: (property as any).ownerId,
+      propertyId, 
+      ownerRole: (property as any).owner?.role,
+      ownerId: (property as any).owner?.id,
       providedRealtorId: realtorId,
       effectiveRealtorId,
       isDirect,
@@ -119,8 +128,7 @@ export class VisitSchedulingService {
         lead = await (prisma as any).lead.create({
           data: {
             propertyId,
-            developmentProjectId: developmentLeadLink.developmentProjectId,
-            developmentUnitId: developmentLeadLink.developmentUnitId,
+            ...developmentLeadData,
             contactId: contact.id,
             realtorId: effectiveRealtorId, // Atribui ao corretor (auto se owner é REALTOR/AGENCY)
             publicCode: createPublicCode("L"),

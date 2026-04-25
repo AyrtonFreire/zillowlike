@@ -253,10 +253,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const relatedSectionRef = useRef<HTMLDivElement | null>(null);
   const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
   const [similarProperties, setSimilarProperties] = useState<any[]>([]);
+  const [nearbyPropertiesLoading, setNearbyPropertiesLoading] = useState(false);
+  const [similarPropertiesLoading, setSimilarPropertiesLoading] = useState(false);
+  const [nearbyPropertiesError, setNearbyPropertiesError] = useState<string | null>(null);
+  const [similarPropertiesError, setSimilarPropertiesError] = useState<string | null>(null);
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlacesState>(createEmptyNearbyPlaces);
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
-  const [poiOpen, setPoiOpen] = useState(false);
   const poiFetchedKeyRef = useRef<string | null>(null);
   const [poiSource, setPoiSource] = useState<'google' | 'osm' | null>(null);
   const trackedViewRef = useRef<Set<string>>(new Set());
@@ -321,16 +324,19 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
     setNearbyProperties([]);
     setSimilarProperties([]);
+    setNearbyPropertiesLoading(false);
+    setSimilarPropertiesLoading(false);
+    setNearbyPropertiesError(null);
+    setSimilarPropertiesError(null);
     setNearbyPlaces(createEmptyNearbyPlaces());
     setPoiLoading(false);
-    setPoiOpen(false);
     setPoiSource(null);
     setActivePOITab("schools");
     setRelatedRequested(false);
-    setShouldLoadArea(false);
-    setShouldLoadRelated(false);
+    setShouldLoadArea(true);
+    setShouldLoadRelated(!isPreview);
     poiFetchedKeyRef.current = null;
-  }, [activePropertyId, isOpen, mode]);
+  }, [activePropertyId, isOpen, mode, isPreview]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -639,31 +645,76 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
     const controller = new AbortController();
     let ignore = false;
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 12000);
+
+    setNearbyPropertiesLoading(true);
+    setSimilarPropertiesLoading(true);
+    setNearbyPropertiesError(null);
+    setSimilarPropertiesError(null);
 
     fetch(`/api/properties/nearby?id=${id}&radius=3&limit=8`, { signal: controller.signal, cache: "no-store" })
-      .then((r) => r.json())
+      .then(async (r) => {
+        const d = await r.json().catch(() => null);
+        if (!r.ok) {
+          throw new Error(String(d?.error || `nearby:${r.status}`));
+        }
+        return d;
+      })
       .then((d) => {
         if (ignore) return;
         const arr = d?.properties || d?.items || [];
         setNearbyProperties(Array.isArray(arr) ? arr : []);
       })
-      .catch(() => {
-        if (!ignore) setNearbyProperties([]);
+      .catch((err: any) => {
+        if (ignore) return;
+        setNearbyProperties([]);
+        if (err?.name === "AbortError" && !timedOut) return;
+        setNearbyPropertiesError(
+          timedOut
+            ? "A busca por imóveis próximos demorou mais que o esperado."
+            : "Não foi possível carregar os imóveis próximos agora."
+        );
+      })
+      .finally(() => {
+        if (ignore) return;
+        setNearbyPropertiesLoading(false);
       });
 
     fetch(`/api/properties/similar?id=${id}&limit=8`, { signal: controller.signal, cache: "no-store" })
-      .then((r) => r.json())
+      .then(async (r) => {
+        const d = await r.json().catch(() => null);
+        if (!r.ok) {
+          throw new Error(String(d?.error || `similar:${r.status}`));
+        }
+        return d;
+      })
       .then((d) => {
         if (ignore) return;
         const arr = d?.properties || d?.items || [];
         setSimilarProperties(Array.isArray(arr) ? arr : []);
       })
-      .catch(() => {
-        if (!ignore) setSimilarProperties([]);
+      .catch((err: any) => {
+        if (ignore) return;
+        setSimilarProperties([]);
+        if (err?.name === "AbortError" && !timedOut) return;
+        setSimilarPropertiesError(
+          timedOut
+            ? "A busca por imóveis similares demorou mais que o esperado."
+            : "Não foi possível carregar os imóveis similares agora."
+        );
+      })
+      .finally(() => {
+        if (ignore) return;
+        setSimilarPropertiesLoading(false);
       });
 
     return () => {
       ignore = true;
+      window.clearTimeout(timeoutId);
       controller.abort();
     };
   }, [isOpen, shouldLoadRelated, property, relatedRequested, mode]);
@@ -687,7 +738,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setSimilarProperties([]);
       setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
-      setPoiOpen(false);
       setRelatedRequested(false);
       setShouldLoadArea(false);
       setShouldLoadRelated(false);
@@ -713,7 +763,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     const lat = (property as any)?.latitude;
     const lng = (property as any)?.longitude;
     if (mode !== "public") return;
-    if (!isOpen || !poiOpen || !shouldLoadArea || !lat || !lng) return;
+    if (!isOpen || !shouldLoadArea || !lat || !lng) return;
 
     const id = (property as any)?.id;
     const key = `${id ?? ""}:${String(lat)}:${String(lng)}`;
@@ -770,7 +820,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       }
     })();
     return () => { ignore = true; };
-  }, [isOpen, property, shouldLoadArea, mode, poiOpen]);
+  }, [isOpen, property, shouldLoadArea, mode]);
 
   // Reset on close
   useEffect(() => {
@@ -785,12 +835,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setShowThumbGrid(false);
       setNearbyProperties([]);
       setSimilarProperties([]);
+      setNearbyPropertiesLoading(false);
+      setSimilarPropertiesLoading(false);
+      setNearbyPropertiesError(null);
+      setSimilarPropertiesError(null);
       setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
       setRelatedRequested(false);
       setShouldLoadArea(false);
       setShouldLoadRelated(false);
-      setPoiOpen(false);
       setPoiSource(null);
       poiFetchedKeyRef.current = null;
     }
@@ -1686,14 +1739,6 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     const selected = (available as any[]).find((c: any) => c.key === activePOITab) || (available as any[])[0];
                     const selectedList = (selected as any)?.sorted || [];
 
-                    const toggle = () => {
-                      setPoiOpen((v) => {
-                        const next = !v;
-                        if (next && !shouldLoadArea) setShouldLoadArea(true);
-                        return next;
-                      });
-                    };
-
                     return (
                       <>
                         <div className="flex items-start gap-3">
@@ -1719,144 +1764,112 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                               simplePin
                               limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
                             />
-
-                            <button
-                              type="button"
-                              onClick={toggle}
-                              className="absolute bottom-3 left-3 z-[5] inline-flex items-center gap-2 pl-2 pr-3 py-2 rounded-full bg-white/90 backdrop-blur-md text-gray-900 shadow-sm border border-gray-200 hover:bg-white transition-colors max-w-[calc(100%-24px)] overflow-hidden"
-                            >
-                              <span className="w-7 h-7 rounded-full bg-teal-50 flex items-center justify-center shadow-sm ring-1 ring-teal-100 -rotate-6">
-                                🧭
-                              </span>
-                              <span className="min-w-0 truncate text-xs font-semibold tracking-tight">
-                                Pesquisar Estabelecimentos Próximos
-                              </span>
-                              {totalPois > 0 ? (
-                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                                  {totalPois}
-                                </span>
-                              ) : null}
-                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
-                            </button>
                           </div>
                         ) : (
-                          <div className="mt-4">
-                            <button
-                              type="button"
-                              onClick={toggle}
-                              className="inline-flex items-center gap-2 pl-2 pr-3 py-2 rounded-full bg-white/90 backdrop-blur-md text-gray-900 shadow-sm border border-gray-200 hover:bg-white transition-colors max-w-full overflow-hidden"
-                            >
-                              <span className="w-7 h-7 rounded-full bg-teal-50 flex items-center justify-center shadow-sm ring-1 ring-teal-100 -rotate-6">
-                                🧭
-                              </span>
-                              <span className="min-w-0 truncate text-xs font-semibold tracking-tight">
-                                Pesquisar Estabelecimentos Próximos
-                              </span>
-                              {totalPois > 0 ? (
-                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                                  {totalPois}
-                                </span>
-                              ) : null}
-                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
-                            </button>
+                          <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-center">
+                            <p className="text-sm font-semibold text-gray-900">Mapa indisponível neste anúncio</p>
+                            <p className="mt-1 text-xs text-gray-500">Este imóvel ainda não possui coordenadas para mostrar a região no mapa.</p>
                           </div>
                         )}
 
-                        {poiOpen && (
-                          <>
-                            {poiLoading && (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 mb-6">
-                                {Array.from({ length: 6 }).map((_v: unknown, i: number) => (
-                                  <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
-                                    <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
-                                    <div className="space-y-2">
-                                      <div className="h-3 w-5/6 bg-gray-200 rounded" />
-                                      <div className="h-3 w-2/3 bg-gray-200 rounded" />
-                                      <div className="h-3 w-3/4 bg-gray-200 rounded" />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {!poiLoading && available.length > 0 ? (
-                              <div className="mt-4 mb-6">
-                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                                  {(available as any[]).map((c: any) => (
-                                    <button
-                                      key={`poi-tab-${c.key}`}
-                                      type="button"
-                                      onClick={() => setActivePOITab(c.key)}
-                                      className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-                                        c.key === (selected as any).key
-                                          ? "border-teal-500 bg-teal-50 text-teal-800"
-                                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                                      }`}
-                                    >
-                                      {(() => {
-                                        const I = c.Icon as any;
-                                        return <I className="w-3.5 h-3.5" />;
-                                      })()}
-                                      <span>{c.label}</span>
-                                      <span className="text-[11px] font-semibold text-gray-500">{((c.items as any[]) || []).length}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                                <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
-                                  {selectedList.slice(0, 8).map((p: any, idx: number) => {
-                                    const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
-                                    const rating = typeof p?.rating === 'number' && Number.isFinite(p.rating) ? p.rating : null;
-                                    const userRatingCount = typeof p?.userRatingCount === 'number' && Number.isFinite(p.userRatingCount) ? p.userRatingCount : null;
-                                    const openNow = typeof p?.openNow === 'boolean' ? p.openNow : null;
-                                    const address = typeof p?.address === 'string' ? p.address : null;
-                                    return (
-                                      <div key={`poi-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
-                                        <div className="min-w-0">
-                                          <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
-                                          <div className="text-xs text-gray-500">{(selected as any).label}</div>
-                                          {(rating != null || openNow != null || address) ? (
-                                            <div className="text-[11px] text-gray-500 mt-1 flex flex-wrap gap-x-2 gap-y-1">
-                                              {rating != null && (
-                                                <span className="inline-flex items-center gap-1">
-                                                  <span className="text-yellow-600">★</span>
-                                                  <span className="font-semibold text-gray-700">{rating.toFixed(1)}</span>
-                                                  {userRatingCount != null ? <span>({userRatingCount})</span> : null}
-                                                </span>
-                                              )}
-                                              {openNow != null ? (
-                                                <span className={openNow ? 'text-emerald-700 font-semibold' : 'text-rose-700 font-semibold'}>
-                                                  {openNow ? 'Aberto agora' : 'Fechado agora'}
-                                                </span>
-                                              ) : null}
-                                              {address ? <span className="truncate">{address}</span> : null}
-                                            </div>
-                                          ) : null}
-                                        </div>
-                                        {dist && (
-                                          <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
-                                            {dist}
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                        {poiLoading && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 mb-6">
+                            {Array.from({ length: 6 }).map((_v: unknown, i: number) => (
+                              <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
+                                <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
+                                <div className="space-y-2">
+                                  <div className="h-3 w-5/6 bg-gray-200 rounded" />
+                                  <div className="h-3 w-2/3 bg-gray-200 rounded" />
+                                  <div className="h-3 w-3/4 bg-gray-200 rounded" />
                                 </div>
                               </div>
-                            ) : !poiLoading ? (
-                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mt-4 mb-6 text-center">
-                                <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {poiSource === 'google'
-                                    ? 'Os dados são carregados do Google e podem variar.'
-                                    : poiSource === 'osm'
-                                    ? 'Os dados são carregados do OpenStreetMap e podem variar.'
-                                    : 'Não foi possível carregar os estabelecimentos agora. Tente novamente em instantes.'}
-                                </p>
-                              </div>
-                            ) : null}
-
-                          </>
+                            ))}
+                          </div>
                         )}
+
+                        {!poiLoading && available.length > 0 ? (
+                          <div className="mt-4 mb-6">
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                              <p className="text-xs font-semibold text-gray-700">Estabelecimentos próximos</p>
+                              {totalPois > 0 ? (
+                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                  {totalPois}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                              {(available as any[]).map((c: any) => (
+                                <button
+                                  key={`poi-tab-${c.key}`}
+                                  type="button"
+                                  onClick={() => setActivePOITab(c.key)}
+                                  className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                                    c.key === (selected as any).key
+                                      ? "border-teal-500 bg-teal-50 text-teal-800"
+                                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  {(() => {
+                                    const I = c.Icon as any;
+                                    return <I className="w-3.5 h-3.5" />;
+                                  })()}
+                                  <span>{c.label}</span>
+                                  <span className="text-[11px] font-semibold text-gray-500">{((c.items as any[]) || []).length}</span>
+                                </button>
+                              ))}
+                            </div>
+                            <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                              {selectedList.slice(0, 8).map((p: any, idx: number) => {
+                                const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                const rating = typeof p?.rating === 'number' && Number.isFinite(p.rating) ? p.rating : null;
+                                const userRatingCount = typeof p?.userRatingCount === 'number' && Number.isFinite(p.userRatingCount) ? p.userRatingCount : null;
+                                const openNow = typeof p?.openNow === 'boolean' ? p.openNow : null;
+                                const address = typeof p?.address === 'string' ? p.address : null;
+                                return (
+                                  <div key={`poi-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
+                                      <div className="text-xs text-gray-500">{(selected as any).label}</div>
+                                      {(rating != null || openNow != null || address) ? (
+                                        <div className="text-[11px] text-gray-500 mt-1 flex flex-wrap gap-x-2 gap-y-1">
+                                          {rating != null && (
+                                            <span className="inline-flex items-center gap-1">
+                                              <span className="text-yellow-600">★</span>
+                                              <span className="font-semibold text-gray-700">{rating.toFixed(1)}</span>
+                                              {userRatingCount != null ? <span>({userRatingCount})</span> : null}
+                                            </span>
+                                          )}
+                                          {openNow != null ? (
+                                            <span className={openNow ? 'text-emerald-700 font-semibold' : 'text-rose-700 font-semibold'}>
+                                              {openNow ? 'Aberto agora' : 'Fechado agora'}
+                                            </span>
+                                          ) : null}
+                                          {address ? <span className="truncate">{address}</span> : null}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                    {dist && (
+                                      <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+                                        {dist}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : !poiLoading ? (
+                          <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mt-4 mb-6 text-center">
+                            <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {poiSource === 'google'
+                                ? 'Os dados são carregados do Google e podem variar.'
+                                : poiSource === 'osm'
+                                ? 'Os dados são carregados do OpenStreetMap e podem variar.'
+                                : 'Não foi possível carregar os estabelecimentos agora. Tente novamente em instantes.'}
+                            </p>
+                          </div>
+                        ) : null}
                       </>
                     );
                   })()}
@@ -1866,35 +1879,79 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 <div ref={relatedSectionRef}>
                   {/* Imóveis Próximos */}
                   {shouldLoadRelated ? (
-                    nearbyProperties.length > 0 ? (
+                    nearbyPropertiesLoading ? (
+                      <div className="border-t border-teal/10 pt-4 mt-4">
+                        <div className="rounded-2xl border border-gray-100 bg-white px-4 py-5">
+                          <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {Array.from({ length: 4 }).map((_, idx) => (
+                              <div key={`nearby-skeleton-${idx}`} className="rounded-xl border border-gray-100 p-4 animate-pulse">
+                                <div className="h-24 rounded-lg bg-gray-200" />
+                                <div className="mt-3 h-4 w-3/4 rounded bg-gray-200" />
+                                <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : nearbyProperties.length > 0 ? (
                       <div className="border-t border-teal/10 pt-4 mt-4">
                         <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
                       </div>
                     ) : (
-                      <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
-                        <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                      <div className="border-t border-teal/10 pt-4 mt-4">
+                        <div className="rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-50 to-white px-5 py-6 text-center shadow-sm">
+                          <p className="text-sm font-semibold text-gray-900">Nenhum imóvel próximo disponível agora</p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {nearbyPropertiesError || "Quando houver anúncios na mesma região, eles aparecem aqui para facilitar a comparação."}
+                          </p>
+                        </div>
                       </div>
                     )
                   ) : (
-                    <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
-                      <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                    <div className="border-t border-teal/10 pt-4 mt-4">
+                      <div className="rounded-2xl border border-gray-100 bg-white px-4 py-5">
+                        <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+                      </div>
                     </div>
                   )}
 
                   {/* Imóveis similares */}
                   {shouldLoadRelated ? (
-                    similarProperties.length > 0 ? (
+                    similarPropertiesLoading ? (
+                      <div className="border-t border-teal/10 pt-4 mt-4">
+                        <div className="rounded-2xl border border-gray-100 bg-white px-4 py-5">
+                          <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {Array.from({ length: 4 }).map((_, idx) => (
+                              <div key={`similar-skeleton-${idx}`} className="rounded-xl border border-gray-100 p-4 animate-pulse">
+                                <div className="h-24 rounded-lg bg-gray-200" />
+                                <div className="mt-3 h-4 w-3/4 rounded bg-gray-200" />
+                                <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : similarProperties.length > 0 ? (
                       <div className="border-t border-teal/10 pt-4 mt-4">
                         <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
                       </div>
                     ) : (
-                      <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
-                        <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                      <div className="border-t border-teal/10 pt-4 mt-4">
+                        <div className="rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-50 to-white px-5 py-6 text-center shadow-sm">
+                          <p className="text-sm font-semibold text-gray-900">Nenhum imóvel similar encontrado</p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {similarPropertiesError || "Se não houver opções parecidas com este perfil, vamos mostrar novas oportunidades assim que estiverem disponíveis."}
+                          </p>
+                        </div>
                       </div>
                     )
                   ) : (
-                    <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
-                      <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                    <div className="border-t border-teal/10 pt-4 mt-4">
+                      <div className="rounded-2xl border border-gray-100 bg-white px-4 py-5">
+                        <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+                      </div>
                     </div>
                   )}
                 </div>

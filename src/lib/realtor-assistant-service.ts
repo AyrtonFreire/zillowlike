@@ -1747,37 +1747,6 @@ export class RealtorAssistantService {
       }
     }
 
-    const weekStart = (() => {
-      const d = startOfDay(now);
-      const day = d.getDay();
-      const diffToMonday = day === 0 ? 6 : day - 1;
-      d.setDate(d.getDate() - diffToMonday);
-      return d;
-    })();
-
-    const weekKey = `WEEKLY_SUMMARY:${weekStart.toISOString().slice(0, 10)}`;
-    dedupeKeys.add(weekKey);
-
-    const weeklyDueAt = new Date(weekStart);
-    weeklyDueAt.setHours(9, 0, 0, 0);
-
-    await this.upsertFromRule({
-      context: "REALTOR",
-      ownerId: realtorId,
-      leadId: null,
-      type: "WEEKLY_SUMMARY",
-      priority: "LOW",
-      title: "Resumo da semana",
-      message: "Quando tiver 3 minutos, revise o que merece atenção e defina os próximos passos.",
-      dueAt: weeklyDueAt,
-      dedupeKey: weekKey,
-      primaryAction: null,
-      secondaryAction: null,
-      metadata: {
-        weekStart: weekStart.toISOString(),
-      },
-    });
-
     // Auto-resolve items from RULE that are no longer applicable
     await (prisma as any).assistantItem.updateMany({
       where: {
@@ -2584,41 +2553,6 @@ export class RealtorAssistantService {
           }
         }
       }
-    }
-
-    const weekStart = (() => {
-      const d = startOfDay(now);
-      const day = d.getDay();
-      const diffToMonday = day === 0 ? 6 : day - 1;
-      d.setDate(d.getDate() - diffToMonday);
-      return d;
-    })();
-
-    if (aiConfig.automations.weeklySummary) {
-      const weekKey = `WEEKLY_SUMMARY:${weekStart.toISOString().slice(0, 10)}`;
-      dedupeKeys.add(weekKey);
-
-      const weeklyDueAt = new Date(weekStart);
-      weeklyDueAt.setHours(9, 0, 0, 0);
-
-      await this.upsertFromRule({
-        context: "AGENCY",
-        ownerId,
-        teamId,
-        leadId: null,
-        type: "WEEKLY_SUMMARY",
-        priority: "LOW",
-        title: "Resumo da semana",
-        message: "Quando tiver 3 minutos, revise o que merece atenção e defina os próximos passos.",
-        dueAt: weeklyDueAt,
-        dedupeKey: weekKey,
-        primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(null) },
-        secondaryAction: null,
-        metadata: {
-          weekStart: weekStart.toISOString(),
-          channels: aiConfig.channels,
-        },
-      });
     }
 
     await (prisma as any).assistantItem.updateMany({

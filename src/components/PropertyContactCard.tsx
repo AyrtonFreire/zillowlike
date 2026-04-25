@@ -198,9 +198,9 @@ export default function PropertyContactCard({
     };
   }, [propertyId, variant]);
 
-  const canUseWhatsAppAction = !disableActions && (contactAvailability ? contactAvailability.whatsapp : canShowWhatsApp);
-  const canUsePhoneAction = !disableActions && (contactAvailability ? contactAvailability.phone : canShowPhone);
-  const showDesktopWhatsApp = contactAvailability ? contactAvailability.whatsapp : canShowWhatsApp;
+  const canUseWhatsAppAction = !disableActions && (contactAvailability ? (contactAvailability.whatsapp || canShowWhatsApp) : canShowWhatsApp);
+  const canUsePhoneAction = !disableActions && (contactAvailability ? (contactAvailability.phone || canShowPhone) : canShowPhone);
+  const showDesktopWhatsApp = contactAvailability ? (contactAvailability.whatsapp || canShowWhatsApp) : canShowWhatsApp;
 
   const fetchContactTargets = async (method: "GET" | "POST") => {
     const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method });
@@ -222,7 +222,12 @@ export default function PropertyContactCard({
 
       setWhatsAppLoading(true);
 
-      const primary = await fetchContactTargets("POST");
+      let primary;
+      try {
+        primary = await fetchContactTargets("POST");
+      } catch {
+        primary = { ok: false, whatsappUrl: undefined, phoneUrl: undefined };
+      }
       const fallback = primary.ok && primary.whatsappUrl ? primary : await fetchContactTargets("GET");
 
       if (!fallback.ok || !fallback.whatsappUrl) {

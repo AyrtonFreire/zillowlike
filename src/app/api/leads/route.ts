@@ -125,6 +125,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: (developmentLeadLink as any).error?.message || "Não foi possível vincular o lead ao empreendimento." }, { status: 400 });
   }
 
+  const resolvedDevelopmentProjectId = (developmentLeadLink as any).developmentProjectId
+    ? String((developmentLeadLink as any).developmentProjectId)
+    : undefined;
+  const resolvedDevelopmentUnitId = (developmentLeadLink as any).developmentUnitId
+    ? String((developmentLeadLink as any).developmentUnitId)
+    : undefined;
+  const developmentLeadData = {
+    ...(resolvedDevelopmentProjectId ? { developmentProjectId: resolvedDevelopmentProjectId } : {}),
+    ...(resolvedDevelopmentUnitId ? { developmentUnitId: resolvedDevelopmentUnitId } : {}),
+  };
+
   // 🆕 Se tiver visitDate e visitTime, usar VisitSchedulingService
   if (visitDate && visitTime) {
     const { VisitSchedulingService } = await import("@/lib/visit-scheduling-service");
@@ -138,8 +149,8 @@ export async function POST(req: NextRequest) {
         visitDate: new Date(visitDate),
         visitTime,
         clientNotes: message,
-        developmentProjectId: (developmentLeadLink as any).developmentProjectId,
-        developmentUnitId: (developmentLeadLink as any).developmentUnitId,
+        developmentProjectId: resolvedDevelopmentProjectId,
+        developmentUnitId: resolvedDevelopmentUnitId,
       });
 
       return NextResponse.json({ 
@@ -155,17 +166,24 @@ export async function POST(req: NextRequest) {
 
   if (sessionUserId) {
     try {
+      const existingLeadWhere: any = {
+        propertyId,
+        isDirect: isDirectFlag,
+        OR: [
+          { userId: String(sessionUserId) },
+          { contact: { email } },
+        ],
+      };
+
+      if (resolvedDevelopmentProjectId) {
+        existingLeadWhere.developmentProjectId = resolvedDevelopmentProjectId;
+      }
+      if (resolvedDevelopmentUnitId) {
+        existingLeadWhere.developmentUnitId = resolvedDevelopmentUnitId;
+      }
+
       const existing: any = await (prisma as any).lead.findFirst({
-        where: {
-          propertyId,
-          developmentProjectId: (developmentLeadLink as any).developmentProjectId ?? null,
-          developmentUnitId: (developmentLeadLink as any).developmentUnitId ?? null,
-          isDirect: isDirectFlag,
-          OR: [
-            { userId: String(sessionUserId) },
-            { contact: { email } },
-          ],
-        },
+        where: existingLeadWhere,
         select: {
           id: true,
           userId: true,
@@ -272,8 +290,7 @@ export async function POST(req: NextRequest) {
       lead = await (prisma as any).lead.create({
         data: {
           propertyId,
-          developmentProjectId: (developmentLeadLink as any).developmentProjectId,
-          developmentUnitId: (developmentLeadLink as any).developmentUnitId,
+          ...developmentLeadData,
           contactId: contact.id,
           userId: sessionUserId ? String(sessionUserId) : undefined,
           publicCode: createPublicCode("L"),
