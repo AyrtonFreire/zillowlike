@@ -63,6 +63,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/realtor/register", request.url));
   }
 
+  if (pathname === "/developer" || pathname.startsWith("/developer/")) {
+    return NextResponse.redirect(new URL("/account", request.url));
+  }
+
   const segments = pathname.split("/").filter(Boolean);
   const isPublicRealtorProfile =
     segments.length === 2 &&

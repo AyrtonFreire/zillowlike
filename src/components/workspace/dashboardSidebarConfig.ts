@@ -198,14 +198,5 @@ export function getDashboardSidebarConfig(pathname: string | null | undefined): 
     };
   }
 
-  if (p === "/developer" || p.startsWith("/developer/")) {
-    return {
-      workspaceLabel: "Incorporadora",
-      storageKey: "oggahub_sidebar_collapsed_developer",
-      items: DEVELOPER_NAV_ITEMS,
-      isItemActive: isDeveloperNavItemActive,
-    };
-  }
-
   return null;
 }

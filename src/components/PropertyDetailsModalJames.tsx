@@ -1977,6 +1977,14 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                       <div className="border-t border-teal/10 pt-4 mt-4">
                         <div className="rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-50 to-white px-5 py-6 text-center shadow-sm">
                           <p className="text-sm font-semibold text-gray-900">{nearbySectionTitle}</p>
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            {nearbySectionDescription}
+                          </p>
+                          {locationDisplayLabel ? (
+                            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400">
+                              {locationDisplayLabel}
+                            </p>
+                          ) : null}
                           <p className="mt-1 text-xs text-gray-500">
                             {nearbySectionEmpty}
                           </p>

@@ -85,6 +85,31 @@ function computeRegionRelevance(current: any, candidate: any) {
   return score;
 }
 
+function formatRadiusLabel(radiusKm: number) {
+  if (!Number.isFinite(radiusKm) || radiusKm <= 0) return "aqui por perto";
+  if (radiusKm < 1) return `até ${Math.round(radiusKm * 1000)} m`;
+  const normalized = Number.isInteger(radiusKm) ? String(radiusKm) : radiusKm.toFixed(1).replace(/\.0$/, "");
+  return `até ${normalized.replace(".", ",")} km`;
+}
+
+function buildNearbyEmptyMessage(params: {
+  mode: "disabled" | "distance" | "region";
+  radiusKm: number;
+  fallback: string;
+}) {
+  const { mode, radiusKm, fallback } = params;
+
+  if (mode === "distance") {
+    return `No momento, não encontramos outros anúncios ativos com perfil compatível ${formatRadiusLabel(radiusKm)} deste imóvel.`;
+  }
+
+  if (mode === "region") {
+    return "No momento, não encontramos outros anúncios ativos com perfil compatível no mesmo bairro ou entorno deste imóvel.";
+  }
+
+  return fallback;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -141,9 +166,16 @@ export async function GET(request: NextRequest) {
       hideExactAddress: currentProperty.hideExactAddress,
     });
 
-    const nearbyMode = location.canShowNearby && location.lat != null && location.lng != null
-      ? location.nearbyMode
-      : "disabled";
+    const nearbyMode = !location.canShowNearby
+      ? "disabled"
+      : location.nearbyMode === "distance" && (location.lat == null || location.lng == null)
+        ? "disabled"
+        : location.nearbyMode;
+    const nearbyEmptyMessage = buildNearbyEmptyMessage({
+      mode: nearbyMode,
+      radiusKm,
+      fallback: location.nearbyEmptyMessage,
+    });
 
     if (nearbyMode === "disabled") {
       return NextResponse.json({
@@ -154,7 +186,7 @@ export async function GET(request: NextRequest) {
           mode: nearbyMode,
           title: location.nearbyTitle,
           description: location.nearbyDescription,
-          emptyMessage: location.nearbyEmptyMessage,
+          emptyMessage: nearbyEmptyMessage,
           distanceLabels: location.canShowDistanceLabels,
           location,
         }),
@@ -253,7 +285,7 @@ export async function GET(request: NextRequest) {
         mode: nearbyMode,
         title: location.nearbyTitle,
         description: location.nearbyDescription,
-        emptyMessage: location.nearbyEmptyMessage,
+        emptyMessage: nearbyProperties.length > 0 ? location.nearbyEmptyMessage : nearbyEmptyMessage,
         distanceLabels: location.canShowDistanceLabels,
         location,
       }),

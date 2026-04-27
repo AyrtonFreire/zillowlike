@@ -19,7 +19,6 @@ import {
   MessageSquare,
   LogOut,
   Settings,
-  Building2,
   Bell,
 } from "lucide-react";
 
@@ -149,21 +148,24 @@ export default function AccountPage() {
     leadsReceived: 0,
     leadsSent: 0,
   };
+  const roleLabel =
+    role === "ADMIN"
+      ? "Administrador"
+      : role === "REALTOR"
+        ? "Corretor"
+        : role === "AGENCY"
+          ? "Agência"
+          : role === "OWNER"
+            ? "Proprietário"
+            : "Usuário";
 
   const roleActions = (() => {
     const canBecomeAgency = role !== "AGENCY" && role !== "ADMIN";
-    const canBecomeDeveloper = role !== "DEVELOPER" && role !== "ADMIN";
     const becomeAgencyAction = {
       title: "Virar Agência",
       description: "Crie um workspace para monitorar leads e organizar corretores.",
       href: "/agency/register",
-      icon: <Building2 className="w-5 h-5" />,
-    };
-    const becomeDeveloperAction = {
-      title: "Virar Incorporadora",
-      description: "Crie um workspace para gerir empreendimentos, parceiros e leads de lançamentos.",
-      href: "/developer/register",
-      icon: <Building2 className="w-5 h-5" />,
+      icon: <Settings className="w-5 h-5" />,
     };
 
     if (role === "OWNER") {
@@ -189,7 +191,6 @@ export default function AccountPage() {
       ];
 
       if (canBecomeAgency) actions.push(becomeAgencyAction);
-      if (canBecomeDeveloper) actions.push(becomeDeveloperAction);
       return actions;
     }
 
@@ -222,37 +223,16 @@ export default function AccountPage() {
       ];
 
       if (canBecomeAgency) actions.push(becomeAgencyAction);
-      if (canBecomeDeveloper) actions.push(becomeDeveloperAction);
       return actions;
     }
 
     if (role === "DEVELOPER") {
-      return [
-        {
-          title: "Painel da incorporadora",
-          description: "Acompanhe empreendimentos, parceiros e leads do workspace.",
-          href: "/developer",
-          icon: <LayoutDashboard className="w-5 h-5" />,
-        },
-        {
-          title: "Empreendimentos",
-          description: "Cadastre lançamentos e acompanhe a base inicial de unidades do workspace.",
-          href: "/developer/projects",
-          icon: <Building2 className="w-5 h-5" />,
-        },
-        {
-          title: "Configurar incorporadora",
-          description: "Revise os dados institucionais e o perfil operacional do workspace.",
-          href: "/developer/profile",
-          icon: <Settings className="w-5 h-5" />,
-        },
-      ];
+      return [];
     }
 
     if (role === "USER") {
       const actions = [];
       if (canBecomeAgency) actions.push(becomeAgencyAction);
-      if (canBecomeDeveloper) actions.push(becomeDeveloperAction);
       return actions;
     }
 
@@ -317,7 +297,7 @@ export default function AccountPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
                       <Shield className="w-3.5 h-3.5" />
-                      {role}
+                      {roleLabel}
                     </span>
                     <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${emailVerified ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
                       {emailVerified ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}

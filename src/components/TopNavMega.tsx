@@ -432,13 +432,6 @@ function quickLinksByRole(role: string): QuickItem[] {
       { href: "/start", label: "Cadastrar imóvel", icon: ico("M12 4v16m8-8H4") },
     ];
   }
-  if (role === "DEVELOPER") {
-    return [
-      { href: "/developer", label: "Painel da incorporadora", icon: ico("M4 20V6l8-3 8 3v14M4 10h16M9 20v-4h6v4") },
-      { href: "/developer/projects", label: "Empreendimentos", icon: ico("M3 20h18M5 20V8l7-4 7 4v12M9 20v-5h6v5") },
-      { href: "/developer/profile", label: "Editar perfil", icon: ico("M12 4v16m8-8H4") },
-    ];
-  }
   // USER (default)
   return [
     { href: "/favorites", label: "Favoritos", icon: ico("M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z") },
