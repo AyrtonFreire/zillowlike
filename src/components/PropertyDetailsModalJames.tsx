@@ -259,7 +259,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [showMore, setShowMore] = useState(false);
   const [shouldLoadArea, setShouldLoadArea] = useState(false);
   const [shouldLoadRelated, setShouldLoadRelated] = useState(false);
-  const [relatedRequested, setRelatedRequested] = useState(false);
   const areaSectionRef = useRef<HTMLDivElement | null>(null);
   const relatedSectionRef = useRef<HTMLDivElement | null>(null);
   const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
@@ -274,6 +273,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
   const poiFetchedKeyRef = useRef<string | null>(null);
+  const relatedRequestedRef = useRef<string | null>(null);
   const [poiSource, setPoiSource] = useState<'google' | 'osm' | null>(null);
   const trackedViewRef = useRef<Set<string>>(new Set());
   // Lightbox touch resistance state
@@ -347,7 +347,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     setPoiLoading(false);
     setPoiSource(null);
     setActivePOITab("schools");
-    setRelatedRequested(false);
+    relatedRequestedRef.current = null;
     setShouldLoadArea(true);
     setShouldLoadRelated(!isPreview);
     poiFetchedKeyRef.current = null;
@@ -438,6 +438,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const locationDisplayLabel = locationResolution?.displayLabel && locationResolution.displayLabel !== "região informada"
     ? locationResolution.displayLabel
     : null;
+  const relatedPropertyId = property?.id ? String(property.id) : null;
 
   // Distância aproximada
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -682,11 +683,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     if (!isOpen) return;
     if (mode !== "public") return;
     if (!shouldLoadRelated) return;
-    if (!property?.id) return;
-    if (relatedRequested) return;
+    if (!relatedPropertyId) return;
+    if (relatedRequestedRef.current === relatedPropertyId) return;
 
-    setRelatedRequested(true);
-    const id = property.id;
+    relatedRequestedRef.current = relatedPropertyId;
+    const id = relatedPropertyId;
 
     const controller = new AbortController();
     let ignore = false;
@@ -768,7 +769,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [isOpen, shouldLoadRelated, property, relatedRequested, mode]);
+  }, [isOpen, shouldLoadRelated, relatedPropertyId, mode]);
 
   const handleOpenRelated = useCallback(
     (id: string) => {
@@ -787,7 +788,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setSimilarMeta(null);
       setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
-      setRelatedRequested(false);
+      relatedRequestedRef.current = null;
       setShouldLoadArea(false);
       setShouldLoadRelated(false);
       poiFetchedKeyRef.current = null;
@@ -897,7 +898,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setSimilarMeta(null);
       setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
-      setRelatedRequested(false);
+      relatedRequestedRef.current = null;
       setShouldLoadArea(false);
       setShouldLoadRelated(false);
       setPoiSource(null);
