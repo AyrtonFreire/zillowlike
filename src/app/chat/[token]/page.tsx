@@ -16,6 +16,8 @@ import {
 import { getPusherClient } from "@/lib/pusher-client";
 import { buildPropertyPath } from "@/lib/slug";
 
+const CHAT_AUTO_SCROLL_THRESHOLD_PX = 96;
+
 interface ChatMessage {
   id: string;
   fromClient: boolean;
@@ -147,7 +149,19 @@ export default function ClientChatPage() {
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+
+  const isNearBottom = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return true;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    return distanceFromBottom <= CHAT_AUTO_SCROLL_THRESHOLD_PX;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
 
   const conversationState = String(lead?.conversation?.state || "ACTIVE");
   const chatIsArchived = conversationState === "ARCHIVED";
@@ -414,12 +428,44 @@ export default function ClientChatPage() {
     }
   }, [lead?.id]);
 
-  // Auto-scroll para o final
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  }, [messages.length]);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const updateAutoScroll = () => {
+      shouldAutoScrollRef.current = isNearBottom(container);
+    };
+
+    updateAutoScroll();
+    container.addEventListener("scroll", updateAutoScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", updateAutoScroll);
+    };
+  }, [isNearBottom, token]);
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = true;
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom("auto");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [scrollToBottom, token]);
+
+  useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
+
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom(messages.length <= 1 ? "auto" : "smooth");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [messages.length, scrollToBottom]);
 
   const handleSend = async () => {
     if (!draft.trim() || !token || chatIsClosed) return;
@@ -647,7 +693,7 @@ export default function ClientChatPage() {
 
       <main className="flex-1 min-h-0 overflow-hidden">
         <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4 h-full min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-white border border-gray-200 p-3 sm:p-4 flex flex-col">
+          <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-white border border-gray-200 p-3 sm:p-4 flex flex-col">
             {chatIsArchived && (
               <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
                 Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.

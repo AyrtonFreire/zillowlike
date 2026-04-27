@@ -9,6 +9,8 @@ import { MessageCircle, Send, ChevronLeft, Home } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import { getPusherClient } from "@/lib/pusher-client";
 
+const CHAT_AUTO_SCROLL_THRESHOLD_PX = 96;
+
 type ChatPreview = {
   leadId: string;
   token: string;
@@ -135,7 +137,19 @@ export default function UserChatsPage() {
   const [chatPanelHeight, setChatPanelHeight] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+
+  const isNearBottom = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return true;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    return distanceFromBottom <= CHAT_AUTO_SCROLL_THRESHOLD_PX;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -298,8 +312,43 @@ export default function UserChatsPage() {
   }, [fetchChatByToken, selectedChat?.token]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length]);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const updateAutoScroll = () => {
+      shouldAutoScrollRef.current = isNearBottom(container);
+    };
+
+    updateAutoScroll();
+    container.addEventListener("scroll", updateAutoScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", updateAutoScroll);
+    };
+  }, [isNearBottom, selectedChat?.token]);
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = true;
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom("auto");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [scrollToBottom, selectedChat?.token]);
+
+  useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
+
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom(messages.length <= 1 ? "auto" : "smooth");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [messages.length, scrollToBottom]);
 
   const selectedToken = useMemo(() => {
     return selectedChat?.token || tokenFromUrl || "";
@@ -674,7 +723,7 @@ export default function UserChatsPage() {
                   )}
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 bg-gray-50">
+                <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 bg-gray-50">
                   {selectedChatIsArchived && (
                     <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
                       Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.

@@ -10,6 +10,8 @@ import EmptyState from "@/components/ui/EmptyState";
 import { getPusherClient } from "@/lib/pusher-client";
 import { PUSHER_EVENTS } from "@/lib/pusher-server";
 
+const CHAT_AUTO_SCROLL_THRESHOLD_PX = 96;
+
 interface ChatUser {
   id: string;
   name: string | null;
@@ -130,6 +132,18 @@ export default function AgencyTeamChatPanel() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
+
+  const isNearBottom = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return true;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    return distanceFromBottom <= CHAT_AUTO_SCROLL_THRESHOLD_PX;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
 
   const activeThread = useMemo(() => {
     return threads.find((t) => String(t.id) === String(selectedThreadId)) || null;
@@ -319,8 +333,43 @@ export default function AgencyTeamChatPanel() {
   }, [selectedThreadId, fetchMessages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, selectedThreadId]);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const updateAutoScroll = () => {
+      shouldAutoScrollRef.current = isNearBottom(container);
+    };
+
+    updateAutoScroll();
+    container.addEventListener("scroll", updateAutoScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", updateAutoScroll);
+    };
+  }, [isNearBottom, selectedThreadId]);
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = true;
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom("auto");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [scrollToBottom, selectedThreadId]);
+
+  useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
+
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom(messages.length <= 1 ? "auto" : "smooth");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [messages.length, scrollToBottom]);
 
   useEffect(() => {
     if (!threadIdsKey || !userId) return;
@@ -632,7 +681,7 @@ export default function AgencyTeamChatPanel() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3">
               {messagesLoading && messages.length === 0 ? (
                 <CenteredSpinner message="Carregando conversa..." />
               ) : messagesError ? (

@@ -22,6 +22,8 @@ import { buildPropertyPath } from "@/lib/slug";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import { getPusherClient } from "@/lib/pusher-client";
 
+const CHAT_AUTO_SCROLL_THRESHOLD_PX = 96;
+
 interface ChatPreview {
   leadId: string;
   clientChatToken: string;
@@ -87,8 +89,20 @@ export default function BrokerChatsPage() {
   const chatsEtagRef = useRef<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const didApplyDraftRef = useRef<string | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+
+  const isNearBottom = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return true;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    return distanceFromBottom <= CHAT_AUTO_SCROLL_THRESHOLD_PX;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
 
   const applyConversationState = useCallback((leadId: string, conversation?: ConversationSnapshot | null) => {
     if (!leadId || !conversation) return;
@@ -229,10 +243,44 @@ export default function BrokerChatsPage() {
     }
   }, [fetchMessages, markChatAsRead, selectedChat]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const updateAutoScroll = () => {
+      shouldAutoScrollRef.current = isNearBottom(container);
+    };
+
+    updateAutoScroll();
+    container.addEventListener("scroll", updateAutoScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", updateAutoScroll);
+    };
+  }, [isNearBottom, selectedChat?.leadId]);
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = true;
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom("auto");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [scrollToBottom, selectedChat?.leadId]);
+
+  useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
+
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToBottom(messages.length <= 1 ? "auto" : "smooth");
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [messages.length, scrollToBottom]);
 
   // Poll for new messages
   useEffect(() => {
@@ -640,7 +688,7 @@ export default function BrokerChatsPage() {
               </Link>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
               {selectedChatIsArchived && (
                 <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
                   Esta conversa foi arquivada por inatividade. Você pode reabrir agora ou simplesmente enviar uma nova mensagem.
