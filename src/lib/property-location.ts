@@ -53,6 +53,41 @@ function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeComparableText(value: unknown) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+}
+
+function hasUsableStreetNumber(value: unknown) {
+  const raw = normalizeText(value);
+  if (!raw) return false;
+
+  const normalized = normalizeComparableText(raw);
+  if (!normalized) return false;
+
+  const invalidMarkers = new Set([
+    "sn",
+    "snn",
+    "semnumero",
+    "naoinformado",
+    "naoidentificado",
+    "nao",
+    "ni",
+    "ninf",
+    "na",
+    "n",
+    "zero",
+  ]);
+
+  if (invalidMarkers.has(normalized)) return false;
+  if (/^0+$/.test(normalized)) return false;
+
+  return /\d/.test(normalized);
+}
+
 function toFiniteCoordinate(value: unknown) {
   if (typeof value !== "number" || !Number.isFinite(value) || value === 0) return null;
   return value;
@@ -238,7 +273,7 @@ function applyPublicLocationPolicy(
   input: PropertyLocationInput,
   resolution: PropertyLocationResolution
 ): PropertyLocationResolution {
-  const hasStreetNumber = !!normalizeText(input.streetNumber);
+  const hasStreetNumber = hasUsableStreetNumber(input.streetNumber);
   const shouldApproximate = !!input.hideExactAddress || !hasStreetNumber;
 
   if (!shouldApproximate) {
@@ -420,12 +455,13 @@ export async function resolvePropertyLocation(
 }
 
 export async function resolvePublicPropertyLocation(input: PropertyLocationInput): Promise<PropertyLocationResolution> {
-  const hasStreetNumber = !!normalizeText(input.streetNumber);
+  const hasStreetNumber = hasUsableStreetNumber(input.streetNumber);
   const sanitizedInput = input.hideExactAddress || !hasStreetNumber
     ? {
         ...input,
         latitude: null,
         longitude: null,
+        streetNumber: hasStreetNumber ? input.streetNumber : null,
       }
     : input;
   const allowStreetPrecision = !input.hideExactAddress;
