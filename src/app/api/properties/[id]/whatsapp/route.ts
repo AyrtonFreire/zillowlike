@@ -235,7 +235,11 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     const { id } = await params;
 
     const payload = await getWhatsAppPayload(req, String(id));
-    if (!payload.ok) return payload.response;
+    if (!payload.ok) {
+      const res = NextResponse.json({ whatsappUrl: "", phoneUrl: "" });
+      res.headers.set("Cache-Control", "no-store");
+      return res;
+    }
 
     const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl, phoneUrl: payload.phoneUrl });
     res.headers.set("Cache-Control", "no-store");

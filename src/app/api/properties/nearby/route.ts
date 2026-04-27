@@ -207,10 +207,7 @@ export async function GET(request: NextRequest) {
       baseWhere.purpose = currentProperty.purpose;
     }
 
-    if (nearbyMode === "distance") {
-      baseWhere.latitude = { not: null };
-      baseWhere.longitude = { not: null };
-    } else if (nearbyMode === "region" && currentProperty.neighborhood) {
+    if (nearbyMode === "region" && currentProperty.neighborhood) {
       baseWhere.neighborhood = currentProperty.neighborhood;
     }
 
