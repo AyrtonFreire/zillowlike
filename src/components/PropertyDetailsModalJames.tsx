@@ -438,6 +438,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const locationDisplayLabel = locationResolution?.displayLabel && locationResolution.displayLabel !== "região informada"
     ? locationResolution.displayLabel
     : null;
+  const approximateArea = useMemo(() => {
+    if (!locationResolution || locationResolution.mapPresentation !== "circle") return null;
+    if (locationLat == null || locationLng == null) return null;
+    if (typeof locationResolution.mapRadiusMeters !== "number" || !Number.isFinite(locationResolution.mapRadiusMeters)) return null;
+    return {
+      center: [locationLat, locationLng] as [number, number],
+      radiusMeters: locationResolution.mapRadiusMeters,
+    };
+  }, [locationLat, locationLng, locationResolution]);
   const relatedPropertyId = property?.id ? String(property.id) : null;
 
   // Distância aproximada
@@ -1829,10 +1838,21 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                               }]}
                               centerZoom={{ center: [locationLat as number, locationLng as number], zoom: locationResolution?.zoom || 14 }}
                               pois={{ mode: 'list' as const, items: mapPoiList as any }}
+                              approximateArea={approximateArea || undefined}
                               hideRefitButton
                               centeredPriceMarkers
-                              simplePin
-                              limitInteraction={{ minZoom: locationResolution?.accuracy === "neighborhood" ? 12 : 13, maxZoom: 16, radiusMeters: locationResolution?.accuracy === "neighborhood" ? 3000 : 2000 }}
+                              simplePin={locationResolution?.mapPresentation === "pin"}
+                              limitInteraction={{
+                                minZoom: locationResolution?.mapPresentation === "circle"
+                                  ? (locationResolution?.accuracy === "neighborhood" ? 11 : 12)
+                                  : (locationResolution?.accuracy === "neighborhood" ? 12 : 13),
+                                maxZoom: locationResolution?.mapPresentation === "circle" ? 15 : 16,
+                                radiusMeters: approximateArea
+                                  ? Math.max(Math.round(approximateArea.radiusMeters * 3), 1200)
+                                  : locationResolution?.accuracy === "neighborhood"
+                                    ? 3000
+                                    : 2000,
+                              }}
                             />
                           </div>
                         ) : (

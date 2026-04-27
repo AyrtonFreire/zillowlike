@@ -17,6 +17,11 @@ type PoisProp =
   | { mode: "list"; items: Poi[] }
   | { mode: "auto"; center: [number, number]; radius?: number };
 
+type ApproximateArea = {
+  center: [number, number];
+  radiusMeters: number;
+};
+
 type Props = {
   items: Item[];
   centerZoom?: { center: [number, number]; zoom: number };
@@ -34,6 +39,7 @@ type Props = {
   simplePin?: boolean;
   centeredPriceMarkers?: boolean;
   limitInteraction?: { minZoom: number; maxZoom: number; radiusMeters: number };
+  approximateArea?: ApproximateArea;
   autoLoad?: boolean;
 };
 
@@ -118,6 +124,7 @@ export default function GoogleMap(props: Props) {
     simplePin,
     centeredPriceMarkers,
     limitInteraction,
+    approximateArea,
     autoLoad = true,
   } = props;
 
@@ -468,11 +475,63 @@ export default function GoogleMap(props: Props) {
       return outer;
     };
 
+    const buildApproximateDotEl = () => {
+      const outer = document.createElement("div");
+      outer.style.position = "absolute";
+      outer.style.transform = "translate(-50%,-50%)";
+      outer.style.pointerEvents = "none";
+      outer.style.userSelect = "none";
+      outer.style.zIndex = "1500";
+
+      const halo = document.createElement("div");
+      halo.style.width = "18px";
+      halo.style.height = "18px";
+      halo.style.borderRadius = "9999px";
+      halo.style.background = "rgba(59, 130, 246, 0.24)";
+      halo.style.display = "flex";
+      halo.style.alignItems = "center";
+      halo.style.justifyContent = "center";
+
+      const dot = document.createElement("div");
+      dot.style.width = "10px";
+      dot.style.height = "10px";
+      dot.style.borderRadius = "9999px";
+      dot.style.background = "#3b82f6";
+      dot.style.border = "2px solid #ffffff";
+      dot.style.boxShadow = "0 6px 16px rgba(37, 99, 235, .28)";
+
+      halo.appendChild(dot);
+      outer.appendChild(halo);
+      return outer;
+    };
+
     const renderItems = () => {
       const zoom = map.getZoom?.();
       if (!isFiniteNumber(zoom)) return;
 
       clearOverlays(overlaysRef.current);
+
+      if (approximateArea) {
+        const circle = new google.maps.Circle({
+          center: { lat: approximateArea.center[0], lng: approximateArea.center[1] },
+          radius: approximateArea.radiusMeters,
+          strokeColor: "#60a5fa",
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: "#93c5fd",
+          fillOpacity: 0.24,
+          clickable: false,
+          map,
+        });
+        overlaysRef.current.push(circle);
+
+        const dotOverlay = createOverlay(
+          { lat: approximateArea.center[0], lng: approximateArea.center[1] },
+          buildApproximateDotEl()
+        );
+        overlaysRef.current.push(dotOverlay);
+        return;
+      }
 
       const highlighted = highlightedRef.current;
       const clusters = clusterByGrid(items, zoom);
@@ -653,7 +712,7 @@ export default function GoogleMap(props: Props) {
       redrawRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, pois, simplePin, centeredPriceMarkers, autoFit, onViewChange, onHoverChange, centerZoom]);
+  }, [items, pois, simplePin, centeredPriceMarkers, autoFit, onViewChange, onHoverChange, centerZoom, approximateArea]);
 
   const showPlaceholder = !activated || !ready;
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { resolvePropertyLocation } from "@/lib/property-location";
+import { resolvePublicPropertyLocation } from "@/lib/property-location";
 
 function jsonSafe<T>(data: T): any {
   return JSON.parse(
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const location = await resolvePropertyLocation({
+    const location = await resolvePublicPropertyLocation({
       id: currentProperty.id,
       latitude: currentProperty.latitude,
       longitude: currentProperty.longitude,

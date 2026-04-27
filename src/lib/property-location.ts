@@ -3,6 +3,7 @@ import { geocodeAddressParts } from "@/lib/geocode";
 export type PropertyLocationAccuracy = "exact" | "street" | "neighborhood" | "city" | "none";
 export type PropertyLocationSource = "stored" | "geocoded" | "fallback" | "none";
 export type PropertyNearbyMode = "distance" | "region" | "disabled";
+export type PropertyMapPresentation = "pin" | "circle" | "hidden";
 
 export interface PropertyLocationInput {
   id?: string | null;
@@ -39,6 +40,8 @@ export interface PropertyLocationResolution {
   canShowNearby: boolean;
   canShowDistanceLabels: boolean;
   isApproximate: boolean;
+  mapPresentation: PropertyMapPresentation;
+  mapRadiusMeters: number | null;
   zoom: number;
   query: string | null;
 }
@@ -64,6 +67,17 @@ function buildRegionLabel(parts: { neighborhood?: string; city?: string; state?:
   if (city) return city;
   if (state) return state;
   return "região informada";
+}
+
+function getDefaultMapPresentation(accuracy: PropertyLocationAccuracy): PropertyMapPresentation {
+  if (accuracy === "exact" || accuracy === "street") return "pin";
+  if (accuracy === "neighborhood") return "circle";
+  return "hidden";
+}
+
+function getDefaultMapRadiusMeters(accuracy: PropertyLocationAccuracy): number | null {
+  if (accuracy === "neighborhood") return 1200;
+  return null;
 }
 
 function buildResolution(args: {
@@ -98,6 +112,8 @@ function buildResolution(args: {
       canShowNearby: true,
       canShowDistanceLabels: true,
       isApproximate: false,
+      mapPresentation: getDefaultMapPresentation(accuracy),
+      mapRadiusMeters: getDefaultMapRadiusMeters(accuracy),
       zoom: 15,
       query,
     };
@@ -125,6 +141,8 @@ function buildResolution(args: {
       canShowNearby: true,
       canShowDistanceLabels: true,
       isApproximate: true,
+      mapPresentation: getDefaultMapPresentation(accuracy),
+      mapRadiusMeters: getDefaultMapRadiusMeters(accuracy),
       zoom: 14,
       query,
     };
@@ -152,6 +170,8 @@ function buildResolution(args: {
       canShowNearby: true,
       canShowDistanceLabels: false,
       isApproximate: true,
+      mapPresentation: getDefaultMapPresentation(accuracy),
+      mapRadiusMeters: getDefaultMapRadiusMeters(accuracy),
       zoom: 13,
       query,
     };
@@ -179,6 +199,8 @@ function buildResolution(args: {
       canShowNearby: false,
       canShowDistanceLabels: false,
       isApproximate: true,
+      mapPresentation: getDefaultMapPresentation(accuracy),
+      mapRadiusMeters: getDefaultMapRadiusMeters(accuracy),
       zoom: 11,
       query,
     };
@@ -205,8 +227,62 @@ function buildResolution(args: {
     canShowNearby: false,
     canShowDistanceLabels: false,
     isApproximate: false,
+    mapPresentation: getDefaultMapPresentation(accuracy),
+    mapRadiusMeters: getDefaultMapRadiusMeters(accuracy),
     zoom: 11,
     query,
+  };
+}
+
+function applyPublicLocationPolicy(
+  input: PropertyLocationInput,
+  resolution: PropertyLocationResolution
+): PropertyLocationResolution {
+  const hasStreetNumber = !!normalizeText(input.streetNumber);
+  const shouldApproximate = !!input.hideExactAddress || !hasStreetNumber;
+
+  if (!shouldApproximate) {
+    return resolution;
+  }
+
+  if (!resolution.canShowMap || resolution.lat == null || resolution.lng == null) {
+    return {
+      ...resolution,
+      mapPresentation: "hidden",
+      mapRadiusMeters: null,
+      canShowDistanceLabels: false,
+    };
+  }
+
+  if (resolution.accuracy === "street" || resolution.accuracy === "exact") {
+    return {
+      ...resolution,
+      badgeLabel: "Localização aproximada",
+      precisionNote: "Mostramos uma área aproximada para não sugerir o ponto exato deste imóvel.",
+      mapPresentation: "circle",
+      mapRadiusMeters: 280,
+      canShowDistanceLabels: false,
+      isApproximate: true,
+    };
+  }
+
+  if (resolution.accuracy === "neighborhood") {
+    return {
+      ...resolution,
+      badgeLabel: "Localização aproximada",
+      precisionNote: "Mostramos uma área aproximada nesta região para não sugerir o ponto exato deste imóvel.",
+      mapPresentation: "circle",
+      mapRadiusMeters: resolution.mapRadiusMeters ?? 1200,
+      canShowDistanceLabels: false,
+      isApproximate: true,
+    };
+  }
+
+  return {
+    ...resolution,
+    mapPresentation: "hidden",
+    mapRadiusMeters: null,
+    canShowDistanceLabels: false,
   };
 }
 
@@ -341,4 +417,18 @@ export async function resolvePropertyLocation(
 
   cache.set(cacheKey, { t: now, v: resolved });
   return resolved;
+}
+
+export async function resolvePublicPropertyLocation(input: PropertyLocationInput): Promise<PropertyLocationResolution> {
+  const hasStreetNumber = !!normalizeText(input.streetNumber);
+  const sanitizedInput = input.hideExactAddress || !hasStreetNumber
+    ? {
+        ...input,
+        latitude: null,
+        longitude: null,
+      }
+    : input;
+  const allowStreetPrecision = !input.hideExactAddress;
+  const resolution = await resolvePropertyLocation(sanitizedInput, { allowStreetPrecision });
+  return applyPublicLocationPolicy(input, resolution);
 }
