@@ -131,8 +131,51 @@ export default function UserChatsPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const [chatPanelHeight, setChatPanelHeight] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const vv = window.visualViewport;
+
+    const update = () => {
+      const visibleHeight = vv ? Math.round(vv.height + vv.offsetTop) : window.innerHeight;
+      setViewportHeight(visibleHeight);
+    };
+
+    update();
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+
+    return () => {
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const measure = () => {
+      const top = panelRef.current?.getBoundingClientRect().top ?? 0;
+      if (!top || !viewportHeight) return;
+      const available = Math.max(360, Math.floor(viewportHeight - top - 8));
+      setChatPanelHeight(available);
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+
+    return () => {
+      window.removeEventListener("resize", measure);
+    };
+  }, [viewportHeight, selectedChat, tokenFromUrl, chats.length]);
 
   const applyConversationState = useCallback((leadId: string, conversation?: ChatLeadInfo["conversation"] | null) => {
     if (!leadId || !conversation) return;
@@ -465,7 +508,7 @@ export default function UserChatsPage() {
 
   if (status === "loading") {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-[100dvh] bg-gray-50">
         <ModernNavbar forceLight />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
@@ -477,7 +520,7 @@ export default function UserChatsPage() {
   if (!session) {
     const callbackUrl = `/chats${tokenFromUrl ? `?token=${encodeURIComponent(tokenFromUrl)}` : ""}`;
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-[100dvh] bg-gray-50">
         <ModernNavbar forceLight />
         <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-3">Suas conversas</h1>
@@ -496,7 +539,7 @@ export default function UserChatsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-[100dvh] bg-gray-50">
         <ModernNavbar forceLight />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
@@ -507,7 +550,7 @@ export default function UserChatsPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-[100dvh] bg-gray-50">
         <ModernNavbar forceLight />
         <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <h1 className="text-xl font-bold text-gray-900 mb-3">Não conseguimos carregar suas conversas</h1>
@@ -525,21 +568,21 @@ export default function UserChatsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-[100dvh] bg-gray-50">
       <ModernNavbar forceLight />
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         <h1 className="text-2xl font-bold text-gray-900">Conversas</h1>
         <p className="text-gray-600 mt-1">Gerencie suas conversas com corretores e anunciantes.</p>
 
-        <div className="mt-6 h-[calc(100vh-220px)] min-h-[520px] bg-white rounded-xl border border-gray-200 overflow-hidden flex">
-          <div className={`w-full md:w-80 border-r border-gray-200 flex flex-col bg-gray-50 ${selectedChat ? "hidden md:flex" : "flex"}`}>
+        <div ref={panelRef} className="mt-4 md:mt-6 min-h-[360px] md:min-h-[520px] bg-white rounded-xl border border-gray-200 overflow-hidden flex" style={chatPanelHeight ? { height: `${chatPanelHeight}px` } : undefined}>
+          <div className={`w-full md:w-80 border-r border-gray-200 flex flex-col min-h-0 bg-gray-50 ${selectedChat ? "hidden md:flex" : "flex"}`}>
             <div className="p-4 border-b border-gray-200 bg-white">
               <div className="text-sm font-semibold text-gray-900">Suas conversas</div>
               <div className="text-xs text-gray-500 mt-1">Clique em uma conversa para abrir</div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {chats.length === 0 ? (
                 <div className="p-10 text-center">
                   <MessageCircle className="w-12 h-12 mx-auto text-gray-300 mb-3" />
@@ -592,7 +635,7 @@ export default function UserChatsPage() {
             </div>
           </div>
 
-          <div className={`flex-1 flex flex-col ${selectedChat || tokenFromUrl ? "flex" : "hidden md:flex"}`}>
+          <div className={`flex-1 flex flex-col min-h-0 ${selectedChat || tokenFromUrl ? "flex" : "hidden md:flex"}`}>
             {(selectedChat || tokenFromUrl) ? (
               <>
                 <div className="p-4 border-b border-gray-200 bg-white flex items-center gap-3">
@@ -631,7 +674,7 @@ export default function UserChatsPage() {
                   )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 bg-gray-50">
                   {selectedChatIsArchived && (
                     <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
                       Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.
@@ -678,7 +721,7 @@ export default function UserChatsPage() {
                       {messages.map((msg) => (
                         <div key={msg.id} className={`flex ${msg.fromClient ? "justify-end" : "justify-start"}`}>
                           <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                            className={`w-fit max-w-[calc(100%-2.75rem)] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                               msg.fromClient
                                 ? "bg-teal-600 text-white"
                                 : "bg-white text-gray-900 border border-gray-200"
@@ -714,7 +757,7 @@ export default function UserChatsPage() {
                   )}
                 </div>
 
-                <div className="p-4 border-t border-gray-200 bg-white">
+                <div className="border-t border-gray-200 bg-white px-3 sm:px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}>
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();

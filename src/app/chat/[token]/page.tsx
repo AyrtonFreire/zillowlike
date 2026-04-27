@@ -144,16 +144,15 @@ export default function ClientChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickMessages, setShowQuickMessages] = useState(true);
   const [showPropertyCard, setShowPropertyCard] = useState(true);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
-  const [composerHeight, setComposerHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const composerRef = useRef<HTMLElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const conversationState = String(lead?.conversation?.state || "ACTIVE");
   const chatIsArchived = conversationState === "ARCHIVED";
   const chatIsClosed = conversationState === "CLOSED";
+  const chatViewportHeight = viewportHeight ? `${viewportHeight}px` : "100dvh";
 
   const waitingAssistantReply = useMemo(() => {
     if (!messages.length) return false;
@@ -165,36 +164,20 @@ export default function ClientChatPage() {
     if (typeof window === "undefined") return;
 
     const vv = window.visualViewport;
-    if (!vv) return;
 
     const update = () => {
-      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKeyboardOffset(inset);
+      const visibleHeight = vv ? Math.round(vv.height + vv.offsetTop) : window.innerHeight;
+      setViewportHeight(visibleHeight);
     };
 
     update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const measure = () => {
-      const h = composerRef.current?.getBoundingClientRect().height || 0;
-      setComposerHeight(h);
-    };
-
-    measure();
-    const t = window.setTimeout(measure, 0);
-    window.addEventListener("resize", measure);
-    return () => {
-      window.clearTimeout(t);
-      window.removeEventListener("resize", measure);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
     };
   }, []);
 
@@ -517,7 +500,7 @@ export default function ClientChatPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-[100dvh] bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
           <h1 className="text-lg font-semibold text-gray-900 mb-2">Link de chat inválido</h1>
           <p className="text-sm text-gray-600 mb-4">
@@ -530,7 +513,7 @@ export default function ClientChatPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-[100dvh] bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-600">Carregando conversa...</p>
@@ -541,7 +524,7 @@ export default function ClientChatPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-[100dvh] bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
           <h1 className="text-lg font-semibold text-gray-900 mb-2">Não conseguimos abrir esta conversa</h1>
           <p className="text-sm text-gray-600 mb-4">{error}</p>
@@ -551,12 +534,10 @@ export default function ClientChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header com avatar do responsável */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div className="bg-gray-50 flex flex-col overflow-hidden" style={{ minHeight: chatViewportHeight, height: chatViewportHeight }}>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
-            {/* Avatar do responsável */}
             {lead?.responsible && (
               <div className="relative">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center overflow-hidden border-2 border-white shadow-md">
@@ -574,7 +555,6 @@ export default function ClientChatPage() {
                     </span>
                   )}
                 </div>
-                {/* Badge de conexão */}
                 <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
                   isConnected ? "bg-green-500" : "bg-gray-400"
                 }`} />
@@ -599,7 +579,6 @@ export default function ClientChatPage() {
               {chatIsClosed && (
                 <p className="text-[11px] text-rose-700 mt-0.5">Conversa encerrada</p>
               )}
-              {/* Indicador de digitando */}
               {isTyping && (
                 <span className="flex items-center gap-1 text-[11px] text-teal-600 mt-0.5">
                   <span className="flex gap-0.5">
@@ -612,7 +591,6 @@ export default function ClientChatPage() {
               )}
             </div>
             
-            {/* Link para ver imóvel */}
             {lead?.property?.id && (
               <Link
                 href={buildPropertyPath(lead.property.id, lead.property.title)}
@@ -626,12 +604,10 @@ export default function ClientChatPage() {
           </div>
         </div>
         
-        {/* Card do imóvel colapsável */}
         {showPropertyCard && lead?.property && (
           <div className="border-t border-gray-100 bg-gray-50/50">
             <div className="max-w-3xl mx-auto px-4 py-3">
               <div className="flex gap-3 items-start">
-                {/* Imagem */}
                 {lead.property.image && (
                   <div className="relative w-20 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
                     <Image 
@@ -669,13 +645,9 @@ export default function ClientChatPage() {
         )}
       </header>
 
-      {/* Messages */}
-      <main className="flex-1 overflow-hidden">
-        <div className="max-w-3xl mx-auto px-4 py-4 h-full flex flex-col">
-          <div
-            className="flex-1 overflow-y-auto rounded-2xl bg-white border border-gray-200 p-4 flex flex-col"
-            style={{ paddingBottom: Math.max(0, composerHeight + keyboardOffset + 12) }}
-          >
+      <main className="flex-1 min-h-0 overflow-hidden">
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4 h-full min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-white border border-gray-200 p-3 sm:p-4 flex flex-col">
             {chatIsArchived && (
               <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
                 Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.
@@ -696,7 +668,6 @@ export default function ClientChatPage() {
                   Tire suas dúvidas, agende uma visita ou negocie diretamente com o responsável pelo imóvel.
                 </p>
                 
-                {/* Mensagens rápidas sugeridas */}
                 {showQuickMessages && (
                   <div className="w-full max-w-sm space-y-2">
                     <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-2">Sugestões</p>
@@ -715,22 +686,20 @@ export default function ClientChatPage() {
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="flex flex-col gap-2 flex-1">
-                {messages.map((msg, index) => {
-                  // Verificar se precisa mostrar separador de data
-                  const showDateSeparator = index === 0 || 
-                    !isSameDay(messages[index - 1].createdAt, msg.createdAt);
-                  
-                  return (
-                    <div key={msg.id}>
-                      {/* Separador de data */}
-                      {showDateSeparator && (
-                        <div className="flex items-center justify-center my-4">
-                          <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full">
-                            <Clock className="w-3 h-3 text-gray-400" />
-                            <span className="text-[11px] font-medium text-gray-500">
-                              {formatDate(msg.createdAt)}
+              ) : (
+                <div className="flex flex-col gap-2 flex-1">
+                  {messages.map((msg, index) => {
+                    const showDateSeparator = index === 0 || 
+                      !isSameDay(messages[index - 1].createdAt, msg.createdAt);
+                    
+                    return (
+                      <div key={msg.id}>
+                        {showDateSeparator && (
+                          <div className="flex items-center justify-center my-4">
+                            <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full">
+                              <Clock className="w-3 h-3 text-gray-400" />
+                              <span className="text-[11px] font-medium text-gray-500">
+                                {formatDate(msg.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -738,7 +707,7 @@ export default function ClientChatPage() {
                       
                       <div className={`flex ${msg.fromClient ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                          className={`w-fit max-w-[calc(100%-2.75rem)] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                             msg.fromClient
                               ? "bg-teal-600 text-white"
                               : "bg-gray-100 text-gray-900"
@@ -773,7 +742,6 @@ export default function ClientChatPage() {
                   );
                 })}
                 
-                {/* Indicador de digitando */}
                 {isTyping && (
                   <div className="flex justify-start">
                     <div className="bg-gray-100 rounded-2xl px-4 py-3 text-sm">
@@ -793,13 +761,8 @@ export default function ClientChatPage() {
         </div>
       </main>
 
-      {/* Input */}
-      <footer
-        ref={composerRef as any}
-        className="bg-white border-t border-gray-200 fixed left-0 right-0 safe-area-pb z-20"
-        style={{ bottom: keyboardOffset }}
-      >
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-end gap-2">
+      <footer className="bg-white border-t border-gray-200 sticky bottom-0 z-20">
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 pt-3 flex items-end gap-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -828,7 +791,7 @@ export default function ClientChatPage() {
             )}
           </button>
         </div>
-        <p className="text-center text-[10px] text-gray-400 pb-3">
+        <p className="text-center text-[10px] text-gray-400 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
           Enter para enviar · Shift+Enter nova linha
         </p>
       </footer>
