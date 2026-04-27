@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent, ArrowUpRight, Video } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -47,6 +47,7 @@ interface PropertyCardPremiumProps {
     media?: { type: 'image' | 'video'; url: string }[];
     videoUrl?: string | null;
     videoId?: string | null;
+    contextLabel?: string | null;
     createdAt?: string | Date | null;
     viewsCount?: number | null;
     leadsCount?: number | null;
@@ -754,12 +755,19 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </div>
 
           {/* Location (clean, readable) */}
-          <div className="flex items-center gap-1.5 text-slate-500 text-[12px]">
-            <MapPin className="w-4 h-4 text-slate-400" />
-            <span className="truncate">
-              {property.neighborhood && `${property.neighborhood}, `}
-              {property.city}/{property.state}
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-slate-500 text-[12px]">
+              <MapPin className="w-4 h-4 text-slate-400" />
+              <span className="truncate">
+                {property.neighborhood && `${property.neighborhood}, `}
+                {property.city}/{property.state}
+              </span>
+            </div>
+            {property.contextLabel ? (
+              <div className="text-[11px] font-semibold text-teal-700">
+                {property.contextLabel}
+              </div>
+            ) : null}
           </div>
 
           {/* Footer area (reserved height to keep all cards equal) */}

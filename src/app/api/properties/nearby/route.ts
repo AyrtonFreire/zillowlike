@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolvePropertyLocation } from "@/lib/property-location";
 
 function jsonSafe<T>(data: T): any {
   return JSON.parse(
@@ -7,7 +8,18 @@ function jsonSafe<T>(data: T): any {
   );
 }
 
-// Função para calcular distância entre dois pontos (Haversine)
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  if (value === null || value === undefined) return 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeText(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
 function calculateDistance(
   lat1: number,
   lon1: number,
@@ -27,6 +39,52 @@ function calculateDistance(
   return R * c;
 }
 
+function computeRegionRelevance(current: any, candidate: any) {
+  let score = 0;
+
+  if (normalizeText(current.neighborhood) && normalizeText(current.neighborhood) === normalizeText(candidate.neighborhood)) {
+    score += 30;
+  }
+
+  if (normalizeText(current.type) && normalizeText(current.type) === normalizeText(candidate.type)) {
+    score += 20;
+  }
+
+  if (normalizeText(current.purpose) && normalizeText(current.purpose) === normalizeText(candidate.purpose)) {
+    score += 10;
+  }
+
+  const currentPrice = toNumber(current.price);
+  const candidatePrice = toNumber(candidate.price);
+  if (currentPrice > 0 && candidatePrice > 0) {
+    const diffRatio = Math.abs(candidatePrice - currentPrice) / currentPrice;
+    if (diffRatio <= 0.1) score += 20;
+    else if (diffRatio <= 0.2) score += 12;
+    else if (diffRatio <= 0.35) score += 6;
+  }
+
+  if (current.bedrooms != null && candidate.bedrooms != null) {
+    const diff = Math.abs(Number(current.bedrooms) - Number(candidate.bedrooms));
+    if (diff === 0) score += 10;
+    else if (diff === 1) score += 5;
+  }
+
+  if (current.bathrooms != null && candidate.bathrooms != null) {
+    const diff = Math.abs(Number(current.bathrooms) - Number(candidate.bathrooms));
+    if (diff === 0) score += 6;
+    else if (diff === 1) score += 3;
+  }
+
+  if (current.areaM2 != null && candidate.areaM2 != null) {
+    const base = Math.max(Number(current.areaM2), 1);
+    const diffRatio = Math.abs(Number(candidate.areaM2) - Number(current.areaM2)) / base;
+    if (diffRatio <= 0.15) score += 8;
+    else if (diffRatio <= 0.3) score += 4;
+  }
+
+  return score;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -41,30 +99,91 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar imóvel atual
     const currentProperty = await prisma.property.findUnique({
       where: { id: propertyId },
       select: {
+        id: true,
         latitude: true,
         longitude: true,
+        street: true,
+        streetNumber: true,
+        neighborhood: true,
+        city: true,
+        state: true,
+        postalCode: true,
+        hideExactAddress: true,
         type: true,
+        purpose: true,
+        price: true,
+        bedrooms: true,
+        bathrooms: true,
+        areaM2: true,
       },
     });
 
-    if (!currentProperty || !currentProperty.latitude || !currentProperty.longitude) {
+    if (!currentProperty) {
       return NextResponse.json(
-        { error: "Property not found or missing coordinates" },
+        { error: "Property not found" },
         { status: 404 }
       );
     }
 
-    // Buscar todos os imóveis próximos (exceto o atual)
+    const location = await resolvePropertyLocation({
+      id: currentProperty.id,
+      latitude: currentProperty.latitude,
+      longitude: currentProperty.longitude,
+      street: currentProperty.street,
+      streetNumber: currentProperty.streetNumber,
+      neighborhood: currentProperty.neighborhood,
+      city: currentProperty.city,
+      state: currentProperty.state,
+      postalCode: currentProperty.postalCode,
+      hideExactAddress: currentProperty.hideExactAddress,
+    });
+
+    const nearbyMode = location.canShowNearby && location.lat != null && location.lng != null
+      ? location.nearbyMode
+      : "disabled";
+
+    if (nearbyMode === "disabled") {
+      return NextResponse.json({
+        success: true,
+        properties: [],
+        total: 0,
+        meta: jsonSafe({
+          mode: nearbyMode,
+          title: location.nearbyTitle,
+          description: location.nearbyDescription,
+          emptyMessage: location.nearbyEmptyMessage,
+          distanceLabels: location.canShowDistanceLabels,
+          location,
+        }),
+      });
+    }
+
+    const baseWhere: any = {
+      id: { not: propertyId },
+      status: "ACTIVE",
+      city: currentProperty.city,
+      state: currentProperty.state,
+    };
+
+    if (currentProperty.type) {
+      baseWhere.type = currentProperty.type;
+    }
+    if (currentProperty.purpose) {
+      baseWhere.purpose = currentProperty.purpose;
+    }
+
+    if (nearbyMode === "distance") {
+      baseWhere.latitude = { not: null };
+      baseWhere.longitude = { not: null };
+    } else if (nearbyMode === "region" && currentProperty.neighborhood) {
+      baseWhere.neighborhood = currentProperty.neighborhood;
+    }
+
     const allProperties = await prisma.property.findMany({
-      where: {
-        id: { not: propertyId },
-        type: currentProperty.type,
-        status: "ACTIVE",
-      },
+      where: baseWhere,
       select: {
         id: true,
         title: true,
@@ -93,27 +212,51 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      take: nearbyMode === "distance" ? 150 : 60,
     });
 
-    // Calcular distância e filtrar por raio
-    const nearbyProperties = allProperties
-      .map((property) => ({
-        ...property,
-        distance: calculateDistance(
-          currentProperty.latitude!,
-          currentProperty.longitude!,
-          property.latitude!,
-          property.longitude!
-        ),
-      }))
-      .filter((property) => property.distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, limit);
+    const nearbyProperties = nearbyMode === "distance"
+      ? allProperties
+          .filter((property) => typeof property.latitude === "number" && typeof property.longitude === "number")
+          .map((property) => {
+            const distance = calculateDistance(
+              location.lat as number,
+              location.lng as number,
+              property.latitude as number,
+              property.longitude as number
+            );
+            return {
+              ...property,
+              distance,
+              contextLabel: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`,
+            };
+          })
+          .filter((property) => property.distance <= radiusKm)
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, limit)
+      : allProperties
+          .map((property) => ({
+            ...property,
+            regionScore: computeRegionRelevance(currentProperty, property),
+            contextLabel: normalizeText(property.neighborhood) === normalizeText(currentProperty.neighborhood)
+              ? "Mesmo bairro"
+              : "Na mesma região",
+          }))
+          .sort((a, b) => b.regionScore - a.regionScore || Number(new Date(b.updatedAt).getTime()) - Number(new Date(a.updatedAt).getTime()))
+          .slice(0, limit);
 
     return NextResponse.json({
       success: true,
       properties: jsonSafe(nearbyProperties),
       total: nearbyProperties.length,
+      meta: jsonSafe({
+        mode: nearbyMode,
+        title: location.nearbyTitle,
+        description: location.nearbyDescription,
+        emptyMessage: location.nearbyEmptyMessage,
+        distanceLabels: location.canShowDistanceLabels,
+        location,
+      }),
     });
   } catch (error) {
     console.error("Error fetching nearby properties:", error);

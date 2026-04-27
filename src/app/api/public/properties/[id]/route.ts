@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolvePropertyLocation } from "@/lib/property-location";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -121,6 +122,18 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const safeItem = jsonSafe(item);
     (safeItem as any).viewRiver = typeof (safeItem as any).viewRiver === "boolean" ? (safeItem as any).viewRiver : (safeItem as any).positionFront;
     (safeItem as any).viewLake = typeof (safeItem as any).viewLake === "boolean" ? (safeItem as any).viewLake : (safeItem as any).positionBack;
+    (safeItem as any).locationResolution = await resolvePropertyLocation({
+      id: String((safeItem as any).id || ""),
+      latitude: typeof (safeItem as any).latitude === "number" ? (safeItem as any).latitude : null,
+      longitude: typeof (safeItem as any).longitude === "number" ? (safeItem as any).longitude : null,
+      street: typeof (safeItem as any).street === "string" ? (safeItem as any).street : null,
+      streetNumber: typeof (safeItem as any).streetNumber === "string" ? (safeItem as any).streetNumber : null,
+      neighborhood: typeof (safeItem as any).neighborhood === "string" ? (safeItem as any).neighborhood : null,
+      city: typeof (safeItem as any).city === "string" ? (safeItem as any).city : null,
+      state: typeof (safeItem as any).state === "string" ? (safeItem as any).state : null,
+      postalCode: typeof (safeItem as any).postalCode === "string" ? (safeItem as any).postalCode : null,
+      hideExactAddress: !!(safeItem as any).hideExactAddress,
+    });
     if ((safeItem as any)?.hideExactAddress) {
       (safeItem as any).street = "";
       (safeItem as any).streetNumber = null;

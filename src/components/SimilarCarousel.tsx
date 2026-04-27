@@ -8,13 +8,14 @@ type Props = {
   properties: any[];
   onOpenOverlay?: (id: string) => void;
   title?: string;
+  subtitle?: string;
   showHeader?: boolean; // default: false
 };
 
-export default function SimilarCarousel({ properties, onOpenOverlay, title, showHeader = false }: Props) {
-  if (!properties || properties.length === 0) return null;
-
+export default function SimilarCarousel({ properties, onOpenOverlay, title, subtitle, showHeader = false }: Props) {
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+
+  if (!properties || properties.length === 0) return null;
 
   const scrollBy = (dir: number) => {
     const el = scrollerRef.current;
@@ -27,9 +28,16 @@ export default function SimilarCarousel({ properties, onOpenOverlay, title, show
     <div className="relative mx-auto max-w-7xl px-4 py-6">
       {showHeader && (
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl sm:text-2xl font-display font-semibold text-gray-900">
-            {title || "Imóveis"}
-          </h2>
+          <div className="min-w-0 pr-3">
+            <h2 className="text-xl sm:text-2xl font-display font-semibold text-gray-900">
+              {title || "Imóveis"}
+            </h2>
+            {subtitle ? (
+              <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
           <div className="hidden sm:flex items-center gap-2">
             <button aria-label="Anterior" onClick={() => scrollBy(-1)} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">‹</button>
             <button aria-label="Próximo" onClick={() => scrollBy(1)} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">›</button>

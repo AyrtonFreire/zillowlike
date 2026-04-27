@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Hospital, Building } from "lucide-react";
+import type { PropertyLocationResolution } from "@/lib/property-location";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ import { ptBR } from "@/lib/i18n/property";
 import { parseVideoUrl } from "@/lib/video";
 
 const Map = dynamic(() => import("@/components/GoogleMap"), { ssr: false });
-const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
+const SimilarCarousel = dynamic<any>(() => import("@/components/SimilarCarousel"), { ssr: false });
 const PropertyContactCard = dynamic(() => import("@/components/PropertyContactCard"), { ssr: false });
 
 function createEmptyNearbyPlaces() {
@@ -37,6 +38,15 @@ function createEmptyNearbyPlaces() {
 }
 
 type NearbyPlacesState = ReturnType<typeof createEmptyNearbyPlaces>;
+
+type RelatedSectionMeta = {
+  title?: string;
+  description?: string;
+  emptyMessage?: string;
+  distanceLabels?: boolean;
+  mode?: string;
+  location?: PropertyLocationResolution | null;
+} | null;
 
 type PropertyDetailsModalProps = {
   propertyId: string | null;
@@ -129,6 +139,7 @@ type PropertyDetails = {
   hideOwnerContact?: boolean | null;
   hideCondoFee?: boolean | null;
   hideIPTU?: boolean | null;
+  locationResolution?: PropertyLocationResolution | null;
   privateOwnerName?: string | null;
   privateOwnerPhone?: string | null;
   privateOwnerEmail?: string | null;
@@ -257,6 +268,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [similarPropertiesLoading, setSimilarPropertiesLoading] = useState(false);
   const [nearbyPropertiesError, setNearbyPropertiesError] = useState<string | null>(null);
   const [similarPropertiesError, setSimilarPropertiesError] = useState<string | null>(null);
+  const [nearbyMeta, setNearbyMeta] = useState<RelatedSectionMeta>(null);
+  const [similarMeta, setSimilarMeta] = useState<RelatedSectionMeta>(null);
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlacesState>(createEmptyNearbyPlaces);
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
@@ -328,6 +341,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     setSimilarPropertiesLoading(false);
     setNearbyPropertiesError(null);
     setSimilarPropertiesError(null);
+    setNearbyMeta(null);
+    setSimilarMeta(null);
     setNearbyPlaces(createEmptyNearbyPlaces());
     setPoiLoading(false);
     setPoiSource(null);
@@ -393,6 +408,36 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     push(nearbyPlaces.gyms, '💪');
     return list;
   }, [nearbyPlaces]);
+
+  const locationResolution = useMemo(() => {
+    return ((property as any)?.locationResolution || nearbyMeta?.location || similarMeta?.location || null) as PropertyLocationResolution | null;
+  }, [nearbyMeta, property, similarMeta]);
+
+  const locationLat = useMemo(() => {
+    if (typeof locationResolution?.lat === "number" && Number.isFinite(locationResolution.lat)) return locationResolution.lat;
+    const fallback = property?.latitude;
+    return typeof fallback === "number" && Number.isFinite(fallback) ? fallback : null;
+  }, [locationResolution, property?.latitude]);
+
+  const locationLng = useMemo(() => {
+    if (typeof locationResolution?.lng === "number" && Number.isFinite(locationResolution.lng)) return locationResolution.lng;
+    const fallback = property?.longitude;
+    return typeof fallback === "number" && Number.isFinite(fallback) ? fallback : null;
+  }, [locationResolution, property?.longitude]);
+
+  const hasResolvedCoords = locationLat != null && locationLng != null;
+
+  const nearbySectionTitle = nearbyMeta?.title || locationResolution?.nearbyTitle || "Imóveis próximos";
+  const nearbySectionDescription = nearbyMeta?.description || locationResolution?.nearbyDescription || "Selecionamos anúncios por localização e perfil semelhante.";
+  const nearbySectionEmpty = nearbyMeta?.emptyMessage || nearbyPropertiesError || locationResolution?.nearbyEmptyMessage || "Quando houver anúncios nesta região, eles aparecerão aqui.";
+  const similarSectionTitle = similarMeta?.title || locationResolution?.similarTitle || "Imóveis similares";
+  const similarSectionDescription = similarMeta?.description || "Selecionamos anúncios parecidos em tipologia, faixa de preço e contexto local.";
+  const similarSectionEmpty = similarMeta?.emptyMessage || similarPropertiesError || "Se não houver opções parecidas com este perfil, mostraremos novas oportunidades assim que estiverem disponíveis.";
+  const showNearbySection = (nearbyMeta?.mode || locationResolution?.nearbyMode || "distance") !== "disabled";
+  const showPoiDistances = !!locationResolution?.canShowDistanceLabels;
+  const locationDisplayLabel = locationResolution?.displayLabel && locationResolution.displayLabel !== "região informada"
+    ? locationResolution.displayLabel
+    : null;
 
   // Distância aproximada
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -655,6 +700,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     setSimilarPropertiesLoading(true);
     setNearbyPropertiesError(null);
     setSimilarPropertiesError(null);
+    setNearbyMeta(null);
+    setSimilarMeta(null);
 
     fetch(`/api/properties/nearby?id=${id}&radius=3&limit=8`, { signal: controller.signal, cache: "no-store" })
       .then(async (r) => {
@@ -667,10 +714,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       .then((d) => {
         if (ignore) return;
         const arr = d?.properties || d?.items || [];
+        setNearbyMeta((d?.meta || null) as RelatedSectionMeta);
         setNearbyProperties(Array.isArray(arr) ? arr : []);
       })
       .catch((err: any) => {
         if (ignore) return;
+        setNearbyMeta(null);
         setNearbyProperties([]);
         if (err?.name === "AbortError" && !timedOut) return;
         setNearbyPropertiesError(
@@ -695,10 +744,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       .then((d) => {
         if (ignore) return;
         const arr = d?.properties || d?.items || [];
+        setSimilarMeta((d?.meta || null) as RelatedSectionMeta);
         setSimilarProperties(Array.isArray(arr) ? arr : []);
       })
       .catch((err: any) => {
         if (ignore) return;
+        setSimilarMeta(null);
         setSimilarProperties([]);
         if (err?.name === "AbortError" && !timedOut) return;
         setSimilarPropertiesError(
@@ -719,10 +770,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     };
   }, [isOpen, shouldLoadRelated, property, relatedRequested, mode]);
 
-  useEffect(() => {
-    setActivePropertyId(propertyId);
-  }, [propertyId]);
-
   const handleOpenRelated = useCallback(
     (id: string) => {
       if (!id) return;
@@ -736,6 +783,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setProperty(null);
       setNearbyProperties([]);
       setSimilarProperties([]);
+      setNearbyMeta(null);
+      setSimilarMeta(null);
       setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
       setRelatedRequested(false);
@@ -755,18 +804,22 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         }
       });
     },
-    [scrollContainerRef, variant]
+    [variant]
   );
+
+  useEffect(() => {
+    setActivePropertyId(propertyId);
+  }, [propertyId]);
 
   // Load nearby places (Overpass API) com mirrors/retries/cache
   useEffect(() => {
-    const lat = (property as any)?.latitude;
-    const lng = (property as any)?.longitude;
     if (mode !== "public") return;
-    if (!isOpen || !shouldLoadArea || !lat || !lng) return;
+    if (!isOpen || !shouldLoadArea) return;
+    if (!locationResolution?.canShowPois) return;
+    if (locationLat == null || locationLng == null) return;
 
     const id = (property as any)?.id;
-    const key = `${id ?? ""}:${String(lat)}:${String(lng)}`;
+    const key = `${id ?? ""}:${String(locationLat)}:${String(locationLng)}:${locationResolution.accuracy}`;
     if (poiFetchedKeyRef.current === key) return;
     poiFetchedKeyRef.current = key;
 
@@ -789,7 +842,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         });
 
         try {
-          const placesRes = await fetch(`/api/places-nearby?lat=${lat}&lng=${lng}&radius=2000&perCat=10`, { method: 'GET' });
+          const radius = locationResolution.accuracy === "neighborhood" ? 2500 : 2000;
+          const placesRes = await fetch(`/api/places-nearby?lat=${locationLat}&lng=${locationLng}&radius=${radius}&perCat=10`, { method: 'GET' });
           const placesJson = await placesRes.json().catch(() => null);
           if (placesRes.ok && placesJson?.ok) {
             if (!ignore) {
@@ -800,7 +854,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           }
           throw new Error(String(placesJson?.error || `places proxy ${placesRes.status}`));
         } catch {
-          const res = await fetch(`/api/overpass?lat=${lat}&lng=${lng}&radius=2000`, { method: 'GET' });
+          const res = await fetch(`/api/overpass?lat=${locationLat}&lng=${locationLng}&radius=2000`, { method: 'GET' });
           if (!res.ok) throw new Error(`overpass proxy ${res.status}`);
           const { elements } = await res.json();
           const data = normalizePOIs(elements || []);
@@ -820,7 +874,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       }
     })();
     return () => { ignore = true; };
-  }, [isOpen, property, shouldLoadArea, mode]);
+  }, [isOpen, property, shouldLoadArea, mode, locationLat, locationLng, locationResolution]);
 
   // Reset on close
   useEffect(() => {
@@ -839,6 +893,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setSimilarPropertiesLoading(false);
       setNearbyPropertiesError(null);
       setSimilarPropertiesError(null);
+      setNearbyMeta(null);
+      setSimilarMeta(null);
       setNearbyPlaces(createEmptyNearbyPlaces());
       setPoiLoading(false);
       setRelatedRequested(false);
@@ -1715,18 +1771,18 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               {mode === "public" && (
                 <div ref={areaSectionRef} className="pt-8 pb-4">
                   {(() => {
-                    const lat = (property as any).latitude;
-                    const lng = (property as any).longitude;
-                    const hasCoords = typeof lat === 'number' && typeof lng === 'number';
+                    const hasCoords = hasResolvedCoords;
+                    const canShowMap = !!locationResolution?.canShowMap && hasCoords;
+                    const canShowPois = !!locationResolution?.canShowPois && hasCoords;
 
-                    const available = poiCategories
+                    const available = (canShowPois ? poiCategories : [])
                       .filter((c) => Array.isArray(c.items) && (c.items as any[]).length > 0)
                       .map((c) => {
                         const base = ((c.items as any[]) || []).slice();
                         base.sort((a: any, b: any) => {
                           if (hasCoords) {
-                            const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
-                            const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
+                            const d1 = (a.lat - (locationLat as number)) * (a.lat - (locationLat as number)) + (a.lng - (locationLng as number)) * (a.lng - (locationLng as number));
+                            const d2 = (b.lat - (locationLat as number)) * (b.lat - (locationLat as number)) + (b.lng - (locationLng as number)) * (b.lng - (locationLng as number));
                             return d1 - d2;
                           }
                           return String(a.name).localeCompare(String(b.name));
@@ -1741,38 +1797,51 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
 
                     return (
                       <>
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
+                            {locationDisplayLabel ? (
+                              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+                                {locationDisplayLabel}
+                              </div>
+                            ) : null}
                             <div className="text-sm font-semibold text-gray-900">Explore a Região</div>
-                            <div className="text-xs text-gray-500 mt-0.5">Mapa e estabelecimentos próximos</div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {locationResolution?.precisionNote || "Mapa e estabelecimentos próximos"}
+                            </div>
                           </div>
+                          {locationResolution?.badgeLabel ? (
+                            <span className="shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700">
+                              {locationResolution.badgeLabel}
+                            </span>
+                          ) : null}
                         </div>
 
-                        {shouldLoadArea && hasCoords ? (
+                        {shouldLoadArea && canShowMap ? (
                           <div className="mt-4 relative h-64 md:h-72 rounded-2xl border border-teal/10 overflow-hidden bg-white shadow-sm">
                             <Map
                               items={[{
                                 id: property.id,
                                 price: property.price,
-                                latitude: (property as any).latitude,
-                                longitude: (property as any).longitude,
+                                latitude: locationLat as number,
+                                longitude: locationLng as number,
                                 title: property.title,
                               }]}
+                              centerZoom={{ center: [locationLat as number, locationLng as number], zoom: locationResolution?.zoom || 14 }}
                               pois={{ mode: 'list' as const, items: mapPoiList as any }}
                               hideRefitButton
                               centeredPriceMarkers
                               simplePin
-                              limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
+                              limitInteraction={{ minZoom: locationResolution?.accuracy === "neighborhood" ? 12 : 13, maxZoom: 16, radiusMeters: locationResolution?.accuracy === "neighborhood" ? 3000 : 2000 }}
                             />
                           </div>
                         ) : (
                           <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-center">
                             <p className="text-sm font-semibold text-gray-900">Mapa indisponível neste anúncio</p>
-                            <p className="mt-1 text-xs text-gray-500">Este imóvel ainda não possui coordenadas para mostrar a região no mapa.</p>
+                            <p className="mt-1 text-xs text-gray-500">{locationResolution?.mapEmptyMessage || "Este imóvel ainda não possui coordenadas para mostrar a região no mapa."}</p>
                           </div>
                         )}
 
-                        {poiLoading && (
+                        {canShowPois && poiLoading && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 mb-6">
                             {Array.from({ length: 6 }).map((_v: unknown, i: number) => (
                               <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
@@ -1787,10 +1856,10 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                           </div>
                         )}
 
-                        {!poiLoading && available.length > 0 ? (
+                        {canShowPois && !poiLoading && available.length > 0 ? (
                           <div className="mt-4 mb-6">
                             <div className="flex items-center justify-between gap-3 mb-3">
-                              <p className="text-xs font-semibold text-gray-700">Estabelecimentos próximos</p>
+                              <p className="text-xs font-semibold text-gray-700">{locationResolution?.poiTitle || "Estabelecimentos próximos"}</p>
                               {totalPois > 0 ? (
                                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
                                   {totalPois}
@@ -1820,7 +1889,9 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                             </div>
                             <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
                               {selectedList.slice(0, 8).map((p: any, idx: number) => {
-                                const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                const dist = showPoiDistances && hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number'
+                                  ? formatDistance(haversine(locationLat as number, locationLng as number, p.lat, p.lng))
+                                  : null;
                                 const rating = typeof p?.rating === 'number' && Number.isFinite(p.rating) ? p.rating : null;
                                 const userRatingCount = typeof p?.userRatingCount === 'number' && Number.isFinite(p.userRatingCount) ? p.userRatingCount : null;
                                 const openNow = typeof p?.openNow === 'boolean' ? p.openNow : null;
@@ -1858,9 +1929,9 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                               })}
                             </div>
                           </div>
-                        ) : !poiLoading ? (
+                        ) : canShowPois && !poiLoading ? (
                           <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mt-4 mb-6 text-center">
-                            <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
+                            <p className="text-sm text-gray-600">{locationResolution?.poiEmptyMessage || "Nenhum estabelecimento encontrado nos arredores."}</p>
                             <p className="text-xs text-gray-500 mt-1">
                               {poiSource === 'google'
                                 ? 'Os dados são carregados do Google e podem variar.'
@@ -1868,6 +1939,10 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                 ? 'Os dados são carregados do OpenStreetMap e podem variar.'
                                 : 'Não foi possível carregar os estabelecimentos agora. Tente novamente em instantes.'}
                             </p>
+                          </div>
+                        ) : !canShowPois && locationResolution ? (
+                          <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mt-4 mb-6 text-center">
+                            <p className="text-sm text-gray-600">{locationResolution.poiEmptyMessage}</p>
                           </div>
                         ) : null}
                       </>
@@ -1877,8 +1952,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               )}
               {mode === "public" && (
                 <div ref={relatedSectionRef}>
-                  {/* Imóveis Próximos */}
-                  {shouldLoadRelated ? (
+                  {showNearbySection && (shouldLoadRelated ? (
                     nearbyPropertiesLoading ? (
                       <div className="border-t border-teal/10 pt-4 mt-4">
                         <div className="rounded-2xl border border-gray-100 bg-white px-4 py-5">
@@ -1896,14 +1970,14 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                       </div>
                     ) : nearbyProperties.length > 0 ? (
                       <div className="border-t border-teal/10 pt-4 mt-4">
-                        <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
+                        <SimilarCarousel properties={nearbyProperties} showHeader title={nearbySectionTitle} subtitle={nearbySectionDescription} onOpenOverlay={handleOpenRelated} />
                       </div>
                     ) : (
                       <div className="border-t border-teal/10 pt-4 mt-4">
                         <div className="rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-50 to-white px-5 py-6 text-center shadow-sm">
-                          <p className="text-sm font-semibold text-gray-900">Nenhum imóvel próximo disponível agora</p>
+                          <p className="text-sm font-semibold text-gray-900">{nearbySectionTitle}</p>
                           <p className="mt-1 text-xs text-gray-500">
-                            {nearbyPropertiesError || "Quando houver anúncios na mesma região, eles aparecem aqui para facilitar a comparação."}
+                            {nearbySectionEmpty}
                           </p>
                         </div>
                       </div>
@@ -1914,9 +1988,8 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                         <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
                       </div>
                     </div>
-                  )}
+                  ))}
 
-                  {/* Imóveis similares */}
                   {shouldLoadRelated ? (
                     similarPropertiesLoading ? (
                       <div className="border-t border-teal/10 pt-4 mt-4">
@@ -1935,14 +2008,14 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                       </div>
                     ) : similarProperties.length > 0 ? (
                       <div className="border-t border-teal/10 pt-4 mt-4">
-                        <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
+                        <SimilarCarousel properties={similarProperties} showHeader title={similarSectionTitle} subtitle={similarSectionDescription} onOpenOverlay={handleOpenRelated} />
                       </div>
                     ) : (
                       <div className="border-t border-teal/10 pt-4 mt-4">
                         <div className="rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-50 to-white px-5 py-6 text-center shadow-sm">
-                          <p className="text-sm font-semibold text-gray-900">Nenhum imóvel similar encontrado</p>
+                          <p className="text-sm font-semibold text-gray-900">{similarSectionTitle}</p>
                           <p className="mt-1 text-xs text-gray-500">
-                            {similarPropertiesError || "Se não houver opções parecidas com este perfil, vamos mostrar novas oportunidades assim que estiverem disponíveis."}
+                            {similarSectionEmpty}
                           </p>
                         </div>
                       </div>
