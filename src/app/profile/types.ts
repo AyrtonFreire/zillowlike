@@ -12,6 +12,17 @@ export type BackupCodesSummary = {
   unused: number;
 };
 
+export type ProfileTrustSummary = {
+  avgRating: number;
+  reviewsCount: number;
+  memberSince: string | null;
+  hasVerifiedEmail: boolean;
+  hasVerifiedPhone: boolean;
+  hasVerifiedRecoveryEmail: boolean;
+  hasCreci: boolean;
+  publicServiceAreasCount: number;
+};
+
 export type UserProfile = {
   id: string;
   name: string | null;
@@ -26,6 +37,7 @@ export type UserProfile = {
   backupCodes?: BackupCodesSummary;
   hasPassword?: boolean;
   stats: ProfileStats;
+  trust?: ProfileTrustSummary;
   publicSlug?: string | null;
   publicProfileEnabled?: boolean;
   publicHeadline?: string | null;

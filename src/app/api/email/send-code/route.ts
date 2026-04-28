@@ -6,6 +6,7 @@ import { sendEmail, getEmailChangeCodeEmail } from "@/lib/email";
 import { withRateLimit } from "@/lib/rate-limiter";
 import { hashToken } from "@/lib/token-hash";
 import { createAuditLog } from "@/lib/audit-log";
+import { requireRecentReauth } from "@/lib/account-security";
 
 function generateCode(): string {
   const n = Math.floor(100000 + Math.random() * 900000);
@@ -48,6 +49,11 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     const userId = (session as any)?.userId || (session as any)?.user?.id || (session as any)?.user?.sub;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const reauthError = requireRecentReauth(req, session, "Confirme sua identidade antes de alterar o e-mail principal.");
+    if (reauthError) {
+      return reauthError;
     }
 
     const body = await req.json().catch(() => ({}));

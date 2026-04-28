@@ -66,6 +66,13 @@ export function ProfilePublicProfileSection({
   const canOpenPublicProfile = Boolean(publicUrl);
   const publicWhatsApp = form.publicWhatsApp.trim();
   const socialChannels = [form.publicInstagram, form.publicLinkedIn, form.publicFacebook].filter((value) => value.trim().length > 0).length;
+  const trust = profile.trust;
+  const trustSignals = [
+    trust?.reviewsCount ? `${Number(trust.avgRating || 0).toFixed(1)}★ em ${trust.reviewsCount} avaliação${trust.reviewsCount === 1 ? "" : "ões"}` : null,
+    trust?.hasCreci && profile.realtorCreci ? `CRECI ${profile.realtorCreci}${profile.realtorCreciState ? `/${profile.realtorCreciState}` : ""}` : null,
+    trust?.hasVerifiedPhone ? "Telefone verificado" : null,
+    (trust?.publicServiceAreasCount || 0) > 0 ? `${trust?.publicServiceAreasCount} área${trust?.publicServiceAreasCount === 1 ? "" : "s"} de atuação` : null,
+  ].filter(Boolean) as string[];
   const phoneCheckboxDescription = hasVerifiedPhone
     ? "Quando ativo, o telefone só aparece no perfil público porque já está verificado."
     : "Verifique seu telefone primeiro para poder exibi-lo no perfil público e nas ações de contato.";
@@ -287,6 +294,15 @@ export function ProfilePublicProfileSection({
                 <MapPin className="h-4 w-4 text-neutral-400" />
                 <span>{publicLocation || "Adicione cidade e UF para contextualizar o perfil"}</span>
               </div>
+              {trustSignals.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {trustSignals.map((signal) => (
+                    <span key={signal} className="inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">
+                      {signal}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               {isBrokerProfile ? (
                 <>
                   <div className="flex items-center gap-2">

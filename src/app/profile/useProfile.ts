@@ -23,6 +23,16 @@ type ModalState = {
   backupCodes: boolean;
 };
 
+type SensitiveActionKey = keyof ModalState;
+
+type ReauthState = {
+  open: boolean;
+  actionLabel: string;
+  pendingAction: SensitiveActionKey | "phone" | null;
+  hasPassword: boolean;
+  email: string | null;
+};
+
 const AVATAR_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const AVATAR_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const AVATAR_MAX_SIDE = 2560;
@@ -37,6 +47,23 @@ function sanitizeEditableForm(profile?: UserProfile | null): ProfileFormState {
 
 async function readJson(response: Response) {
   return response.json().catch(() => null);
+}
+
+function getSensitiveActionLabel(action: SensitiveActionKey | "phone") {
+  switch (action) {
+    case "email":
+      return "alterar o e-mail principal";
+    case "recoveryEmail":
+      return "atualizar o e-mail de recuperação";
+    case "setPassword":
+      return "definir uma senha local";
+    case "backupCodes":
+      return "gerar novos códigos de backup";
+    case "phone":
+      return "alterar ou verificar o telefone";
+    default:
+      return "continuar com esta ação sensível";
+  }
 }
 
 async function processAvatarFile(file: File) {
@@ -148,6 +175,13 @@ export function useProfile() {
     backupCodes: false,
   });
   const [phoneModalStartInEdit, setPhoneModalStartInEdit] = useState(false);
+  const [reauth, setReauth] = useState<ReauthState>({
+    open: false,
+    actionLabel: "continuar com esta ação sensível",
+    pendingAction: null,
+    hasPassword: false,
+    email: null,
+  });
 
   const applyProfile = useCallback((nextProfile: UserProfile) => {
     setProfile(nextProfile);
@@ -250,7 +284,7 @@ export function useProfile() {
     []
   );
 
-  const openModal = useCallback((key: keyof ModalState) => {
+  const openModalNow = useCallback((key: keyof ModalState) => {
     setModals((current) => ({ ...current, [key]: true }));
   }, []);
 
@@ -258,12 +292,76 @@ export function useProfile() {
     setModals((current) => ({ ...current, [key]: false }));
   }, []);
 
-  const openPhoneModal = useCallback(() => {
+  const openPhoneModalNow = useCallback(() => {
     const hasPhone = Boolean((profile?.phone || "").trim());
     const isVerified = Boolean(profile?.phoneVerifiedAt);
     setPhoneModalStartInEdit(!hasPhone || isVerified);
     setModals((current) => ({ ...current, phone: true }));
   }, [profile?.phone, profile?.phoneVerifiedAt]);
+
+  const requestSensitiveAction = useCallback(
+    async (action: SensitiveActionKey | "phone") => {
+      try {
+        const response = await fetch("/api/auth/reauth/status", { cache: "no-store" });
+        const payload = await readJson(response);
+        const nextHasPassword = Boolean(payload?.hasPassword ?? profile?.hasPassword);
+        const nextEmail = String(payload?.email || profile?.email || "").trim() || null;
+
+        if (response.ok && payload?.verified) {
+          if (action === "phone") {
+            openPhoneModalNow();
+          } else {
+            openModalNow(action);
+          }
+          return;
+        }
+
+        setReauth({
+          open: true,
+          actionLabel: getSensitiveActionLabel(action),
+          pendingAction: action,
+          hasPassword: nextHasPassword,
+          email: nextEmail,
+        });
+      } catch (error: any) {
+        const message = error?.message || "Não foi possível confirmar o estado de segurança da sua conta.";
+        toast.error("Falha ao iniciar confirmação", message);
+      }
+    },
+    [openModalNow, openPhoneModalNow, profile?.email, profile?.hasPassword, toast]
+  );
+
+  const openModal = useCallback(
+    (key: keyof ModalState) => {
+      void requestSensitiveAction(key);
+    },
+    [requestSensitiveAction]
+  );
+
+  const openPhoneModal = useCallback(() => {
+    void requestSensitiveAction("phone");
+  }, [requestSensitiveAction]);
+
+  const closeReauthModal = useCallback(() => {
+    setReauth((current) => ({ ...current, open: false, pendingAction: null }));
+  }, []);
+
+  const handleReauthSuccess = useCallback(async () => {
+    const pendingAction = reauth.pendingAction;
+    setReauth((current) => ({ ...current, open: false, pendingAction: null }));
+    setInlineFeedback({
+      kind: "success",
+      title: "Identidade confirmada",
+      message: "Agora você pode continuar com a alteração sensível da conta.",
+    });
+
+    if (!pendingAction) return;
+    if (pendingAction === "phone") {
+      openPhoneModalNow();
+      return;
+    }
+    openModalNow(pendingAction);
+  }, [openModalNow, openPhoneModalNow, reauth.pendingAction]);
 
   const saveProfile = useCallback(async () => {
     if (!profile || saving) return false;
@@ -443,6 +541,7 @@ export function useProfile() {
     inlineFeedback,
     uploadingAvatar,
     modals,
+    reauth,
     phoneModalStartInEdit,
     isRealtorOrAgency,
     hasVerifiedPhone,
@@ -457,6 +556,8 @@ export function useProfile() {
     openModal,
     closeModal,
     openPhoneModal,
+    closeReauthModal,
+    handleReauthSuccess,
     refreshAfterModal,
     handlePhoneLocalChange,
     dismissInlineFeedback,

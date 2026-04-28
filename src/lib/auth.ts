@@ -4,6 +4,14 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit-log";
+import {
+  AUTH_SESSION_MAX_AGE_SECONDS,
+  createOrRefreshSessionRecord,
+  generateSessionKey,
+  hashSessionKey,
+  hasActiveSessionRecord,
+} from "@/lib/account-security";
 
 const providers = [] as any[];
 
@@ -98,7 +106,7 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/signin',
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (account?.provider === "credentials") {
         // Login por email/senha já foi validado no authorize
         return true;
@@ -121,7 +129,7 @@ export const authOptions: NextAuthOptions = {
 
       try {
         // Check if user exists
-        let dbUser = await prisma.user.findUnique({
+        const dbUser = await prisma.user.findUnique({
           where: { email: user.email },
           include: { accounts: true },
         });
@@ -234,12 +242,15 @@ export const authOptions: NextAuthOptions = {
         throw error;
       }
     },
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user, account, trigger }) {
       const nowMs = Date.now();
       const ROLE_REFRESH_MS = 10 * 60 * 1000;
 
       if (user) {
         // First sign in: role comes from user object
+        if ((user as any)?.id && !token.sub) {
+          token.sub = String((user as any).id);
+        }
         token.role = (user as any).role ?? token.role ?? "USER";
         token.email = (user as any).email ?? token.email;
         token.name = (user as any).name ?? token.name;
@@ -247,7 +258,38 @@ export const authOptions: NextAuthOptions = {
         (token as any).authVersion = (user as any).authVersion ?? (token as any).authVersion ?? 0;
         (token as any).mustChangePassword =
           (user as any).mustChangePassword ?? (token as any).mustChangePassword ?? false;
+        (token as any).sessionKey = (token as any).sessionKey ?? generateSessionKey();
+        (token as any).sessionCreatedAt = Number((token as any).sessionCreatedAt || nowMs);
+        (token as any).sessionProvider = account?.provider ?? (token as any).sessionProvider ?? "credentials";
         (token as any).roleCheckedAt = nowMs;
+
+        if (token.sub && (token as any).sessionKey) {
+          try {
+            await createOrRefreshSessionRecord({
+              userId: String(token.sub),
+              sessionKey: String((token as any).sessionKey),
+              provider: String((token as any).sessionProvider || "credentials"),
+              createdAtMs: Number((token as any).sessionCreatedAt || nowMs),
+              expiresAt: new Date(nowMs + AUTH_SESSION_MAX_AGE_SECONDS * 1000),
+            });
+
+            await createAuditLog({
+              level: "SUCCESS",
+              action: "AUTH_SESSION_CREATED",
+              actorId: String(token.sub),
+              actorEmail: (token.email as string) ?? null,
+              targetType: "User",
+              targetId: String(token.sub),
+              metadata: {
+                provider: String((token as any).sessionProvider || "credentials"),
+                sessionKeyHash: hashSessionKey(String((token as any).sessionKey || "")),
+              },
+            });
+          } catch (error) {
+            console.error("❌ JWT Callback - Error creating session record:", error);
+          }
+        }
+
         dbg("🔑 JWT Callback - Initial sign in, role:", token.role);
         return token;
       }
@@ -255,6 +297,30 @@ export const authOptions: NextAuthOptions = {
       if (token.sub) {
         const lastCheckedAt = Number((token as any).roleCheckedAt || 0);
         const shouldRefresh = !lastCheckedAt || nowMs - lastCheckedAt > ROLE_REFRESH_MS || trigger === "update";
+
+        if ((token as any).sessionKey) {
+          try {
+            const activeSession = await hasActiveSessionRecord(String(token.sub), String((token as any).sessionKey));
+            if (!activeSession) {
+              (token as any).error = "SESSION_REVOKED";
+              (token as any).roleCheckedAt = nowMs;
+              return token;
+            }
+
+            if (shouldRefresh) {
+              await createOrRefreshSessionRecord({
+                userId: String(token.sub),
+                sessionKey: String((token as any).sessionKey),
+                provider: String((token as any).sessionProvider || "unknown"),
+                createdAtMs: Number((token as any).sessionCreatedAt || nowMs),
+                expiresAt: new Date(nowMs + AUTH_SESSION_MAX_AGE_SECONDS * 1000),
+              });
+            }
+          } catch (error) {
+            console.error("❌ JWT Callback - Error validating session record:", error);
+          }
+        }
+
         if (shouldRefresh) {
           try {
             const dbUser = await (prisma as any).user.findUnique({
@@ -342,7 +408,9 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).mustChangePassword = (token as any)?.mustChangePassword ?? false;
         (session.user as any).recoveryEmail = (token as any)?.recoveryEmail ?? null;
         (session.user as any).recoveryEmailVerifiedAt = (token as any)?.recoveryEmailVerifiedAt ?? null;
+        (session.user as any).sessionKey = (token as any)?.sessionKey ?? null;
       }
+      (session as any).sessionKey = (token as any)?.sessionKey ?? null;
       return session;
     },
   },

@@ -3,6 +3,7 @@
 import { Loader2, RefreshCw, Save } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
+import AccountReauthModal from "@/components/AccountReauthModal";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 import EmailChangeModal from "@/components/EmailChangeModal";
 import RecoveryEmailModal from "@/components/RecoveryEmailModal";
@@ -28,6 +29,7 @@ export default function ProfilePageClient() {
     inlineFeedback,
     uploadingAvatar,
     modals,
+    reauth,
     phoneModalStartInEdit,
     hasVerifiedPhone,
     hasChanges,
@@ -40,6 +42,8 @@ export default function ProfilePageClient() {
     openModal,
     closeModal,
     openPhoneModal,
+    closeReauthModal,
+    handleReauthSuccess,
     refreshAfterModal,
     handlePhoneLocalChange,
     dismissInlineFeedback,
@@ -250,6 +254,15 @@ export default function ProfilePageClient() {
         onGenerated={async () => {
           await refreshAfterModal({ title: "Códigos gerados", message: "Guarde os códigos em um local seguro para usar quando necessário." });
         }}
+      />
+
+      <AccountReauthModal
+        isOpen={reauth.open}
+        onClose={closeReauthModal}
+        onSuccess={handleReauthSuccess}
+        actionLabel={reauth.actionLabel}
+        email={reauth.email}
+        hasPassword={reauth.hasPassword}
       />
     </DashboardLayout>
   );

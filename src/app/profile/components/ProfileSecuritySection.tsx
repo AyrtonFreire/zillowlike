@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, KeyRound, Mail, MessageSquareMore, ShieldCheck, Smartphone } from "lucide-react";
 import type { UserProfile } from "../types";
@@ -58,6 +59,16 @@ export function ProfileSecuritySection({
       title="Segurança e recuperação"
       description="Centralize verificação, recuperação e proteção da conta sem depender de alertas soltos ou etapas escondidas."
     >
+      <div className="mb-4 flex justify-end">
+        <Link
+          href="/account/security"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-800 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-800"
+        >
+          Abrir central de segurança
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+
       <div className="grid gap-4">
         <SettingRow
           title="E-mail principal"

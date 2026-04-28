@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { withRateLimit } from "@/lib/rate-limiter";
 import { hashToken } from "@/lib/token-hash";
 import { createAuditLog } from "@/lib/audit-log";
+import { requireRecentReauth } from "@/lib/account-security";
 
 const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const nano = customAlphabet(alphabet, 10);
@@ -27,6 +28,11 @@ export const POST = withRateLimit(async (req: NextRequest) => {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const reauthError = requireRecentReauth(req, session, "Confirme sua identidade antes de gerar novos códigos de backup.");
+    if (reauthError) {
+      return reauthError;
     }
 
     const user = await (prisma as any).user.findUnique({

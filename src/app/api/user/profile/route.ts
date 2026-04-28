@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
 import { normalizePhoneE164 } from "@/lib/sms";
 import { z } from "zod";
+import { requireRecentReauth } from "@/lib/account-security";
 
 const normalizeOptionalText = (value: unknown) => {
   if (value === undefined) return undefined;
@@ -172,6 +173,7 @@ async function buildProfileUserPayload(userId: string) {
       email: true,
       image: true,
       role: true,
+      createdAt: true,
       emailVerified: true,
       passwordHash: true,
       phone: true,
@@ -224,6 +226,33 @@ async function buildProfileUserPayload(userId: string) {
     where: { userId, usedAt: null },
   });
 
+  let avgRating = 0;
+  let reviewsCount = 0;
+
+  if (user.role === "REALTOR" || user.role === "AGENCY") {
+    const ratingAgg = await (prisma as any).realtorRating.aggregate({
+      where: {
+        realtorId: userId,
+        status: "PUBLISHED",
+      },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+    avgRating = Number(ratingAgg?._avg?.rating || 0);
+    reviewsCount = Number(ratingAgg?._count?._all || 0);
+  } else if (user.role === "OWNER") {
+    const ratingAgg = await (prisma as any).ownerRating.aggregate({
+      where: {
+        ownerId: userId,
+        status: "PUBLISHED",
+      },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+    avgRating = Number(ratingAgg?._avg?.rating || 0);
+    reviewsCount = Number(ratingAgg?._count?._all || 0);
+  }
+
   return {
     ...user,
     hasPassword: Boolean((user as any).passwordHash),
@@ -237,6 +266,16 @@ async function buildProfileUserPayload(userId: string) {
       favorites: favoritesCount,
       leadsReceived: user._count.leads,
       leadsSent: user._count.realtorLeads,
+    },
+    trust: {
+      avgRating,
+      reviewsCount,
+      memberSince: user.createdAt?.toISOString?.() || null,
+      hasVerifiedEmail: Boolean(user.emailVerified),
+      hasVerifiedPhone: Boolean(user.phone && user.phoneVerifiedAt),
+      hasVerifiedRecoveryEmail: Boolean(user.recoveryEmail && user.recoveryEmailVerifiedAt),
+      hasCreci: Boolean(user.realtorCreci && user.realtorCreciState),
+      publicServiceAreasCount: Array.isArray(user.publicServiceAreas) ? user.publicServiceAreas.filter(Boolean).length : 0,
     },
   };
 }
@@ -330,6 +369,23 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const incomingPhoneNormalized =
+      payload.phone !== undefined && String(payload.phone || "").trim()
+        ? normalizePhoneE164(String(payload.phone))
+        : payload.phone !== undefined
+          ? ""
+          : undefined;
+    const phoneWillChange =
+      payload.phone !== undefined &&
+      (existing.phone !== payload.phone || String((existing as any).phoneNormalized || "") !== String(incomingPhoneNormalized || ""));
+
+    if (phoneWillChange) {
+      const reauthError = requireRecentReauth(req, session, "Confirme sua identidade antes de alterar o telefone da conta.");
+      if (reauthError) {
+        return reauthError;
+      }
+    }
+
     // Only allow updating certain fields
     const updateData: any = {};
     if (payload.name !== undefined) updateData.name = payload.name;
@@ -338,7 +394,7 @@ export async function PATCH(req: NextRequest) {
     if (payload.phone !== undefined) {
       updateData.phone = payload.phone;
 
-      const normalized = String(payload.phone || "").trim() ? normalizePhoneE164(String(payload.phone)) : "";
+      const normalized = String(incomingPhoneNormalized || "");
       updateData.phoneNormalized = normalized ? normalized : null;
 
       if (normalized) {

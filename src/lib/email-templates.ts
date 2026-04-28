@@ -947,6 +947,36 @@ export function getEmailChangeCodeEmail(data: {
   };
 }
 
+export function getAccountReauthCodeEmail(data: {
+  name?: string | null;
+  code: string;
+  actionLabel?: string | null;
+}): EmailTemplateResult {
+  const actionLabel = String(data.actionLabel || "continuar uma ação sensível na sua conta").trim();
+  return {
+    subject: "Confirme sua identidade no OggaHub",
+    html: renderEmailFrame({
+      preheader: "Use este código para confirmar sua identidade antes de continuar.",
+      eyebrow: "Segurança",
+      heroIcon: "🔐",
+      title: "Confirme sua identidade",
+      subtitle: "Use o código abaixo para seguir com segurança.",
+      intro: [
+        greetingLine(data.name),
+        `Recebemos uma solicitação para ${actionLabel}.`,
+        "Esse código expira em 10 minutos.",
+      ],
+      cards: [
+        {
+          title: "Código de confirmação",
+          contentHtml: `<div style="font-family:Consolas, 'SFMono-Regular', Menlo, monospace; font-size:30px; line-height:34px; letter-spacing:0.22em; color:${COLORS.text}; text-align:center; font-weight:800; padding:8px 0;">${escapeHtml(data.code)}</div>`,
+        },
+      ],
+      footerNote: "Se você não iniciou essa ação, ignore este e-mail e revise a segurança da sua conta.",
+    }),
+  };
+}
+
 export function getRealtorRatingRequestEmail(data: {
   userName?: string | null;
   realtorName: string;

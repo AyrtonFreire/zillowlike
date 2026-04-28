@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withRateLimit } from "@/lib/rate-limiter";
 import { createAuditLog } from "@/lib/audit-log";
+import { requireRecentReauth } from "@/lib/account-security";
 
 export const POST = withRateLimit(async (req: NextRequest) => {
   try {
@@ -16,6 +17,11 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     const userId = (session as any)?.userId || (session as any)?.user?.id || (session as any)?.user?.sub;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const reauthError = requireRecentReauth(req, session, "Confirme sua identidade antes de definir uma senha.");
+    if (reauthError) {
+      return reauthError;
     }
 
     const body = await req.json().catch(() => ({}));

@@ -3,7 +3,7 @@
 import type { ReactElement } from "react";
 import { useRef } from "react";
 import Image from "next/image";
-import { Camera, CheckCircle2, ShieldCheck, Phone, Mail, UserRound } from "lucide-react";
+import { Camera, CheckCircle2, ShieldCheck, Phone, Mail, Star, MapPin, CalendarDays, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { formatRealtorTypeLabel, formatRoleLabel, type UserProfile } from "../types";
 import { SectionCard, StatTile, StatusBadge } from "./ProfilePrimitives";
@@ -24,6 +24,7 @@ export function ProfileSummaryCard({
   onUploadAvatar: (file: File) => Promise<boolean> | boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const trust = profile.trust;
   const verificationBadges = [
     profile.emailVerified ? { label: "E-mail verificado", tone: "success" as const, icon: <Mail className="h-3.5 w-3.5" /> } : null,
     profile.phoneVerifiedAt ? { label: "Telefone verificado", tone: "success" as const, icon: <Phone className="h-3.5 w-3.5" /> } : null,
@@ -31,6 +32,35 @@ export function ProfileSummaryCard({
   ].filter(Boolean) as Array<{ label: string; tone: "success" | "info"; icon: ReactElement }>;
 
   const subtitleParts = [formatRoleLabel(profile.role), formatRealtorTypeLabel(profile.realtorType), profile.realtorCreci ? `${profile.realtorCreci}${profile.realtorCreciState ? `/${profile.realtorCreciState}` : ""}` : null].filter(Boolean);
+  const memberSinceLabel = trust?.memberSince
+    ? new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric" }).format(new Date(trust.memberSince))
+    : null;
+  const trustTiles = [
+    {
+      label: "Avaliação pública",
+      value: trust?.reviewsCount ? `${Number(trust.avgRating || 0).toFixed(1)}★` : "Sem notas",
+      helper: trust?.reviewsCount ? `${trust.reviewsCount} avaliação${trust.reviewsCount === 1 ? "" : "ões"}` : "As avaliações aparecem quando clientes publicam reviews",
+      icon: <Star className="h-4 w-4 text-amber-500" />,
+    },
+    {
+      label: "Cobertura local",
+      value: String(trust?.publicServiceAreasCount || 0),
+      helper: (trust?.publicServiceAreasCount || 0) > 0 ? "Regiões de atuação cadastradas" : "Adicione áreas para destacar especialidade local",
+      icon: <MapPin className="h-4 w-4 text-teal-700" />,
+    },
+    {
+      label: "Tempo de conta",
+      value: memberSinceLabel ? memberSinceLabel : "Recente",
+      helper: memberSinceLabel ? "Conta ativa desde" : "Aparecerá quando houver histórico suficiente",
+      icon: <CalendarDays className="h-4 w-4 text-cyan-700" />,
+    },
+    {
+      label: "Credenciais",
+      value: trust?.hasCreci ? "Profissional" : verificationBadges.length > 0 ? "Verificado" : "Em construção",
+      helper: trust?.hasCreci ? "CRECI identificado no perfil" : "Verificações reforçam a confiança do perfil",
+      icon: <ShieldCheck className="h-4 w-4 text-emerald-700" />,
+    },
+  ];
 
   return (
     <SectionCard
@@ -134,6 +164,19 @@ export function ProfileSummaryCard({
           <div className="text-sm font-semibold text-neutral-900">Perfil público</div>
           <p className="mt-2 break-all text-sm text-neutral-600">{publicUrl || "Disponível após completar e publicar suas informações"}</p>
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {trustTiles.map((tile) => (
+          <div key={tile.label} className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm shadow-black/5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-neutral-900">
+              {tile.icon}
+              {tile.label}
+            </div>
+            <div className="mt-2 text-lg font-semibold text-neutral-950">{tile.value}</div>
+            <p className="mt-1 text-sm text-neutral-600">{tile.helper}</p>
+          </div>
+        ))}
       </div>
     </SectionCard>
   );

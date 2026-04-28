@@ -264,11 +264,14 @@ export default function AccountPage() {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 font-display">Minha conta</h1>
-            <p className="text-gray-600 mt-1">Gerencie seu perfil, favoritos e acessos.</p>
+            <p className="text-gray-600 mt-1">Use este hub para navegar entre perfil, central de segurança, comunicação e áreas operacionais da conta.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/profile">
               <Button variant="secondary">Editar perfil</Button>
+            </Link>
+            <Link href="/account/security">
+              <Button variant="secondary">Central de segurança</Button>
             </Link>
             <Button
               type="button"
@@ -328,7 +331,7 @@ export default function AccountPage() {
                 </Link>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <Button
                   type="button"
                   className="w-full"
@@ -336,6 +339,15 @@ export default function AccountPage() {
                   onClick={() => router.push("/profile")}
                 >
                   Configurações do perfil
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  leftIcon={<Shield className="w-4 h-4" />}
+                  onClick={() => router.push("/account/security")}
+                >
+                  Central de segurança
                 </Button>
               </div>
             </div>
@@ -375,14 +387,31 @@ export default function AccountPage() {
             </div>
 
             <div className="rounded-2xl border border-gray-200/90 bg-white p-6 shadow-sm shadow-black/5">
-              <div className="text-lg font-semibold text-gray-900">Privacidade e segurança</div>
+              <div className="text-lg font-semibold text-gray-900">Estrutura da conta</div>
               <div className="mt-2 text-sm text-gray-600">
-                Mantenha seus dados atualizados e verifique e-mail/telefone para aumentar a confiança no seu perfil.
+                O hub da conta direciona você para a área certa: edição de perfil, segurança/sessões e preferências de comunicação.
+              </div>
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <ActionCard
+                  title="Perfil e presença pública"
+                  description="Atualize identidade, telefone, headline, bio, regiões e canais públicos."
+                  href="/profile"
+                  icon={<User className="w-5 h-5" />}
+                />
+                <ActionCard
+                  title="Central de segurança"
+                  description="Veja score de proteção, sessões conhecidas, reautenticação e atividade recente."
+                  href="/account/security"
+                  icon={<Shield className="w-5 h-5" />}
+                />
+                <ActionCard
+                  title="Comunicação"
+                  description="Controle alertas, resumos e conteúdos enviados para o seu e-mail."
+                  href="/account/communication"
+                  icon={<Bell className="w-5 h-5" />}
+                />
               </div>
               <div className="mt-5 flex flex-col sm:flex-row gap-3">
-                <Link href="/profile" className="inline-flex">
-                  <Button variant="secondary" className="w-full sm:w-auto">Atualizar dados</Button>
-                </Link>
                 <Button
                   type="button"
                   variant="secondary"
