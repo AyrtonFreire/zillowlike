@@ -13,6 +13,76 @@ import { prisma } from "@/lib/prisma";
 const jsonSafe = <T,>(value: T): T | number =>
   typeof value === "bigint" ? Number(value) : value;
 
+const leadDetailSelect = {
+  id: true,
+  createdAt: true,
+  respondedAt: true,
+  completedAt: true,
+  pipelineStage: true,
+  status: true,
+  clientChatToken: true,
+  isDirect: true,
+  visitDate: true,
+  visitTime: true,
+  clientNotes: true,
+  message: true,
+  realtorId: true,
+  teamId: true,
+  property: {
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      type: true,
+      city: true,
+      state: true,
+      neighborhood: true,
+      street: true,
+      bedrooms: true,
+      bathrooms: true,
+      areaM2: true,
+      builtAreaM2: true,
+      usableAreaM2: true,
+      lotAreaM2: true,
+      privateAreaM2: true,
+      suites: true,
+      parkingSpots: true,
+      floor: true,
+      furnished: true,
+      petFriendly: true,
+      condoFee: true,
+      purpose: true,
+      teamId: true,
+      images: {
+        take: 1,
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  },
+  contact: {
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+    },
+  },
+  realtor: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    },
+  },
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+} as const;
+
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -32,64 +102,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
     const lead = await (prisma as any).lead.findUnique({
       where: { id },
-      include: {
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            type: true,
-            city: true,
-            state: true,
-            neighborhood: true,
-            street: true,
-            bedrooms: true,
-            bathrooms: true,
-            areaM2: true,
-            builtAreaM2: true,
-            usableAreaM2: true,
-            lotAreaM2: true,
-            privateAreaM2: true,
-            suites: true,
-            parkingSpots: true,
-            floor: true,
-            furnished: true,
-            petFriendly: true,
-            condoFee: true,
-            purpose: true,
-            teamId: true,
-            ownerId: true,
-            images: {
-              take: 1,
-              orderBy: { sortOrder: "asc" },
-            },
-          },
-        },
-        contact: {
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-        // Dados básicos do corretor responsável (se houver)
-        realtor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        // Dados básicos do usuário/cliente vinculado (se cadastrado)
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      select: leadDetailSelect,
     });
 
     if (!lead) {
@@ -248,62 +261,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     const lead = await (prisma as any).lead.findUnique({
       where: { id },
-      include: {
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            type: true,
-            city: true,
-            state: true,
-            neighborhood: true,
-            street: true,
-            bedrooms: true,
-            bathrooms: true,
-            areaM2: true,
-            builtAreaM2: true,
-            usableAreaM2: true,
-            lotAreaM2: true,
-            privateAreaM2: true,
-            suites: true,
-            parkingSpots: true,
-            floor: true,
-            furnished: true,
-            petFriendly: true,
-            condoFee: true,
-            purpose: true,
-            teamId: true,
-            ownerId: true,
-            images: {
-              take: 1,
-              orderBy: { sortOrder: "asc" },
-            },
-          },
-        },
-        contact: {
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-        realtor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      select: leadDetailSelect,
     });
 
     if (!lead) {
@@ -361,62 +319,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       data: {
         ...(normalizedNotes === undefined ? {} : { clientNotes: normalizedNotes }),
       },
-      include: {
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            type: true,
-            city: true,
-            state: true,
-            neighborhood: true,
-            street: true,
-            bedrooms: true,
-            bathrooms: true,
-            areaM2: true,
-            builtAreaM2: true,
-            usableAreaM2: true,
-            lotAreaM2: true,
-            privateAreaM2: true,
-            suites: true,
-            parkingSpots: true,
-            floor: true,
-            furnished: true,
-            petFriendly: true,
-            condoFee: true,
-            purpose: true,
-            teamId: true,
-            ownerId: true,
-            images: {
-              take: 1,
-              orderBy: { sortOrder: "asc" },
-            },
-          },
-        },
-        contact: {
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-        realtor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      select: leadDetailSelect,
     });
 
     const normalizedLead = {
