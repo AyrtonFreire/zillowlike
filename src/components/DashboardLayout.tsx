@@ -66,7 +66,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Modern Header */}
-      <ModernNavbar />
+      <ModernNavbar forceLight={!isBrokerContext} />
 
       {/* Modern Context Bar with same brand gradient as header */}
       <div className="bg-brand-gradient shadow-[0_18px_45px_rgba(2,22,22,0.16)]">

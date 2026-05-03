@@ -4,7 +4,6 @@ export const ACCOUNT_SETTINGS_SECTIONS = [
   "public",
   "access",
   "security",
-  "communication",
 ] as const;
 
 export type AccountSettingsSectionId = (typeof ACCOUNT_SETTINGS_SECTIONS)[number];

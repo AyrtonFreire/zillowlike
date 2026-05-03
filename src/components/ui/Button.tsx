@@ -13,7 +13,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   loading?: boolean;
 }
 
-const base = "inline-flex items-center justify-center rounded-xl font-semibold tracking-[0.01em] transition-all duration-150 ease-default shadow-sm disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99]";
+const base = "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl font-semibold leading-none tracking-[0.01em] transition-all duration-150 ease-default shadow-sm disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99]";
 // Touch targets: min 44px height on mobile (min-h-11 = 44px)
 const sizes: Record<Size, string> = {
   sm: "text-sm px-3.5 py-2 min-h-[40px] sm:min-h-0 sm:py-2",
@@ -30,9 +30,9 @@ const variants: Record<Variant, string> = {
 export function Button({ variant = "primary", size = "md", leftIcon, rightIcon, loading, className = "", children, ...props }: ButtonProps) {
   return (
     <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>
-      {leftIcon && <span className="mr-2">{leftIcon}</span>}
+      {leftIcon && <span className="shrink-0">{leftIcon}</span>}
       <span className={loading ? "opacity-80" : undefined}>{children}</span>
-      {rightIcon && <span className="ml-2">{rightIcon}</span>}
+      {rightIcon && <span className="shrink-0">{rightIcon}</span>}
     </button>
   );
 }

@@ -59,7 +59,7 @@ export function SectionCard({
 
 export function StatusBadge({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeToneClasses[tone]}`}>
+    <span className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeToneClasses[tone]}`}>
       {label}
     </span>
   );

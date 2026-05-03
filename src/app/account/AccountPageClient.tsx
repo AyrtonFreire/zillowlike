@@ -4,7 +4,6 @@ import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  Bell,
   BriefcaseBusiness,
   LayoutGrid,
   Loader2,
@@ -27,7 +26,6 @@ import { ProfilePublicProfileSection } from "@/app/profile/components/ProfilePub
 import { ProfileSecuritySection } from "@/app/profile/components/ProfileSecuritySection";
 import { useProfile } from "@/app/profile/useProfile";
 import { type UserProfile } from "@/app/profile/types";
-import { AccountCommunicationSection } from "./components/AccountCommunicationSection";
 import { AccountOverviewSection } from "./components/AccountOverviewSection";
 import { type AccountSettingsNavItem, AccountSettingsSidebar } from "./components/AccountSettingsSidebar";
 import { AccountSecuritySection } from "./components/AccountSecuritySection";
@@ -51,13 +49,13 @@ function getRoleCopy(profile?: UserProfile | null) {
   if (profile?.role === "REALTOR" || profile?.role === "AGENCY") {
     return {
       title: "Configurações do corretor",
-      description: "Conta, perfil profissional, segurança e comunicação em um só lugar, com navegação simples e direta.",
+      description: "Conta, perfil profissional, segurança e newsletter semanal em um só lugar, com navegação simples e direta.",
     };
   }
 
   return {
     title: "Configurações da conta",
-    description: "Revise perfil, acesso, segurança e comunicação em uma única experiência.",
+    description: "Revise perfil, acesso, segurança e newsletter semanal em uma única experiência.",
   };
 }
 
@@ -184,14 +182,6 @@ export default function AccountPageClient() {
         statusLabel: securityReady ? "Bom" : "Reforçar",
         statusTone: securityReady ? "success" : "warning",
       },
-      {
-        id: "communication",
-        label: "Comunicação",
-        description: "Newsletter, temas de interesse e frequência de envio.",
-        icon: <Bell className="h-4 w-4" />,
-        statusLabel: "Opcional",
-        statusTone: "neutral",
-      },
     ];
   }, [profile]);
 
@@ -204,7 +194,7 @@ export default function AccountPageClient() {
         leftIcon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
         onClick={() => void saveProfile()}
         disabled={!hasChanges || saving}
-        className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:border-white/30"
+        className="border-white/70 bg-white text-teal-950 hover:border-white hover:bg-white disabled:border-white/35 disabled:bg-white/15 disabled:text-white/80 disabled:opacity-100"
       >
         {saving ? "Salvando..." : "Salvar alterações"}
       </Button>
@@ -213,7 +203,7 @@ export default function AccountPageClient() {
         variant="secondary"
         leftIcon={<LogOut className="h-4 w-4" />}
         onClick={() => signOut({ callbackUrl: "/" })}
-        className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:border-white/30"
+        className="border-white/35 bg-white/10 text-white hover:bg-white/16 hover:border-white/60"
       >
         Sair
       </Button>
@@ -266,8 +256,6 @@ export default function AccountPageClient() {
         );
       case "security":
         return <AccountSecuritySection />;
-      case "communication":
-        return <AccountCommunicationSection emailFallback={profile.email} />;
       default:
         return null;
     }
@@ -282,7 +270,7 @@ export default function AccountPageClient() {
               <Loader2 className="h-10 w-10 animate-spin text-teal-700" />
               <div>
                 <h2 className="text-lg font-semibold text-neutral-950">Carregando suas configurações</h2>
-                <p className="mt-2 text-sm text-neutral-600">Estamos juntando conta, perfil, segurança e comunicação em uma única visão.</p>
+                <p className="mt-2 text-sm text-neutral-600">Estamos juntando conta, perfil, segurança e newsletter semanal em uma única visão.</p>
               </div>
             </div>
           </div>
@@ -338,7 +326,7 @@ export default function AccountPageClient() {
       breadcrumbs={breadcrumbs}
       actions={layoutActions}
     >
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <AccountSettingsSidebar
             name={profile.name}
@@ -377,7 +365,7 @@ export default function AccountPageClient() {
               <InlineFeedbackBanner
                 tone="info"
                 title="Agora suas configurações ficam em um lugar só"
-                message="Perfil profissional, segurança e comunicação foram organizados por seções para facilitar o onboarding do corretor."
+                message="Perfil profissional, segurança e newsletter semanal foram organizados por seções para facilitar o onboarding do corretor."
               />
             ) : null}
 

@@ -33,9 +33,9 @@ const initialState = {
 export default function CommunicationPreferencesPage() {
   return (
     <LegacySettingsRedirect
-      section="communication"
+      section="overview"
       title="Redirecionando comunicação"
-      description="As preferências de newsletter e alertas agora ficam dentro das configurações da conta."
+      description="A newsletter semanal agora fica na visão geral das configurações da conta."
     />
   );
 }
