@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-log";
 import { hashSessionKey, requireRecentReauth, revokeSessionRecord } from "@/lib/account-security";
 
-export async function DELETE(req: NextRequest, context: { params: { sessionHash: string } }) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ sessionHash: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -18,7 +18,8 @@ export async function DELETE(req: NextRequest, context: { params: { sessionHash:
       return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
     }
 
-    const targetSessionHash = String(context?.params?.sessionHash || "").trim();
+    const { sessionHash } = await context.params;
+    const targetSessionHash = String(sessionHash || "").trim();
     if (!targetSessionHash) {
       return NextResponse.json({ error: "Sessão inválida." }, { status: 400 });
     }
