@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import { LegacySettingsRedirect } from "@/app/account/components/LegacySettingsRedirect";
 import { Activity, CheckCircle2, Clock3, KeyRound, Loader2, LogOut, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import SiteFooter from "@/components/Footer";
@@ -73,6 +74,16 @@ function actionLabel(action: PendingSecurityAction) {
 }
 
 export default function AccountSecurityPage() {
+  return (
+    <LegacySettingsRedirect
+      section="security"
+      title="Redirecionando a central de segurança"
+      description="Sessões, score de proteção e atividade recente agora ficam dentro das configurações unificadas."
+    />
+  );
+}
+
+function LegacyAccountSecurityPage() {
   const { data: session, status } = useSession();
   const [data, setData] = useState<SecurityResponse | null>(null);
   const [loading, setLoading] = useState(true);

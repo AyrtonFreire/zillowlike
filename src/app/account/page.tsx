@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import AccountPageClient from "./AccountPageClient";
 import { ModernNavbar } from "@/components/modern";
 import SiteFooter from "@/components/Footer";
 import Button from "@/components/ui/Button";
@@ -76,6 +77,10 @@ function ActionCard({
 }
 
 export default function AccountPage() {
+  return <AccountPageClient />;
+}
+
+function LegacyAccountPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);

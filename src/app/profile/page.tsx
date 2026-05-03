@@ -28,7 +28,7 @@ import EmailChangeModal from "@/components/EmailChangeModal";
 import RecoveryEmailModal from "@/components/RecoveryEmailModal";
 import SetPasswordModal from "@/components/SetPasswordModal";
 import BackupCodesModal from "@/components/BackupCodesModal";
-import ProfilePageClient from "./ProfilePageClient";
+import { LegacySettingsRedirect } from "@/app/account/components/LegacySettingsRedirect";
 
 interface UserProfile {
   id: string;
@@ -63,7 +63,13 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  return <ProfilePageClient />;
+  return (
+    <LegacySettingsRedirect
+      section="professional"
+      title="Redirecionando seu perfil"
+      description="Agora perfil e conta ficam na mesma área de configurações."
+    />
+  );
 }
 
 function LegacyProfilePage() {

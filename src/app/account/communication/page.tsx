@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { LegacySettingsRedirect } from "@/app/account/components/LegacySettingsRedirect";
 import { Mail } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import SiteFooter from "@/components/Footer";
@@ -30,6 +31,16 @@ const initialState = {
 };
 
 export default function CommunicationPreferencesPage() {
+  return (
+    <LegacySettingsRedirect
+      section="communication"
+      title="Redirecionando comunicação"
+      description="As preferências de newsletter e alertas agora ficam dentro das configurações da conta."
+    />
+  );
+}
+
+function LegacyCommunicationPreferencesPage() {
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
