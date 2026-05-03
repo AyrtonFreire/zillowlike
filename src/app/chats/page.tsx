@@ -624,7 +624,7 @@ export default function UserChatsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Conversas</h1>
         <p className="text-gray-600 mt-1">Gerencie suas conversas com corretores e anunciantes.</p>
 
-        <div ref={panelRef} className="mt-4 md:mt-6 min-h-[360px] md:min-h-[520px] bg-white rounded-xl border border-gray-200 overflow-hidden flex" style={chatPanelHeight ? { height: `${chatPanelHeight}px` } : undefined}>
+        <div ref={panelRef} className="mt-4 md:mt-6 min-h-[360px] md:min-h-[520px] bg-white rounded-xl border border-gray-200 overflow-hidden flex min-w-0" style={chatPanelHeight ? { height: `${chatPanelHeight}px` } : undefined}>
           <div className={`w-full md:w-80 border-r border-gray-200 flex flex-col min-h-0 bg-gray-50 ${selectedChat ? "hidden md:flex" : "flex"}`}>
             <div className="p-4 border-b border-gray-200 bg-white">
               <div className="text-sm font-semibold text-gray-900">Suas conversas</div>
@@ -684,7 +684,7 @@ export default function UserChatsPage() {
             </div>
           </div>
 
-          <div className={`flex-1 flex flex-col min-h-0 ${selectedChat || tokenFromUrl ? "flex" : "hidden md:flex"}`}>
+          <div className={`flex-1 flex flex-col min-h-0 min-w-0 ${selectedChat || tokenFromUrl ? "flex" : "hidden md:flex"}`}>
             {(selectedChat || tokenFromUrl) ? (
               <>
                 <div className="p-4 border-b border-gray-200 bg-white flex items-center gap-3">
@@ -723,7 +723,7 @@ export default function UserChatsPage() {
                   )}
                 </div>
 
-                <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 bg-gray-50">
+                <div ref={messagesContainerRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-3 sm:p-4 bg-gray-50">
                   {selectedChatIsArchived && (
                     <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
                       Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.
@@ -766,11 +766,11 @@ export default function UserChatsPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 min-w-0">
                       {messages.map((msg) => (
-                        <div key={msg.id} className={`flex ${msg.fromClient ? "justify-end" : "justify-start"}`}>
+                        <div key={msg.id} className={`flex min-w-0 ${msg.fromClient ? "justify-end" : "justify-start"}`}>
                           <div
-                            className={`w-fit max-w-[calc(100%-2.75rem)] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                            className={`min-w-0 w-fit max-w-[calc(100%-2.75rem)] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                               msg.fromClient
                                 ? "bg-teal-600 text-white"
                                 : "bg-white text-gray-900 border border-gray-200"

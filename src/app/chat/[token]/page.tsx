@@ -692,8 +692,8 @@ export default function ClientChatPage() {
       </header>
 
       <main className="flex-1 min-h-0 overflow-hidden">
-        <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4 h-full min-h-0 flex flex-col">
-          <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-white border border-gray-200 p-3 sm:p-4 flex flex-col">
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4 h-full min-h-0 min-w-0 flex flex-col">
+          <div ref={messagesContainerRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl bg-white border border-gray-200 p-3 sm:p-4 flex flex-col">
             {chatIsArchived && (
               <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
                 Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.
@@ -733,7 +733,7 @@ export default function ClientChatPage() {
                 )}
               </div>
               ) : (
-                <div className="flex flex-col gap-2 flex-1">
+                <div className="flex flex-col gap-2 flex-1 min-w-0">
                   {messages.map((msg, index) => {
                     const showDateSeparator = index === 0 || 
                       !isSameDay(messages[index - 1].createdAt, msg.createdAt);
@@ -751,9 +751,9 @@ export default function ClientChatPage() {
                         </div>
                       )}
                       
-                      <div className={`flex ${msg.fromClient ? "justify-end" : "justify-start"}`}>
+                      <div className={`flex min-w-0 ${msg.fromClient ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`w-fit max-w-[calc(100%-2.75rem)] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                          className={`min-w-0 w-fit max-w-[calc(100%-2.75rem)] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                             msg.fromClient
                               ? "bg-teal-600 text-white"
                               : "bg-gray-100 text-gray-900"

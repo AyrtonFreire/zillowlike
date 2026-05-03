@@ -756,7 +756,7 @@ export function chooseConversationPolicy(params: {
   if (params.qualification.leadTemperature === "HOT") {
     return {
       conversationMode: "CONVERSION_MODE",
-      nextQuestion: fallbackNextQuestion || "Se fizer sentido, posso registrar seu interesse para o corretor priorizar o retorno.",
+      nextQuestion: fallbackNextQuestion || "",
       shouldAskFollowUp: Boolean(fallbackNextQuestion),
       recommendedAction: params.qualification.recommendedAction === "ASK_QUALIFYING_QUESTION" ? "REGISTER_AND_HANDOFF" : params.qualification.recommendedAction,
     };

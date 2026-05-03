@@ -218,6 +218,8 @@ function humanizeAutoReplyText(params: {
     out = out.replace(/\n*Se precisar de mais informações, o corretor poderá ajudar assim que retornar\.\s*/gi, "\n");
     out = out.replace(/\n*Se você quiser, eu posso registrar (essa dúvida|sua dúvida|essa solicitação|sua solicitação) para o corretor, que confirma com você assim que possível\.\s*/gi, "\n");
     out = out.replace(/\n*Se você quiser, eu posso registrar sua solicitação para o corretor, que confirma com você assim que possível\.\s*/gi, "\n");
+    out = out.replace(/\n*Se quiser, eu deixo (isso|essa dúvida|seu interesse) registrado para o corretor (seguir|continuar) com você\.\s*/gi, "\n");
+    out = out.replace(/\n*Se fizer sentido, posso registrar seu interesse para o corretor priorizar o retorno\.\s*/gi, "\n");
   }
 
   const deduped: string[] = [];
@@ -720,6 +722,11 @@ function isLikelyFactualAnswer(answer: string) {
   ];
 
   return includesAny(t, signals) || /\d/.test(raw);
+}
+
+function shouldOfferSoftHandoffCta(reason: string | null | undefined) {
+  const normalized = safeString(reason).toUpperCase();
+  return normalized === "NEGOTIATION" || normalized === "FINANCING" || normalized === "DOCUMENTATION";
 }
 
 type OfflineAssistantState = {
@@ -2663,6 +2670,7 @@ export class LeadAutoReplyService {
         visitPreferences: effectiveVisitPreferences,
         propertyContext,
       });
+      const softHandoffCtaAllowed = shouldOfferSoftHandoffCta(handoffDecision.reason);
       const nextQuestionRaw = policy.shouldAskFollowUp ? safeString(policy.nextQuestion) : "";
       const nextQuestion = shouldSuppressNextQuestion({
         message: msg.content,
@@ -2709,8 +2717,8 @@ export class LeadAutoReplyService {
         answerText =
           intro +
           `${about}essa informação não aparece no anúncio.\n\n` +
-          "Se quiser, eu deixo essa dúvida registrada para o corretor continuar com você.";
-      } else if (handoffDecision.needed && !visitHandoffNeeded) {
+          "O corretor consegue confirmar esse ponto quando retornar.";
+      } else if (handoffDecision.needed && !visitHandoffNeeded && softHandoffCtaAllowed) {
         answerText =
           `${safeString(answerText)}\n\n` +
           "Se quiser, eu deixo isso registrado para o corretor seguir com você.";
@@ -2721,7 +2729,7 @@ export class LeadAutoReplyService {
         clientName,
         propertyPurpose: safeString(lead.property?.purpose) || null,
         message: msg.content,
-        stripSoftHandoffCta: !handoffDecision.needed && !visitHandoffNeeded,
+        stripSoftHandoffCta: !visitHandoffNeeded && (!handoffDecision.needed || !softHandoffCtaAllowed || factualWithoutFacts),
       });
 
       const normalizedAnswer = normalizeTextForMatch(answerText);
@@ -2738,7 +2746,7 @@ export class LeadAutoReplyService {
         clientName,
         propertyPurpose: safeString(lead.property?.purpose) || null,
         message: msg.content,
-        stripSoftHandoffCta: !handoffDecision.needed && !visitHandoffNeeded,
+        stripSoftHandoffCta: !visitHandoffNeeded && (!handoffDecision.needed || !softHandoffCtaAllowed || factualWithoutFacts),
       });
 
       const guardrails = messageWithQuestion
