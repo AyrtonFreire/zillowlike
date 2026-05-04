@@ -784,7 +784,7 @@ export default function MyLeadsPage() {
     return "NEW";
   }, []);
 
-  const moveLeadToStage = async (
+  const moveLeadToStage = useCallback(async (
     leadId: string,
     nextStage: CanonicalStage,
     options?: {
@@ -854,7 +854,7 @@ export default function MyLeadsPage() {
     } finally {
       setStageUpdating((prev) => ({ ...prev, [leadId]: false }));
     }
-  };
+  }, [getCanonicalStage, leads, toast]);
 
   const requestStageChange = useCallback((leadId: string, nextStage: CanonicalStage) => {
     const lead = leads.find((item) => String(item.id) === String(leadId));

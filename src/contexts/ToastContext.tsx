@@ -136,12 +136,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const handleConfirm = useCallback(() => {
     confirmState.resolve?.(true);
     setConfirmState({ isOpen: false, options: null, resolve: null });
-  }, [confirmState.resolve]);
+  }, [confirmState]);
 
   const handleCancel = useCallback(() => {
     confirmState.resolve?.(false);
     setConfirmState({ isOpen: false, options: null, resolve: null });
-  }, [confirmState.resolve]);
+  }, [confirmState]);
 
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info, confirm }}>

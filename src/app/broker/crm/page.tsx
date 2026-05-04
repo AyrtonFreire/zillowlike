@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Sparkles,
   Search,
-  MessageCircle,
   Clock,
   ListChecks,
   BedDouble,
