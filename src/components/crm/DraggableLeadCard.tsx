@@ -4,7 +4,9 @@ import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, ChevronRight, Loader2, MessageCircle, Bell, BellOff, AlertTriangle } from "lucide-react";
+import { MapPin, ChevronRight, Loader2, MessageCircle, Bell, BellOff, AlertTriangle, CalendarClock, Clock3, Flame } from "lucide-react";
+import { PIPELINE_STAGE_META, type CanonicalPipelineStage } from "@/lib/lead-pipeline";
+import { getLeadNextActionState, getLeadStageAgeDays, getLeadTemperature, isLeadStale } from "@/lib/lead-operational-signals";
 
 interface DraggableLeadCardProps {
   lead: {
@@ -12,10 +14,18 @@ interface DraggableLeadCardProps {
     pipelineStage: string;
     nextActionDate?: string | null;
     nextActionNote?: string | null;
+    stageEnteredAt?: string | null;
+    visitDate?: string | null;
+    visitTime?: string | null;
+    outcomeReason?: string | null;
+    outcomeDescription?: string | null;
     hasUnreadMessages?: boolean;
     lastMessagePreview?: string | null;
+    lastMessageFromClient?: boolean;
+    lastContactAt?: string | null;
     property: {
       title: string;
+      price?: number | null;
       city: string;
       state: string;
       neighborhood?: string | null;
@@ -73,6 +83,25 @@ export default function DraggableLeadCard({
   const nextActionAt = lead.nextActionDate ? new Date(lead.nextActionDate) : null;
   const hasNextAction = !!lead.nextActionDate || !!lead.nextActionNote;
   const isOverdue = nextActionAt ? !Number.isNaN(nextActionAt.getTime()) && nextActionAt.getTime() < now.getTime() : false;
+  const stageKey = (String(lead.pipelineStage || "NEW").toUpperCase() as CanonicalPipelineStage);
+  const stageMeta = PIPELINE_STAGE_META[stageKey] || PIPELINE_STAGE_META.NEW;
+  const nextActionState = getLeadNextActionState(lead, now);
+  const stageAgeDays = getLeadStageAgeDays(lead, now);
+  const leadTemperature = getLeadTemperature(lead, now);
+  const staleLead = isLeadStale(lead, 48, now);
+  const priceLabel =
+    typeof lead.property.price === "number"
+      ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(lead.property.price / 100)
+      : null;
+  const visitDateLabel = lead.visitDate
+    ? new Date(lead.visitDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+    : null;
+  const temperatureMeta =
+    leadTemperature === "hot"
+      ? { label: "Quente", className: "bg-rose-50 text-rose-700 border-rose-200" }
+      : leadTemperature === "warm"
+        ? { label: "Em jogo", className: "bg-amber-50 text-amber-700 border-amber-200" }
+        : { label: "Frio", className: "bg-slate-50 text-slate-600 border-slate-200" };
 
   const style = {
     transform: transform
@@ -151,6 +180,13 @@ export default function DraggableLeadCard({
           <div className="flex-1 min-w-0">
             <p className="font-semibold line-clamp-2">{lead.property.title}</p>
             <div className="mt-0.5 flex flex-wrap items-center gap-1">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${stageMeta.bgColor} ${stageMeta.color} ${stageMeta.borderColor}`}>
+                {stageMeta.shortLabel}
+              </span>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${temperatureMeta.className}`}>
+                <Flame className="w-3 h-3" />
+                {temperatureMeta.label}
+              </span>
               {!!lead.hasUnreadMessages && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                   <MessageCircle className="w-3 h-3" />
@@ -167,7 +203,15 @@ export default function DraggableLeadCard({
                   Próx. ação
                 </span>
               )}
+              {lead.visitDate && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-purple-50 text-purple-700 border-purple-200">
+                  <CalendarClock className="w-3 h-3" />
+                  {visitDateLabel || "Visita"}
+                </span>
+              )}
             </div>
+
+            {priceLabel ? <p className="mt-1 text-[12px] font-bold text-teal-700">{priceLabel}</p> : null}
 
             <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
               <MapPin className="w-3 h-3" />
@@ -180,8 +224,22 @@ export default function DraggableLeadCard({
               <p className="text-[11px] text-gray-500 mt-0.5">Cliente: {lead.contact.name}</p>
             )}
             {!!lead.lastMessagePreview && (
-              <p className="text-[11px] text-gray-600 mt-1 line-clamp-2">{lead.lastMessagePreview}</p>
+              <p className="text-[11px] text-gray-600 mt-1 line-clamp-2">
+                {lead.lastMessageFromClient ? "Cliente: " : "Você: "}
+                {lead.lastMessagePreview}
+              </p>
             )}
+            {!lead.lastMessagePreview && lead.outcomeDescription ? (
+              <p className="text-[11px] text-gray-600 mt-1 line-clamp-2">{lead.outcomeDescription}</p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-gray-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">
+                <Clock3 className="w-3 h-3" />
+                {stageAgeDays}d na etapa
+              </span>
+              {staleLead ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">48h+</span> : null}
+              {lead.outcomeReason ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">{lead.outcomeReason}</span> : null}
+            </div>
           </div>
         </div>
 
@@ -267,6 +325,31 @@ export default function DraggableLeadCard({
         <div className="mt-2 min-w-0">
           <p className="font-semibold text-[14px] leading-snug truncate">{lead.property.title}</p>
           {lead.contact?.name && <p className="text-[12px] text-gray-600 truncate">{lead.contact.name}</p>}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${stageMeta.bgColor} ${stageMeta.color} ${stageMeta.borderColor}`}>
+              {stageMeta.shortLabel}
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${temperatureMeta.className}`}>
+              <Flame className="w-3 h-3" />
+              {temperatureMeta.label}
+            </span>
+            {lead.hasUnreadMessages ? <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Não lida</span> : null}
+            {nextActionState.overdue ? <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">Atrasada</span> : null}
+            {!nextActionState.overdue && nextActionState.today ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Hoje</span> : null}
+            {lead.visitDate ? <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{visitDateLabel}{lead.visitTime ? ` • ${lead.visitTime}` : ""}</span> : null}
+          </div>
+          {priceLabel ? <p className="mt-2 text-[13px] font-bold text-teal-700">{priceLabel}</p> : null}
+          {lead.nextActionNote ? <p className="mt-2 line-clamp-2 text-[11px] text-gray-600">Próxima ação: {lead.nextActionNote}</p> : null}
+          {!lead.nextActionNote && lead.lastMessagePreview ? <p className="mt-2 line-clamp-2 text-[11px] text-gray-600">{lead.lastMessageFromClient ? "Cliente: " : "Você: "}{lead.lastMessagePreview}</p> : null}
+          {!lead.nextActionNote && !lead.lastMessagePreview && lead.outcomeDescription ? <p className="mt-2 line-clamp-2 text-[11px] text-gray-600">{lead.outcomeDescription}</p> : null}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-gray-500">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">
+              <Clock3 className="w-3 h-3" />
+              {stageAgeDays}d na etapa
+            </span>
+            {staleLead ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">48h sem contato</span> : null}
+            {lead.outcomeReason ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">{lead.outcomeReason}</span> : null}
+          </div>
         </div>
 
         <div className="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between gap-2">

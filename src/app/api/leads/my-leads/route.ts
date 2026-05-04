@@ -101,9 +101,13 @@ const leadDetailSelect = {
   reservedUntil: true,
   respondedAt: true,
   completedAt: true,
+  visitDate: true,
+  visitTime: true,
   nextActionDate: true,
   nextActionNote: true,
   pipelineStage: true,
+  lostReason: true,
+  conversationState: true,
   clientChatToken: true,
   property: {
     select: {
@@ -363,16 +367,29 @@ export async function GET(request: NextRequest) {
 
         const rowById = new Map<string, any>(slice.map((r) => [String(r.id), r]));
 
-        const leadCreatedEvents = leadIds.length
-          ? await (prisma as any).leadEvent.findMany({
-              where: {
-                leadId: { in: leadIds },
-                type: "LEAD_CREATED",
-              },
-              orderBy: { createdAt: "desc" },
-              select: { leadId: true, metadata: true },
-            })
-          : [];
+        const [leadCreatedEvents, stageEvents] = await Promise.all([
+          leadIds.length
+            ? (prisma as any).leadEvent.findMany({
+                where: {
+                  leadId: { in: leadIds },
+                  type: "LEAD_CREATED",
+                },
+                orderBy: { createdAt: "desc" },
+                select: { leadId: true, metadata: true },
+              })
+            : Promise.resolve([] as any[]),
+          leadIds.length
+            ? (prisma as any).leadEvent.findMany({
+                where: {
+                  leadId: { in: leadIds },
+                  type: { in: ["STAGE_CHANGED", "LEAD_LOST"] as any },
+                },
+                orderBy: { createdAt: "desc" },
+                select: { leadId: true, createdAt: true, toStage: true, metadata: true, description: true },
+                take: 5000,
+              })
+            : Promise.resolve([] as any[]),
+        ]);
 
         const sourceByLeadId = new Map<string, any>();
         for (const ev of leadCreatedEvents as any[]) {
@@ -381,19 +398,39 @@ export async function GET(request: NextRequest) {
           sourceByLeadId.set(k, (ev as any)?.metadata?.source);
         }
 
+        const stageEventsByLead = new Map<string, any[]>();
+        for (const ev of stageEvents as any[]) {
+          const k = String(ev?.leadId || "");
+          if (!k) continue;
+          const list = stageEventsByLead.get(k) || [];
+          list.push(ev);
+          stageEventsByLead.set(k, list);
+        }
+
         const normalized = (orderedLeads as any[]).map((lead) => {
           const row = rowById.get(String(lead.id)) || null;
           const lastActivityAt = row?.last_activity_at ? new Date(row.last_activity_at).toISOString() : null;
           const origin = inferLeadOrigin(lead, sourceByLeadId.get(String(lead.id)));
+          const currentStage = (lead.pipelineStage || mapStatusToStage(lead.status)) as PipelineStage;
+          const matchingStageEvent = (stageEventsByLead.get(String(lead.id)) || []).find((event: any) => String(event?.toStage || "") === currentStage) || null;
+          const metadata = matchingStageEvent?.metadata && typeof matchingStageEvent.metadata === "object" ? matchingStageEvent.metadata : null;
           return {
             ...lead,
             origin,
-            pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
+            pipelineStage: currentStage,
             hasUnreadMessages: !!row?.has_unread,
             lastMessageAt: lastActivityAt,
             lastMessagePreview: row?.last_preview ? clip(row.last_preview, 90) : null,
             lastMessageFromClient: !!row?.last_from_client,
             lastContactAt: lastActivityAt,
+            stageEnteredAt: matchingStageEvent?.createdAt ? new Date(matchingStageEvent.createdAt).toISOString() : lead.respondedAt ? new Date(lead.respondedAt).toISOString() : new Date(lead.createdAt).toISOString(),
+            outcomeReason:
+              currentStage === "LOST"
+                ? String((metadata as any)?.lostReason || lead.lostReason || "") || null
+                : currentStage === "WON"
+                  ? String((metadata as any)?.wonReason || "") || null
+                  : null,
+            outcomeDescription: matchingStageEvent?.description ? String(matchingStageEvent.description) : null,
             property: lead.property
               ? {
                   ...lead.property,
@@ -592,22 +629,44 @@ export async function GET(request: NextRequest) {
 
     const leadIds = orderedLeads.map((l) => String(l.id));
 
-    const leadCreatedEvents = leadIds.length
-      ? await (prisma as any).leadEvent.findMany({
-          where: {
-            leadId: { in: leadIds },
-            type: "LEAD_CREATED",
-          },
-          orderBy: { createdAt: "desc" },
-          select: { leadId: true, metadata: true },
-        })
-      : [];
+    const [leadCreatedEvents, stageEvents] = await Promise.all([
+      leadIds.length
+        ? await (prisma as any).leadEvent.findMany({
+            where: {
+              leadId: { in: leadIds },
+              type: "LEAD_CREATED",
+            },
+            orderBy: { createdAt: "desc" },
+            select: { leadId: true, metadata: true },
+          })
+        : Promise.resolve([] as any[]),
+      leadIds.length
+        ? await (prisma as any).leadEvent.findMany({
+            where: {
+              leadId: { in: leadIds },
+              type: { in: ["STAGE_CHANGED", "LEAD_LOST"] as any },
+            },
+            orderBy: { createdAt: "desc" },
+            select: { leadId: true, createdAt: true, toStage: true, metadata: true, description: true },
+            take: 5000,
+          })
+        : Promise.resolve([] as any[]),
+    ]);
 
     const sourceByLeadId = new Map<string, any>();
     for (const ev of leadCreatedEvents as any[]) {
       const k = String(ev?.leadId || "");
       if (!k || sourceByLeadId.has(k)) continue;
       sourceByLeadId.set(k, (ev as any)?.metadata?.source);
+    }
+
+    const stageEventsByLead = new Map<string, any[]>();
+    for (const ev of stageEvents as any[]) {
+      const k = String(ev?.leadId || "");
+      if (!k) continue;
+      const list = stageEventsByLead.get(k) || [];
+      list.push(ev);
+      stageEventsByLead.set(k, list);
     }
 
     const [lastClientMsgs, lastInternalMsgs] = await Promise.all([
@@ -690,15 +749,27 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const currentStage = (lead.pipelineStage || mapStatusToStage(lead.status)) as PipelineStage;
+      const matchingStageEvent = (stageEventsByLead.get(leadId) || []).find((event: any) => String(event?.toStage || "") === currentStage) || null;
+      const metadata = matchingStageEvent?.metadata && typeof matchingStageEvent.metadata === "object" ? matchingStageEvent.metadata : null;
+
       return {
         ...lead,
         origin,
-        pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
+        pipelineStage: currentStage,
         hasUnreadMessages,
         lastMessageAt: lastMessageAt ? lastMessageAt.toISOString() : null,
         lastMessagePreview,
         lastMessageFromClient,
         lastContactAt: lastMessageAt ? lastMessageAt.toISOString() : null,
+        stageEnteredAt: matchingStageEvent?.createdAt ? new Date(matchingStageEvent.createdAt).toISOString() : lead.respondedAt ? new Date(lead.respondedAt).toISOString() : new Date(lead.createdAt).toISOString(),
+        outcomeReason:
+          currentStage === "LOST"
+            ? String((metadata as any)?.lostReason || lead.lostReason || "") || null
+            : currentStage === "WON"
+              ? String((metadata as any)?.wonReason || "") || null
+              : null,
+        outcomeDescription: matchingStageEvent?.description ? String(matchingStageEvent.description) : null,
         property: lead.property
           ? {
               ...lead.property,

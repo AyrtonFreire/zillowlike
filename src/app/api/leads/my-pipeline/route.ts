@@ -19,9 +19,15 @@ const pipelineLeadSelect = {
   id: true,
   status: true,
   createdAt: true,
+  respondedAt: true,
+  completedAt: true,
   nextActionDate: true,
   nextActionNote: true,
   pipelineStage: true,
+  visitDate: true,
+  visitTime: true,
+  lostReason: true,
+  conversationState: true,
   property: {
     select: {
       id: true,
@@ -151,7 +157,7 @@ export async function GET(_request: NextRequest) {
 
     const leadIds = (leads as any[]).map((l) => String(l.id));
 
-    const [lastClientMsgs, lastInternalMsgs, lastClientFromClientAgg] = await Promise.all([
+    const [lastClientMsgs, lastInternalMsgs, lastClientFromClientAgg, stageEvents] = await Promise.all([
       leadIds.length
         ? (prisma as any).leadClientMessage.findMany({
             where: { leadId: { in: leadIds } },
@@ -173,6 +179,17 @@ export async function GET(_request: NextRequest) {
             by: ["leadId"],
             where: { leadId: { in: leadIds }, fromClient: true },
             _max: { createdAt: true },
+          })
+        : Promise.resolve([] as any[]),
+      leadIds.length
+        ? (prisma as any).leadEvent.findMany({
+            where: {
+              leadId: { in: leadIds },
+              type: { in: ["STAGE_CHANGED", "LEAD_LOST"] as any },
+            },
+            orderBy: { createdAt: "desc" },
+            select: { leadId: true, type: true, createdAt: true, toStage: true, metadata: true, description: true },
+            take: 5000,
           })
         : Promise.resolve([] as any[]),
     ]);
@@ -216,6 +233,15 @@ export async function GET(_request: NextRequest) {
     const readMap = new Map<string, Date>(
       (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
     );
+
+    const stageEventsByLead = new Map<string, any[]>();
+    for (const row of Array.isArray(stageEvents) ? stageEvents : []) {
+      const leadId = String((row as any)?.leadId || "");
+      if (!leadId) continue;
+      const list = stageEventsByLead.get(leadId) || [];
+      list.push(row);
+      stageEventsByLead.set(leadId, list);
+    }
 
     // Fallback simples: se por algum motivo pipelineStage não existir, inferir algo a partir do status
     const mapStatusToStage = (status: LeadStatus): PipelineStage => {
@@ -267,14 +293,28 @@ export async function GET(_request: NextRequest) {
         }
       }
 
+      const currentStage = (lead.pipelineStage || mapStatusToStage(lead.status)) as PipelineStage;
+      const matchingStageEvent = (stageEventsByLead.get(leadId) || []).find((event: any) => String(event?.toStage || "") === currentStage) || null;
+      const stageEnteredAt = matchingStageEvent?.createdAt || lead.respondedAt || lead.createdAt || null;
+      const metadata = matchingStageEvent?.metadata && typeof matchingStageEvent.metadata === "object" ? matchingStageEvent.metadata : null;
+      const outcomeReason =
+        currentStage === "LOST"
+          ? String((metadata as any)?.lostReason || lead.lostReason || "") || null
+          : currentStage === "WON"
+            ? String((metadata as any)?.wonReason || "") || null
+            : null;
+
       return {
         ...lead,
-        pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
+        pipelineStage: currentStage,
         hasUnreadMessages,
         lastMessageAt: lastMessageAt ? lastMessageAt.toISOString() : null,
         lastMessagePreview,
         lastMessageFromClient,
         lastContactAt: lastMessageAt ? lastMessageAt.toISOString() : null,
+        stageEnteredAt: stageEnteredAt ? new Date(stageEnteredAt).toISOString() : null,
+        outcomeReason,
+        outcomeDescription: matchingStageEvent?.description ? String(matchingStageEvent.description) : null,
         property: lead.property
           ? {
               ...lead.property,

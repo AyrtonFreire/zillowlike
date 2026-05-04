@@ -18,10 +18,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
-import { canonicalToBoardGroup } from "@/lib/lead-pipeline";
+import PipelineTransitionModal, { type PipelineTransitionPayload } from "@/components/crm/PipelineTransitionModal";
+import { CANONICAL_PIPELINE_STAGES, PIPELINE_STAGE_META, canonicalToBoardGroup, transitionRequiresReason, type CanonicalPipelineStage } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
 import { ptBR } from "@/lib/i18n/property";
 import { formatPublicCode, normalizePublicCodeInput } from "@/lib/public-code";
+import { getLeadNextActionState, getLeadStageAgeDays, getLeadTemperature, isLeadStale } from "@/lib/lead-operational-signals";
 
 // Tipo de imóvel traduzido
 const PROPERTY_TYPES: Record<string, string> = {
@@ -36,7 +38,7 @@ const PROPERTY_TYPES: Record<string, string> = {
 
 // Pipeline simplificado: 4 grupos das 7 etapas do CRM
 type PipelineStage = "NEW" | "CONTACT" | "NEGOTIATION" | "CLOSED";
-type CanonicalStage = "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST";
+type CanonicalStage = CanonicalPipelineStage;
 const PIPELINE_STAGES: { id: PipelineStage; label: string; icon: any; color: string; bgColor: string }[] = [
   // Mesmas cores da coluna NEW do CRM (/broker/crm)
   { id: "NEW", label: "Novos", icon: Users, color: "text-blue-600", bgColor: "bg-blue-50" },
@@ -48,24 +50,16 @@ const PIPELINE_STAGES: { id: PipelineStage; label: string; icon: any; color: str
   { id: "CLOSED", label: "Fechado", icon: Trophy, color: "text-emerald-600", bgColor: "bg-emerald-50" },
 ];
 
-const CANONICAL_STAGE_ORDER: CanonicalStage[] = [
-  "NEW",
-  "CONTACT",
-  "VISIT",
-  "PROPOSAL",
-  "DOCUMENTS",
-  "WON",
-  "LOST",
-];
+const CANONICAL_STAGE_ORDER: CanonicalStage[] = [...CANONICAL_PIPELINE_STAGES];
 
 const CANONICAL_STAGE_META: Record<CanonicalStage, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  NEW: { label: "Novos", color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
-  CONTACT: { label: "Contato", color: "text-amber-600", bgColor: "bg-amber-50", borderColor: "border-amber-200" },
-  VISIT: { label: "Visita", color: "text-purple-600", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
-  PROPOSAL: { label: "Proposta", color: "text-cyan-600", bgColor: "bg-cyan-50", borderColor: "border-cyan-200" },
-  DOCUMENTS: { label: "Docs", color: "text-orange-600", bgColor: "bg-orange-50", borderColor: "border-orange-200" },
-  WON: { label: "Fechado", color: "text-emerald-600", bgColor: "bg-emerald-50", borderColor: "border-emerald-200" },
-  LOST: { label: "Perdido", color: "text-gray-500", bgColor: "bg-gray-50", borderColor: "border-gray-200" },
+  NEW: { label: PIPELINE_STAGE_META.NEW.label, color: PIPELINE_STAGE_META.NEW.color, bgColor: PIPELINE_STAGE_META.NEW.bgColor, borderColor: PIPELINE_STAGE_META.NEW.borderColor },
+  CONTACT: { label: PIPELINE_STAGE_META.CONTACT.label, color: PIPELINE_STAGE_META.CONTACT.color, bgColor: PIPELINE_STAGE_META.CONTACT.bgColor, borderColor: PIPELINE_STAGE_META.CONTACT.borderColor },
+  VISIT: { label: PIPELINE_STAGE_META.VISIT.label, color: PIPELINE_STAGE_META.VISIT.color, bgColor: PIPELINE_STAGE_META.VISIT.bgColor, borderColor: PIPELINE_STAGE_META.VISIT.borderColor },
+  PROPOSAL: { label: PIPELINE_STAGE_META.PROPOSAL.label, color: PIPELINE_STAGE_META.PROPOSAL.color, bgColor: PIPELINE_STAGE_META.PROPOSAL.bgColor, borderColor: PIPELINE_STAGE_META.PROPOSAL.borderColor },
+  DOCUMENTS: { label: PIPELINE_STAGE_META.DOCUMENTS.shortLabel, color: PIPELINE_STAGE_META.DOCUMENTS.color, bgColor: PIPELINE_STAGE_META.DOCUMENTS.bgColor, borderColor: PIPELINE_STAGE_META.DOCUMENTS.borderColor },
+  WON: { label: PIPELINE_STAGE_META.WON.label, color: PIPELINE_STAGE_META.WON.color, bgColor: PIPELINE_STAGE_META.WON.bgColor, borderColor: PIPELINE_STAGE_META.WON.borderColor },
+  LOST: { label: PIPELINE_STAGE_META.LOST.label, color: PIPELINE_STAGE_META.LOST.color, bgColor: PIPELINE_STAGE_META.LOST.bgColor, borderColor: PIPELINE_STAGE_META.LOST.borderColor },
 };
 
 // Mapeamento de status do lead para etapa do pipeline (4 colunas agrupadas)
@@ -84,13 +78,20 @@ interface Lead {
   reservedUntil?: string | null;
   respondedAt?: string | null;
   completedAt?: string | null;
+  visitDate?: string | null;
+  visitTime?: string | null;
   nextActionDate?: string | null;
   nextActionNote?: string | null;
   lastContactAt?: string | null;
+  stageEnteredAt?: string | null;
   hasUnreadMessages?: boolean;
   lastMessageAt?: string | null;
   lastMessagePreview?: string | null;
   lastMessageFromClient?: boolean;
+  lostReason?: string | null;
+  conversationState?: string | null;
+  outcomeReason?: string | null;
+  outcomeDescription?: string | null;
   clientChatToken?: string | null;
   chatUrl?: string | null;
   origin?: "WHATSAPP" | "SITE_CHAT" | string;
@@ -210,6 +211,11 @@ export default function MyLeadsPage() {
 
   const [stagePickerLeadId, setStagePickerLeadId] = useState<string | null>(null);
   const [stageUpdating, setStageUpdating] = useState<Record<string, boolean>>({});
+  const [transitionModal, setTransitionModal] = useState<null | {
+    leadId: string;
+    currentStage: CanonicalStage;
+    nextStage: CanonicalStage;
+  }>(null);
 
   const [hoverPreviewLead, setHoverPreviewLead] = useState<Lead | null>(null);
   const [hoverPreviewRect, setHoverPreviewRect] = useState<DOMRect | null>(null);
@@ -378,19 +384,19 @@ export default function MyLeadsPage() {
     if (typeof document === "undefined") return null;
     if (!hoverPreviewLead.property) return null;
 
-    const maxWidth = 360;
+    const maxWidth = 296;
     const margin = 12;
     const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
     const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 
     let left = hoverPreviewRect.right + margin;
-    let top = hoverPreviewRect.top;
+    let top = hoverPreviewRect.top + 4;
 
     if (left + maxWidth + margin > vw) {
       left = Math.max(margin, hoverPreviewRect.left - maxWidth - margin);
     }
 
-    top = Math.min(Math.max(margin, top), vh - margin - 240);
+    top = Math.min(Math.max(margin, top), vh - margin - 168);
 
     const addressLine = [
       hoverPreviewLead.property.street,
@@ -433,41 +439,41 @@ export default function MyLeadsPage() {
         onMouseEnter={keepHoverPreviewOpen}
         onMouseLeave={closeHoverPreviewSoon}
       >
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-          <div className="relative h-40 bg-gray-100">
-            <Image
-              src={hoverPreviewLead.property.images[0]?.url || "/placeholder.jpg"}
-              alt={hoverPreviewLead.property.title}
-              fill
-              className="object-cover"
-            />
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+          <div className="flex gap-3 p-3">
+            <div className="relative h-20 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100">
+              <Image
+                src={hoverPreviewLead.property.images[0]?.url || "/placeholder.jpg"}
+                alt={hoverPreviewLead.property.title}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-gray-900 line-clamp-2">{hoverPreviewLead.property.title}</div>
+              <div className="mt-1 text-sm font-bold text-teal-700">{formatPrice(hoverPreviewLead.property.price)}</div>
+              <div className="mt-1 line-clamp-2 text-[11px] text-gray-600">{addressLine}</div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                {ptBR.type(hoverPreviewLead.property.type)}
+                {purposeLabel ? ` • ${purposeLabel}` : ""}
+              </div>
+            </div>
           </div>
-          <div className="p-4">
-            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
-              {hoverPreviewLead.property.title}
-            </div>
-            <div className="text-teal-700 font-bold mt-1">{formatPrice(hoverPreviewLead.property.price)}</div>
-            <div className="text-xs text-gray-600 mt-1 line-clamp-2">{addressLine}</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {ptBR.type(hoverPreviewLead.property.type)}
-              {purposeLabel ? ` • ${purposeLabel}` : ""}
-            </div>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {primaryMetrics.map((m) => {
-                const Icon = m.icon;
-                const value = m.value;
-                return (
-                  <span
-                    key={m.key}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium"
-                    title={m.label}
-                  >
-                    <Icon className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="tabular-nums">{value}</span>
-                  </span>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap gap-2 border-t border-gray-100 px-3 py-2.5">
+            {primaryMetrics.slice(0, 3).map((m) => {
+              const Icon = m.icon;
+              const value = m.value;
+              return (
+                <span
+                  key={m.key}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-700"
+                  title={m.label}
+                >
+                  <Icon className="h-3.5 w-3.5 text-gray-500" />
+                  <span className="tabular-nums">{value}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>,
@@ -770,43 +776,40 @@ export default function MyLeadsPage() {
   const now = new Date(nowTimestamp);
   const sevenDaysAgo = new Date(nowTimestamp - 7 * 24 * 60 * 60 * 1000);
 
-  const getCanonicalStage = (lead: Lead): CanonicalStage => {
+  const getCanonicalStage = useCallback((lead: Lead): CanonicalStage => {
     const canonicalStage = (lead as any).pipelineStage as CanonicalStage | undefined;
     if (canonicalStage) return canonicalStage;
     if (lead.status === "COMPLETED") return "WON";
     if (lead.status === "ACCEPTED") return "CONTACT";
     return "NEW";
-  };
+  }, []);
 
-  const moveLeadToStage = async (leadId: string, nextStage: CanonicalStage) => {
+  const moveLeadToStage = async (
+    leadId: string,
+    nextStage: CanonicalStage,
+    options?: {
+      silent?: boolean;
+      announceUndo?: boolean;
+      payload?: Partial<PipelineTransitionPayload> & { transitionReason?: string; note?: string; source?: string };
+    }
+  ) => {
     const lead = leads.find((l) => String(l.id) === String(leadId));
-    if (!lead) return;
+    if (!lead) return false;
     const current = getCanonicalStage(lead);
-    if (current === nextStage) return;
+    if (current === nextStage) return false;
 
     try {
-      const confirmTitle = nextStage === "LOST" ? "Marcar como perdido?" : "Mover lead de etapa?";
-      const confirmMessage =
-        nextStage === "LOST"
-          ? "Tem certeza que deseja marcar este lead como perdido?"
-          : `Deseja mover este lead para a etapa "${CANONICAL_STAGE_META[nextStage].label}"?`;
-      const confirmed = await toast.confirm({
-        title: confirmTitle,
-        message: confirmMessage,
-        confirmText: "Sim, mover",
-        cancelText: "Cancelar",
-        variant: nextStage === "LOST" ? "warning" : "info",
-      });
-
-      if (!confirmed) return;
-
       setStageUpdating((prev) => ({ ...prev, [leadId]: true }));
-      setLeads((prev) => prev.map((l) => (String(l.id) === String(leadId) ? { ...l, pipelineStage: nextStage } : l)));
+      setLeads((prev) => prev.map((l) => (String(l.id) === String(leadId) ? { ...l, pipelineStage: nextStage, stageEnteredAt: new Date().toISOString() } : l)));
 
       const response = await fetch(`/api/leads/${leadId}/pipeline`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: nextStage }),
+        body: JSON.stringify({
+          stage: nextStage,
+          ...options?.payload,
+          source: options?.payload?.source || "BROKER_LIST",
+        }),
       });
       const data = await response.json();
 
@@ -815,16 +818,69 @@ export default function MyLeadsPage() {
         throw new Error(data?.error || "Não conseguimos atualizar a etapa deste lead agora.");
       }
 
-      toast.success("Etapa atualizada!", `Lead movido para "${CANONICAL_STAGE_META[nextStage].label}".`);
+      setLeads((prev) => prev.map((l) => (String(l.id) === String(leadId) ? { ...l, ...data.lead, pipelineStage: nextStage, stageEnteredAt: new Date().toISOString(), outcomeReason: nextStage === "LOST" ? (data?.lead?.lostReason as string | null) || null : nextStage === "WON" ? (options?.payload?.wonReason as string | null) || null : null, outcomeDescription: options?.payload?.note || null } : l)));
+
+      if (!options?.silent) {
+        const canUndo = options?.announceUndo !== false && !transitionRequiresReason(current, nextStage) && nextStage !== "WON" && nextStage !== "LOST";
+        if (canUndo) {
+          toast.showToast({
+            type: "info",
+            title: `Lead movido para ${CANONICAL_STAGE_META[nextStage].label}`,
+            message: lead.contact?.name || lead.property.title,
+            duration: 7000,
+            actionLabel: "Desfazer",
+            onAction: async () => {
+              await moveLeadToStage(leadId, current, {
+                silent: true,
+                announceUndo: false,
+                payload: {
+                  transitionReason: "Desfazer movimentação da lista",
+                  applyAutomation: false,
+                  source: "BROKER_LIST_UNDO",
+                },
+              });
+            },
+          });
+        } else {
+          toast.success("Etapa atualizada!", `Lead movido para "${CANONICAL_STAGE_META[nextStage].label}".`);
+        }
+      }
+      return true;
     } catch (err: any) {
-      toast.error("Erro ao mover lead", err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
+      if (!options?.silent) {
+        toast.error("Erro ao mover lead", err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
+      }
+      return false;
     } finally {
       setStageUpdating((prev) => ({ ...prev, [leadId]: false }));
     }
   };
 
+  const requestStageChange = useCallback((leadId: string, nextStage: CanonicalStage) => {
+    const lead = leads.find((item) => String(item.id) === String(leadId));
+    if (!lead) return;
+    const current = getCanonicalStage(lead);
+    if (current === nextStage) return;
+    const sensitive = transitionRequiresReason(current, nextStage) || nextStage === "WON" || nextStage === "LOST";
+    if (sensitive) {
+      setTransitionModal({
+        leadId: String(leadId),
+        currentStage: current,
+        nextStage,
+      });
+      return;
+    }
+    void moveLeadToStage(String(leadId), nextStage, { announceUndo: true });
+  }, [getCanonicalStage, leads, moveLeadToStage]);
+
   // Leads ativos (não encerrados) para contagens e lista
-  const activeLeads = useMemo(() => leads.filter((lead) => lead.status !== "COMPLETED"), [leads]);
+  const activeLeads = useMemo(
+    () => leads.filter((lead) => {
+      const stage = getCanonicalStage(lead);
+      return stage !== "WON" && stage !== "LOST";
+    }),
+    [getCanonicalStage, leads]
+  );
 
   const leadsWithTaskToday = activeLeads.filter((lead) => {
     if (!lead.nextActionDate) return false;
@@ -1012,8 +1068,8 @@ export default function MyLeadsPage() {
   const stagePickerLead = stagePickerLeadId ? leads.find((l) => String(l.id) === String(stagePickerLeadId)) || null : null;
   const stagePickerCurrentStage = stagePickerLead ? getCanonicalStage(stagePickerLead) : null;
   const stagePickerIsUpdating = stagePickerLeadId ? !!stageUpdating[String(stagePickerLeadId)] : false;
-  const stagePickerNextStages: CanonicalStage[] = stagePickerCurrentStage
-    ? CANONICAL_STAGE_ORDER.slice(CANONICAL_STAGE_ORDER.indexOf(stagePickerCurrentStage) + 1)
+  const stagePickerAvailableStages: CanonicalStage[] = stagePickerCurrentStage
+    ? CANONICAL_STAGE_ORDER.filter((stage) => stage !== stagePickerCurrentStage)
     : [];
 
   if (loading) {
@@ -1079,47 +1135,37 @@ export default function MyLeadsPage() {
                   </div>
 
                   <div className="px-5 pb-5">
-                    {stagePickerNextStages.length ? (
+                    {stagePickerAvailableStages.length ? (
                       <div className="grid grid-cols-2 gap-2">
-                        {stagePickerNextStages
-                          .filter((s) => s !== "LOST")
-                          .map((stage) => {
-                            const meta = CANONICAL_STAGE_META[stage];
-                            return (
-                              <button
-                                key={stage}
-                                type="button"
-                                disabled={stagePickerIsUpdating}
-                                onClick={() => {
-                                  setStagePickerLeadId(null);
-                                  void moveLeadToStage(String(stagePickerLead.id), stage);
-                                }}
-                                className="group flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-60"
-                              >
-                                <span className={`h-2 w-2 rounded-full border ${meta.borderColor} ${meta.bgColor}`} />
-                                {meta.label}
-                              </button>
-                            );
-                          })}
+                        {stagePickerAvailableStages.map((stage) => {
+                          const meta = CANONICAL_STAGE_META[stage];
+                          const needsContext = transitionRequiresReason(stagePickerCurrentStage, stage) || stage === "WON" || stage === "LOST";
+                          return (
+                            <button
+                              key={stage}
+                              type="button"
+                              disabled={stagePickerIsUpdating}
+                              onClick={() => {
+                                setStagePickerLeadId(null);
+                                requestStageChange(String(stagePickerLead.id), stage);
+                              }}
+                              className={`group flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-60 ${
+                                stage === "LOST"
+                                  ? "border-red-200 bg-white text-red-600 hover:bg-red-50"
+                                  : stage === "WON"
+                                    ? "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                                    : "border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                            >
+                              <span className={`h-2 w-2 rounded-full border ${meta.borderColor} ${meta.bgColor}`} />
+                              <span>{meta.label}</span>
+                              {needsContext ? <span className="ml-auto text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Contexto</span> : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="px-1 py-2 text-sm text-gray-600">Etapa final.</div>
-                    )}
-
-                    {stagePickerNextStages.includes("LOST") && (
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          disabled={stagePickerIsUpdating}
-                          onClick={() => {
-                            setStagePickerLeadId(null);
-                            void moveLeadToStage(String(stagePickerLead.id), "LOST");
-                          }}
-                          className="w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          Marcar como perdido
-                        </button>
-                      </div>
                     )}
                   </div>
                 </div>
@@ -1472,6 +1518,10 @@ export default function MyLeadsPage() {
               {[...filteredLeads].map((lead) => {
                 const isExpanded = expandedLeadId === lead.id;
                 const lastActivityLabel = getTimeAgo((lead.lastMessageAt || lead.createdAt) as string);
+                const stageAgeDays = getLeadStageAgeDays(lead, now);
+                const temperature = getLeadTemperature(lead, now);
+                const nextActionState = getLeadNextActionState(lead, now);
+                const temperatureLabel = temperature === "hot" ? "Quente" : temperature === "warm" ? "Em jogo" : "Frio";
                 const addressLine = [
                   lead.property.street,
                   lead.property.neighborhood,
@@ -1530,6 +1580,17 @@ export default function MyLeadsPage() {
                             >
                               {getOriginLabel(lead)}
                             </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${temperature === "hot" ? "border-rose-200 bg-rose-50 text-rose-700" : temperature === "warm" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                              {temperatureLabel}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-gray-100 text-gray-600">
+                              {stageAgeDays}d etapa
+                            </span>
+                            {nextActionState.overdue ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-red-50 text-red-700">
+                                Atrasada
+                              </span>
+                            ) : null}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1620,6 +1681,17 @@ export default function MyLeadsPage() {
                             >
                               {getOriginLabel(lead)}
                             </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${temperature === "hot" ? "border-rose-200 bg-rose-50 text-rose-700" : temperature === "warm" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                              {temperatureLabel}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-gray-100 text-gray-600">
+                              {stageAgeDays}d etapa
+                            </span>
+                            {nextActionState.overdue ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-red-50 text-red-700">
+                                Atrasada
+                              </span>
+                            ) : null}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1635,26 +1707,30 @@ export default function MyLeadsPage() {
 
                           {/* Alertas inline */}
                           <div className="flex flex-wrap gap-1.5 mt-2">
-                            {lead.nextActionDate && (() => {
-                              const actionDate = new Date(lead.nextActionDate);
-                              const isOverdue = actionDate < now && !isSameDay(actionDate, now);
-                              const isToday = isSameDay(actionDate, now);
-                              if (isOverdue || isToday) {
-                                return (
-                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                    isOverdue ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
-                                  }`}>
-                                    <Clock className="w-2.5 h-2.5" />
-                                    {isOverdue ? "Atrasada" : "Hoje"}
-                                  </span>
-                                );
-                              }
-                              return null;
-                            })()}
+                            {nextActionState.overdue ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-600">
+                                <Clock className="w-2.5 h-2.5" />
+                                Atrasada
+                              </span>
+                            ) : null}
                             {lead.hasUnreadMessages && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
                                 <MessageCircle className="w-2.5 h-2.5" />
                                 Mensagem
+                              </span>
+                            )}
+                            {lead.visitDate && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700">
+                                <CalendarClock className="w-2.5 h-2.5" />
+                                {new Date(lead.visitDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                              {stageAgeDays}d etapa
+                            </span>
+                            {isLeadStale(lead, 48, now) && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                                48h+
                               </span>
                             )}
                           </div>
@@ -1918,6 +1994,10 @@ export default function MyLeadsPage() {
                     <tbody className="divide-y divide-gray-100">
                       {filteredLeads.map((lead) => {
                         const lastActivityLabel = getTimeAgo((lead.lastMessageAt || lead.createdAt) as string);
+                        const stageAgeDays = getLeadStageAgeDays(lead, now);
+                        const temperature = getLeadTemperature(lead, now);
+                        const nextActionState = getLeadNextActionState(lead, now);
+                        const temperatureLabel = temperature === "hot" ? "Quente" : temperature === "warm" ? "Em jogo" : "Frio";
                         return (
                           <tr
                             key={lead.id}
@@ -1942,6 +2022,19 @@ export default function MyLeadsPage() {
                                   {lead.hasUnreadMessages && (
                                     <div className="text-[11px] text-blue-700 font-semibold">Mensagem não lida</div>
                                   )}
+                                  <div className="mt-1 flex flex-wrap gap-1.5">
+                                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border ${temperature === "hot" ? "border-rose-200 bg-rose-50 text-rose-700" : temperature === "warm" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                                      {temperatureLabel}
+                                    </span>
+                                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+                                      {stageAgeDays}d etapa
+                                    </span>
+                                    {nextActionState.overdue ? (
+                                      <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                                        Atrasada
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -2072,6 +2165,27 @@ export default function MyLeadsPage() {
       </div>
 
       {previewNode}
+
+      <PipelineTransitionModal
+        isOpen={!!transitionModal}
+        currentStage={transitionModal?.currentStage || null}
+        nextStage={transitionModal?.nextStage || null}
+        isSubmitting={transitionModal ? !!stageUpdating[transitionModal.leadId] : false}
+        onClose={() => setTransitionModal(null)}
+        onSubmit={async (payload) => {
+          if (!transitionModal) return;
+          const succeeded = await moveLeadToStage(transitionModal.leadId, transitionModal.nextStage, {
+            announceUndo: false,
+            payload: {
+              ...payload,
+              source: "BROKER_LIST_MODAL",
+            },
+          });
+          if (succeeded) {
+            setTransitionModal(null);
+          }
+        }}
+      />
     </div>
   );
 }

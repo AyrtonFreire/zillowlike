@@ -19,7 +19,7 @@ interface DroppableStageColumnProps {
 export default function DroppableStageColumn({
   stageId,
   label,
-  description: _description,
+  description,
   count,
   children,
   collapsed,
@@ -66,6 +66,7 @@ export default function DroppableStageColumn({
             )}
           </div>
         </div>
+        {description ? <p className="text-[11px] leading-4 text-gray-500">{description}</p> : null}
       </div>
 
       {!collapsed && (

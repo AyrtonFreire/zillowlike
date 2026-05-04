@@ -12,6 +12,8 @@ interface Toast {
   title: string;
   message?: string;
   duration?: number;
+  actionLabel?: string;
+  onAction?: () => void | Promise<void>;
 }
 
 // Confirm Types
@@ -175,6 +177,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         <p className={`${colorScheme.message} text-sm mt-1`}>
                           {toast.message}
                         </p>
+                      )}
+                      {toast.actionLabel && toast.onAction && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await toast.onAction?.();
+                            } finally {
+                              removeToast(toast.id);
+                            }
+                          }}
+                          className={`mt-2 inline-flex items-center rounded-lg border border-current/20 px-2.5 py-1 text-xs font-semibold ${colorScheme.title}`}
+                        >
+                          {toast.actionLabel}
+                        </button>
                       )}
                     </div>
                     <button

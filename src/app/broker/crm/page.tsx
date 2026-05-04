@@ -23,6 +23,10 @@ import {
   Bath,
   Ruler,
   Car,
+  Flame,
+  CalendarClock,
+  TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,15 +34,21 @@ import { useToast } from "@/contexts/ToastContext";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import DraggableLeadCard from "@/components/crm/DraggableLeadCard";
 import DroppableStageColumn from "@/components/crm/DroppableStageColumn";
+import PipelineTransitionModal, { type PipelineTransitionPayload } from "@/components/crm/PipelineTransitionModal";
 import LeadSidePanel from "@/components/leads/LeadSidePanel";
 import { ptBR } from "@/lib/i18n/property";
 import { getPusherClient } from "@/lib/pusher-client";
+import { PIPELINE_STAGE_META, transitionRequiresReason, type CanonicalPipelineStage } from "@/lib/lead-pipeline";
+import { getLeadNextActionState, getLeadStageAgeDays, getLeadTemperature, getStageHealth, isLeadStale } from "@/lib/lead-operational-signals";
 
 interface PipelineLead {
   id: string;
   status: string;
   pipelineStage: "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST";
   createdAt: string;
+  respondedAt?: string | null;
+  completedAt?: string | null;
+  stageEnteredAt?: string | null;
   nextActionDate?: string | null;
   nextActionNote?: string | null;
   lastContactAt?: string | null;
@@ -46,6 +56,12 @@ interface PipelineLead {
   lastMessageAt?: string | null;
   lastMessagePreview?: string | null;
   lastMessageFromClient?: boolean;
+  visitDate?: string | null;
+  visitTime?: string | null;
+  lostReason?: string | null;
+  conversationState?: string | null;
+  outcomeReason?: string | null;
+  outcomeDescription?: string | null;
   property: {
     id: string;
     title: string;
@@ -91,62 +107,75 @@ const STAGE_CONFIG: Record<PipelineLead["pipelineStage"], {
   borderColor: string;
 }> = {
   NEW: {
-    label: "Novos",
-    description: "Aguardando primeiro contato",
+    label: PIPELINE_STAGE_META.NEW.label,
+    description: PIPELINE_STAGE_META.NEW.description,
     icon: Users,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
+    color: PIPELINE_STAGE_META.NEW.color,
+    bgColor: PIPELINE_STAGE_META.NEW.bgColor,
+    borderColor: PIPELINE_STAGE_META.NEW.borderColor,
   },
   CONTACT: {
-    label: "Contato",
-    description: "Em conversa com o cliente",
+    label: PIPELINE_STAGE_META.CONTACT.label,
+    description: PIPELINE_STAGE_META.CONTACT.description,
     icon: Phone,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    borderColor: "border-amber-200",
+    color: PIPELINE_STAGE_META.CONTACT.color,
+    bgColor: PIPELINE_STAGE_META.CONTACT.bgColor,
+    borderColor: PIPELINE_STAGE_META.CONTACT.borderColor,
   },
   VISIT: {
-    label: "Visita",
-    description: "Visita agendada ou realizada",
+    label: PIPELINE_STAGE_META.VISIT.label,
+    description: PIPELINE_STAGE_META.VISIT.description,
     icon: Eye,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50",
-    borderColor: "border-purple-200",
+    color: PIPELINE_STAGE_META.VISIT.color,
+    bgColor: PIPELINE_STAGE_META.VISIT.bgColor,
+    borderColor: PIPELINE_STAGE_META.VISIT.borderColor,
   },
   PROPOSAL: {
-    label: "Proposta",
-    description: "Negociando condições",
+    label: PIPELINE_STAGE_META.PROPOSAL.label,
+    description: PIPELINE_STAGE_META.PROPOSAL.description,
     icon: FileText,
-    color: "text-cyan-600",
-    bgColor: "bg-cyan-50",
-    borderColor: "border-cyan-200",
+    color: PIPELINE_STAGE_META.PROPOSAL.color,
+    bgColor: PIPELINE_STAGE_META.PROPOSAL.bgColor,
+    borderColor: PIPELINE_STAGE_META.PROPOSAL.borderColor,
   },
   DOCUMENTS: {
-    label: "Documentação",
-    description: "Documentação em andamento",
+    label: PIPELINE_STAGE_META.DOCUMENTS.label,
+    description: PIPELINE_STAGE_META.DOCUMENTS.description,
     icon: FileCheck,
-    color: "text-orange-600",
-    bgColor: "bg-orange-50",
-    borderColor: "border-orange-200",
+    color: PIPELINE_STAGE_META.DOCUMENTS.color,
+    bgColor: PIPELINE_STAGE_META.DOCUMENTS.bgColor,
+    borderColor: PIPELINE_STAGE_META.DOCUMENTS.borderColor,
   },
   WON: {
-    label: "Fechado",
-    description: "Negócio concluído!",
+    label: PIPELINE_STAGE_META.WON.label,
+    description: PIPELINE_STAGE_META.WON.description,
     icon: Trophy,
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50",
-    borderColor: "border-emerald-200",
+    color: PIPELINE_STAGE_META.WON.color,
+    bgColor: PIPELINE_STAGE_META.WON.bgColor,
+    borderColor: PIPELINE_STAGE_META.WON.borderColor,
   },
   LOST: {
-    label: "Perdido",
-    description: "Não avançou",
+    label: PIPELINE_STAGE_META.LOST.label,
+    description: PIPELINE_STAGE_META.LOST.description,
     icon: XCircle,
-    color: "text-gray-500",
-    bgColor: "bg-gray-50",
-    borderColor: "border-gray-200",
+    color: PIPELINE_STAGE_META.LOST.color,
+    bgColor: PIPELINE_STAGE_META.LOST.bgColor,
+    borderColor: PIPELINE_STAGE_META.LOST.borderColor,
   },
 };
+
+type FunnelViewPreset = "all" | "unread" | "overdue" | "stale" | "visits" | "proposals" | "documents" | "hot";
+
+const VIEW_PRESETS: Array<{ key: FunnelViewPreset; label: string }> = [
+  { key: "all", label: "Todos" },
+  { key: "unread", label: "Não lidas" },
+  { key: "overdue", label: "Próxima ação" },
+  { key: "stale", label: "48h sem contato" },
+  { key: "visits", label: "Visitas" },
+  { key: "proposals", label: "Propostas" },
+  { key: "documents", label: "Docs travados" },
+  { key: "hot", label: "Quentes" },
+];
 
 export default function BrokerCrmPage() {
   const { data: session } = useSession();
@@ -168,9 +197,14 @@ export default function BrokerCrmPage() {
   const hoverPreviewCloseTimer = useRef<number | null>(null);
 
   const [query, setQuery] = useState("");
-  const [quickFilter, setQuickFilter] = useState<"all" | "unread" | "sla" | "noContact">("all");
+  const [viewPreset, setViewPreset] = useState<FunnelViewPreset>("all");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [transitionModal, setTransitionModal] = useState<null | {
+    leadId: string;
+    currentStage: CanonicalPipelineStage;
+    nextStage: CanonicalPipelineStage;
+  }>(null);
   const [collapsedByStage, setCollapsedByStage] = useState<Record<PipelineLead["pipelineStage"], boolean>>({
     NEW: false,
     CONTACT: false,
@@ -306,7 +340,6 @@ export default function BrokerCrmPage() {
   };
 
   const nowTimestamp = Date.now();
-  const fortyEightHoursAgoTs = nowTimestamp - 48 * 60 * 60 * 1000;
 
   const openLeadPanel = (leadId: string) => {
     setSelectedLeadId(leadId);
@@ -342,19 +375,19 @@ export default function BrokerCrmPage() {
     if (!hoverPreviewLead || !hoverPreviewRect) return null;
     if (typeof document === "undefined") return null;
 
-    const maxWidth = 360;
+    const maxWidth = 296;
     const margin = 12;
     const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
     const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 
     let left = hoverPreviewRect.right + margin;
-    let top = hoverPreviewRect.top;
+    let top = hoverPreviewRect.top + 4;
 
     if (left + maxWidth + margin > vw) {
       left = Math.max(margin, hoverPreviewRect.left - maxWidth - margin);
     }
 
-    top = Math.min(Math.max(margin, top), vh - margin - 240);
+    top = Math.min(Math.max(margin, top), vh - margin - 168);
 
     const addressLine = [
       hoverPreviewLead.property.street,
@@ -398,41 +431,41 @@ export default function BrokerCrmPage() {
         onMouseEnter={keepHoverPreviewOpen}
         onMouseLeave={closeHoverPreviewSoon}
       >
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-          <div className="relative h-40 bg-gray-100">
-            <Image
-              src={hoverPreviewLead.property.images[0]?.url || "/placeholder.jpg"}
-              alt={hoverPreviewLead.property.title}
-              fill
-              className="object-cover"
-            />
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+          <div className="flex gap-3 p-3">
+            <div className="relative h-20 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100">
+              <Image
+                src={hoverPreviewLead.property.images[0]?.url || "/placeholder.jpg"}
+                alt={hoverPreviewLead.property.title}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-gray-900 line-clamp-2">{hoverPreviewLead.property.title}</div>
+              <div className="mt-1 text-sm font-bold text-teal-700">{formatPrice(hoverPreviewLead.property.price)}</div>
+              <div className="mt-1 line-clamp-2 text-[11px] text-gray-600">{addressLine}</div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                {ptBR.type(hoverPreviewLead.property.type)}
+                {purposeLabel ? ` • ${purposeLabel}` : ""}
+              </div>
+            </div>
           </div>
-          <div className="p-4">
-            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
-              {hoverPreviewLead.property.title}
-            </div>
-            <div className="text-teal-700 font-bold mt-1">{formatPrice(hoverPreviewLead.property.price)}</div>
-            <div className="text-xs text-gray-600 mt-1 line-clamp-2">{addressLine}</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {ptBR.type(hoverPreviewLead.property.type)}
-              {purposeLabel ? ` • ${purposeLabel}` : ""}
-            </div>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {metrics.map((m) => {
-                const Icon = m.icon;
-                const value = m.value;
-                return (
-                  <span
-                    key={m.key}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium"
-                    title={m.label}
-                  >
-                    <Icon className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="tabular-nums">{value}</span>
-                  </span>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap gap-2 border-t border-gray-100 px-3 py-2.5">
+            {metrics.slice(0, 3).map((m) => {
+              const Icon = m.icon;
+              const value = m.value;
+              return (
+                <span
+                  key={m.key}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-700"
+                  title={m.label}
+                >
+                  <Icon className="h-3.5 w-3.5 text-gray-500" />
+                  <span className="tabular-nums">{value}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>,
@@ -471,32 +504,52 @@ export default function BrokerCrmPage() {
     return hay.includes(queryNorm);
   };
 
-  const leadPassesQuickFilter = useCallback((lead: PipelineLead) => {
-    if (quickFilter === "all") return true;
-    if (quickFilter === "unread") return !!lead.hasUnreadMessages;
-    if (quickFilter === "sla") {
-      const { overdue, today } = isLeadSla(lead);
-      return overdue || today;
+  const leadPassesViewPreset = useCallback((lead: PipelineLead) => {
+    const now = new Date(nowTimestamp);
+    if (viewPreset === "all") return true;
+    if (viewPreset === "unread") return !!lead.hasUnreadMessages;
+    if (viewPreset === "overdue") {
+      const state = getLeadNextActionState(lead, now);
+      return state.overdue || state.today;
     }
-    if (quickFilter === "noContact") {
-      if (!lead.lastContactAt) return true;
-      const d = new Date(lead.lastContactAt);
-      if (Number.isNaN(d.getTime())) return true;
-      return d.getTime() < fortyEightHoursAgoTs;
+    if (viewPreset === "stale") {
+      return isLeadStale(lead, 48, now);
+    }
+    if (viewPreset === "visits") {
+      return lead.pipelineStage === "VISIT" || !!lead.visitDate;
+    }
+    if (viewPreset === "proposals") {
+      return lead.pipelineStage === "PROPOSAL";
+    }
+    if (viewPreset === "documents") {
+      return lead.pipelineStage === "DOCUMENTS" && (getLeadStageAgeDays(lead, now) >= (PIPELINE_STAGE_META.DOCUMENTS.agingWarningDays || 7) || getLeadNextActionState(lead, now).overdue);
+    }
+    if (viewPreset === "hot") {
+      return getLeadTemperature(lead, now) === "hot";
     }
     return true;
-  }, [fortyEightHoursAgoTs, isLeadSla, quickFilter]);
+  }, [nowTimestamp, viewPreset]);
 
   const urgencySort = useCallback((a: PipelineLead, b: PipelineLead) => {
+    const now = new Date(nowTimestamp);
     const au = a.hasUnreadMessages ? 1 : 0;
     const bu = b.hasUnreadMessages ? 1 : 0;
     if (au !== bu) return bu - au;
+
+    const aTemp = getLeadTemperature(a, now);
+    const bTemp = getLeadTemperature(b, now);
+    const tempRank = { hot: 2, warm: 1, cool: 0 } as const;
+    if (tempRank[aTemp] !== tempRank[bTemp]) return tempRank[bTemp] - tempRank[aTemp];
 
     const aSla = isLeadSla(a);
     const bSla = isLeadSla(b);
     const aRank = aSla.overdue ? 2 : aSla.today ? 1 : 0;
     const bRank = bSla.overdue ? 2 : bSla.today ? 1 : 0;
     if (aRank !== bRank) return bRank - aRank;
+
+    const aAge = getLeadStageAgeDays(a, now);
+    const bAge = getLeadStageAgeDays(b, now);
+    if (aAge !== bAge) return bAge - aAge;
 
     const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : new Date(a.createdAt).getTime();
     const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : new Date(b.createdAt).getTime();
@@ -505,15 +558,15 @@ export default function BrokerCrmPage() {
     }
 
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  }, [isLeadSla]);
+  }, [isLeadSla, nowTimestamp]);
 
   const searchScopedLeads = useMemo(() => {
     return (leads || []).filter((lead) => leadMatchesQuery(lead, query));
   }, [leads, query]);
 
   const filteredLeads = useMemo(() => {
-    return searchScopedLeads.filter((lead) => leadPassesQuickFilter(lead));
-  }, [leadPassesQuickFilter, searchScopedLeads]);
+    return searchScopedLeads.filter((lead) => leadPassesViewPreset(lead));
+  }, [leadPassesViewPreset, searchScopedLeads]);
 
   const toggleSelectLead = useCallback((leadId: string) => {
     setSelectedLeadIds((prev) => {
@@ -572,51 +625,151 @@ export default function BrokerCrmPage() {
     [toast, fetchLeads]
   );
 
-  const moveLeadToStage = useCallback(async (leadId: string, newStage: PipelineLead["pipelineStage"], options?: { silent?: boolean }) => {
+  const moveLeadToStage = useCallback(async (
+    leadId: string,
+    newStage: PipelineLead["pipelineStage"],
+    options?: {
+      silent?: boolean;
+      announceUndo?: boolean;
+      payload?: Partial<PipelineTransitionPayload> & { transitionReason?: string; note?: string; source?: string };
+    }
+  ) => {
     const lead = leads.find((l) => l.id === leadId);
-    if (!lead || lead.pipelineStage === newStage) return;
+    if (!lead || lead.pipelineStage === newStage) return false;
 
     try {
       setUpdating((prev) => ({ ...prev, [leadId]: true }));
-      
-      // Atualização otimista
+
       setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, pipelineStage: newStage } : l))
+        prev.map((l) =>
+          l.id === leadId
+            ? {
+                ...l,
+                pipelineStage: newStage,
+                stageEnteredAt: new Date().toISOString(),
+              }
+            : l
+        )
       );
 
       const response = await fetch(`/api/leads/${leadId}/pipeline`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: newStage }),
+        body: JSON.stringify({
+          stage: newStage,
+          ...options?.payload,
+          source: options?.payload?.source || "CRM_FUNNEL",
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data?.success) {
-        // Reverte a atualização otimista
         setLeads((prev) =>
-          prev.map((l) => (l.id === leadId ? { ...l, pipelineStage: lead.pipelineStage } : l))
+          prev.map((l) =>
+            l.id === leadId
+              ? {
+                  ...l,
+                  pipelineStage: lead.pipelineStage,
+                  stageEnteredAt: lead.stageEnteredAt,
+                  nextActionDate: lead.nextActionDate,
+                  nextActionNote: lead.nextActionNote,
+                  lostReason: lead.lostReason,
+                  outcomeReason: lead.outcomeReason,
+                  outcomeDescription: lead.outcomeDescription,
+                }
+              : l
+          )
         );
         throw new Error(data?.error || "Não conseguimos atualizar a etapa deste lead agora.");
       }
 
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === leadId
+            ? {
+                ...l,
+                ...data.lead,
+                pipelineStage: newStage,
+                stageEnteredAt: new Date().toISOString(),
+                outcomeReason:
+                  newStage === "LOST"
+                    ? (data?.lead?.lostReason as string | null) || null
+                    : newStage === "WON"
+                      ? (options?.payload?.wonReason as string | null) || null
+                      : null,
+                outcomeDescription: options?.payload?.note || null,
+              }
+            : l
+        )
+      );
+
       if (!options?.silent) {
-        toast.success("Etapa atualizada!", `Lead movido para "${STAGE_CONFIG[newStage].label}".`);
+        const canUndo = options?.announceUndo !== false && !transitionRequiresReason(lead.pipelineStage, newStage) && newStage !== "WON" && newStage !== "LOST";
+        if (canUndo) {
+          toast.showToast({
+            type: "info",
+            title: `Lead movido para ${STAGE_CONFIG[newStage].label}`,
+            message: lead.contact?.name || lead.property.title,
+            duration: 7000,
+            actionLabel: "Desfazer",
+            onAction: async () => {
+              await moveLeadToStage(leadId, lead.pipelineStage, {
+                silent: true,
+                announceUndo: false,
+                payload: {
+                  transitionReason: "Desfazer movimentação do funil",
+                  applyAutomation: false,
+                  source: "CRM_FUNNEL_UNDO",
+                },
+              });
+            },
+          });
+        } else {
+          toast.success("Etapa atualizada!", `Lead movido para "${STAGE_CONFIG[newStage].label}".`);
+        }
       }
+      return true;
     } catch (err: any) {
       console.error("Error updating pipeline stage:", err);
       if (!options?.silent) {
         toast.error("Erro ao mover lead", err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
       }
+      return false;
     } finally {
       setUpdating((prev) => ({ ...prev, [leadId]: false }));
     }
   }, [leads, toast]);
 
+  const requestStageChange = useCallback((leadId: string, newStage: PipelineLead["pipelineStage"]) => {
+    const lead = leads.find((item) => item.id === leadId);
+    if (!lead || lead.pipelineStage === newStage) return;
+    const sensitive = newStage === "WON" || newStage === "LOST" || transitionRequiresReason(lead.pipelineStage, newStage);
+    if (sensitive) {
+      setTransitionModal({
+        leadId,
+        currentStage: lead.pipelineStage as CanonicalPipelineStage,
+        nextStage: newStage as CanonicalPipelineStage,
+      });
+      return;
+    }
+    void moveLeadToStage(leadId, newStage, { announceUndo: true });
+  }, [leads, moveLeadToStage]);
+
   const bulkMoveSelected = useCallback(
     async (newStage: PipelineLead["pipelineStage"]) => {
       const ids = [...selectedLeadIds];
       if (ids.length === 0) return;
+
+      const blocked = ids.some((id) => {
+        const lead = leads.find((item) => item.id === id);
+        return !lead || transitionRequiresReason(lead.pipelineStage, newStage) || newStage === "WON" || newStage === "LOST";
+      });
+
+      if (blocked) {
+        toast.info("Use a movimentação individual", "Mudanças com regressão, ganho ou perda pedem contexto por lead.");
+        return;
+      }
 
       const confirmed = await toast.confirm({
         title: "Mover leads em lote?",
@@ -629,13 +782,13 @@ export default function BrokerCrmPage() {
       if (!confirmed) return;
 
       for (const id of ids) {
-        await moveLeadToStage(String(id), newStage, { silent: true });
+        await moveLeadToStage(String(id), newStage, { silent: true, announceUndo: false, payload: { source: "CRM_FUNNEL_BULK" } });
       }
 
       toast.success("Leads atualizados!", `${ids.length} lead(s) movidos para "${STAGE_CONFIG[newStage].label}".`);
       clearSelection();
     },
-    [selectedLeadIds, toast, moveLeadToStage, clearSelection]
+    [selectedLeadIds, toast, moveLeadToStage, clearSelection, leads]
   );
 
   const handleAdvanceStage = async (leadId: string) => {
@@ -649,16 +802,7 @@ export default function BrokerCrmPage() {
 
     const nextStage = STAGE_ORDER[currentIndex + 1];
 
-    const confirmed = await toast.confirm({
-      title: "Mover lead de etapa?",
-      message: `Deseja mover este lead para a etapa "${STAGE_CONFIG[nextStage].label}"?`,
-      confirmText: "Sim, mover",
-      cancelText: "Cancelar",
-      variant: "info",
-    });
-
-    if (!confirmed) return;
-    await moveLeadToStage(leadId, nextStage);
+    requestStageChange(leadId, nextStage);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -682,16 +826,7 @@ export default function BrokerCrmPage() {
     const current = leads.find((l) => String(l.id) === String(leadId));
     if (!current || current.pipelineStage === newStage) return;
 
-    const confirmed = await toast.confirm({
-      title: "Mover lead de etapa?",
-      message: `Deseja mover este lead para a etapa "${STAGE_CONFIG[newStage].label}"?`,
-      confirmText: "Sim, mover",
-      cancelText: "Cancelar",
-      variant: "info",
-    });
-
-    if (!confirmed) return;
-    await moveLeadToStage(leadId, newStage);
+    requestStageChange(leadId, newStage);
   };
 
   const activeLead = activeDragId ? leads.find((l) => l.id === activeDragId) : null;
@@ -723,6 +858,51 @@ export default function BrokerCrmPage() {
   const totalLeads = filteredLeads.length;
   const wonLeads = leadsByStage["WON"].length;
   const progressPercent = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
+  const stageInsights = useMemo(() => {
+    const now = new Date(nowTimestamp);
+    return STAGE_ORDER.reduce((acc, stage) => {
+      const stageLeads = leadsByStage[stage];
+      const overdueCount = stageLeads.filter((lead) => getLeadNextActionState(lead, now).overdue).length;
+      const agingCount = stageLeads.filter((lead) => {
+        const limit = PIPELINE_STAGE_META[stage].agingWarningDays;
+        return limit ? getLeadStageAgeDays(lead, now) >= limit : false;
+      }).length;
+      const hotCount = stageLeads.filter((lead) => getLeadTemperature(lead, now) === "hot").length;
+      acc[stage] = {
+        overdueCount,
+        agingCount,
+        hotCount,
+        health: getStageHealth({ stage, count: stageLeads.length, overdueCount, agingCount }),
+      };
+      return acc;
+    }, {} as Record<PipelineLead["pipelineStage"], { overdueCount: number; agingCount: number; hotCount: number; health: ReturnType<typeof getStageHealth> }>);
+  }, [leadsByStage, nowTimestamp]);
+  const dashboardMetrics = useMemo(() => {
+    const now = new Date(nowTimestamp);
+    const sevenDaysAhead = new Date(now);
+    sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
+    const activeOpen = filteredLeads.filter((lead) => lead.pipelineStage !== "WON" && lead.pipelineStage !== "LOST");
+    const overdue = activeOpen.filter((lead) => getLeadNextActionState(lead, now).overdue).length;
+    const hot = activeOpen.filter((lead) => getLeadTemperature(lead, now) === "hot").length;
+    const visits = activeOpen.filter((lead) => {
+      if (!lead.visitDate) return false;
+      const visitAt = new Date(lead.visitDate);
+      return !Number.isNaN(visitAt.getTime()) && visitAt.getTime() >= now.getTime() && visitAt.getTime() <= sevenDaysAhead.getTime();
+    }).length;
+    const docsBlocked = leadsByStage.DOCUMENTS.filter((lead) => getLeadNextActionState(lead, now).overdue || getLeadStageAgeDays(lead, now) >= (PIPELINE_STAGE_META.DOCUMENTS.agingWarningDays || 7)).length;
+    const stale = activeOpen.filter((lead) => isLeadStale(lead, 48, now)).length;
+    const bottleneck = STAGE_ORDER
+      .filter((stage) => stage !== "WON" && stage !== "LOST")
+      .sort((a, b) => (stageInsights[b].overdueCount + stageInsights[b].agingCount) - (stageInsights[a].overdueCount + stageInsights[a].agingCount))[0] || null;
+    return {
+      hot,
+      overdue,
+      visits,
+      docsBlocked,
+      stale,
+      bottleneck,
+    };
+  }, [filteredLeads, leadsByStage, nowTimestamp, stageInsights]);
 
   if (loading) {
     return <CenteredSpinner message="Carregando sua jornada de leads..." />;
@@ -746,52 +926,22 @@ export default function BrokerCrmPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setQuickFilter("all")}
-                  className={`px-3 py-2 rounded-xl text-sm font-semibold border ${
-                    quickFilter === "all"
-                      ? "bg-teal-600 text-white border-teal-600"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickFilter("unread")}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
-                    quickFilter === "unread"
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Não lidas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickFilter("sla")}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
-                    quickFilter === "sla"
-                      ? "bg-amber-600 text-white border-amber-600"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <Clock className="w-4 h-4" />
-                  Próxima ação
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickFilter("noContact")}
-                  className={`px-3 py-2 rounded-xl text-sm font-semibold border ${
-                    quickFilter === "noContact"
-                      ? "bg-gray-800 text-white border-gray-800"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  48h sem contato
-                </button>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {VIEW_PRESETS.map((preset) => (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => setViewPreset(preset.key)}
+                      className={`whitespace-nowrap px-3 py-2 rounded-xl text-sm font-semibold border ${
+                        viewPreset === preset.key
+                          ? "bg-teal-600 text-white border-teal-600"
+                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
 
                 <button
                   type="button"
@@ -809,6 +959,34 @@ export default function BrokerCrmPage() {
                   Selecionar
                 </button>
 
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 xl:grid-cols-5 gap-3">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-rose-700"><Flame className="w-4 h-4" /> Quentes</div>
+                <div className="mt-2 text-2xl font-bold text-rose-900">{dashboardMetrics.hot}</div>
+                <div className="text-xs text-rose-700">Leads exigindo reação rápida. {dashboardMetrics.stale} sem contato.</div>
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-amber-700"><AlertTriangle className="w-4 h-4" /> Ações vencidas</div>
+                <div className="mt-2 text-2xl font-bold text-amber-900">{dashboardMetrics.overdue}</div>
+                <div className="text-xs text-amber-700">Próximas ações que já passaram.</div>
+              </div>
+              <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-purple-700"><CalendarClock className="w-4 h-4" /> Visitas 7d</div>
+                <div className="mt-2 text-2xl font-bold text-purple-900">{dashboardMetrics.visits}</div>
+                <div className="text-xs text-purple-700">Agenda comercial da semana.</div>
+              </div>
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-orange-700"><Clock className="w-4 h-4" /> Docs travados</div>
+                <div className="mt-2 text-2xl font-bold text-orange-900">{dashboardMetrics.docsBlocked}</div>
+                <div className="text-xs text-orange-700">Pendências em documentação.</div>
+              </div>
+              <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-teal-700"><TrendingUp className="w-4 h-4" /> Conversão</div>
+                <div className="mt-2 text-2xl font-bold text-teal-900">{progressPercent}%</div>
+                <div className="text-xs text-teal-700">Gargalo atual: {dashboardMetrics.bottleneck ? STAGE_CONFIG[dashboardMetrics.bottleneck].label : "Sem gargalo"}</div>
               </div>
             </div>
 
@@ -859,6 +1037,16 @@ export default function BrokerCrmPage() {
               transition={{ duration: 0.5 }}
             />
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+              <div className="text-[11px] font-semibold text-rose-700">Quentes</div>
+              <div className="text-lg font-bold text-rose-900">{dashboardMetrics.hot}</div>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+              <div className="text-[11px] font-semibold text-amber-700">Ações vencidas</div>
+              <div className="text-lg font-bold text-amber-900">{dashboardMetrics.overdue}</div>
+            </div>
+          </div>
         </div>
 
         {/* Navegação de etapas no mobile */}
@@ -874,18 +1062,13 @@ export default function BrokerCrmPage() {
               />
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {[
-                { key: "all" as const, label: "Todos" },
-                { key: "unread" as const, label: "Não lidas" },
-                { key: "sla" as const, label: "Próxima ação" },
-                { key: "noContact" as const, label: "48h" },
-              ].map((it) => (
+              {VIEW_PRESETS.slice(0, 5).map((it) => (
                 <button
                   key={it.key}
                   type="button"
-                  onClick={() => setQuickFilter(it.key)}
+                  onClick={() => setViewPreset(it.key)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                    quickFilter === it.key
+                    viewPreset === it.key
                       ? "bg-teal-600 text-white border-teal-600"
                       : "bg-white text-gray-700 border-gray-200"
                   }`}
@@ -1000,6 +1183,7 @@ export default function BrokerCrmPage() {
                 const config = STAGE_CONFIG[stage];
                 const stageLeads = leadsByStage[stage];
                 const Icon = config.icon;
+                const insight = stageInsights[stage];
 
                 const isCollapsed = !!collapsedByStage[stage];
                 const visibleCount = visibleCountByStage[stage] || 20;
@@ -1013,6 +1197,25 @@ export default function BrokerCrmPage() {
                     description={config.description}
                     count={stageLeads.length}
                     collapsed={isCollapsed}
+                    headerRight={
+                      <div className="hidden lg:flex flex-col items-end gap-1">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          insight.health.tone === "critical"
+                            ? "bg-red-100 text-red-700"
+                            : insight.health.tone === "warning"
+                              ? "bg-amber-100 text-amber-700"
+                              : insight.health.tone === "healthy"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-gray-100 text-gray-600"
+                        }`}
+                        >
+                          {insight.health.label}
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          {insight.overdueCount} atras. • {PIPELINE_STAGE_META[stage].wipLimit ? `WIP ${stageLeads.length}/${PIPELINE_STAGE_META[stage].wipLimit}` : `${insight.hotCount} quentes`}
+                        </span>
+                      </div>
+                    }
                     onToggleCollapsed={() =>
                       setCollapsedByStage((prev) => ({
                         ...prev,
@@ -1135,7 +1338,7 @@ export default function BrokerCrmPage() {
                           <div className="mt-4 flex flex-wrap justify-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setQuickFilter("all")}
+                              onClick={() => setViewPreset("all")}
                               className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700"
                             >
                               Ver todas
@@ -1177,6 +1380,7 @@ export default function BrokerCrmPage() {
                               isReminderUpdating={reminderUpdating[lead.id]}
                               showAdvanceButton={!selectionMode && mobileActiveStage !== "WON" && mobileActiveStage !== "LOST"}
                               onAdvance={() => handleAdvanceStage(lead.id)}
+                              onOpenLead={() => openLeadPanel(String(lead.id))}
                             />
                           ))}
                           {stageLeads.length > (visibleCountByStage[mobileActiveStage] || 20) && (
@@ -1270,6 +1474,27 @@ export default function BrokerCrmPage() {
         </DndContext>
 
         {previewNode}
+
+        <PipelineTransitionModal
+          isOpen={!!transitionModal}
+          currentStage={transitionModal?.currentStage || null}
+          nextStage={transitionModal?.nextStage || null}
+          isSubmitting={transitionModal ? !!updating[transitionModal.leadId] : false}
+          onClose={() => setTransitionModal(null)}
+          onSubmit={async (payload) => {
+            if (!transitionModal) return;
+            const succeeded = await moveLeadToStage(transitionModal.leadId, transitionModal.nextStage, {
+              announceUndo: false,
+              payload: {
+                ...payload,
+                source: "CRM_FUNNEL_MODAL",
+              },
+            });
+            if (succeeded) {
+              setTransitionModal(null);
+            }
+          }}
+        />
 
         <LeadSidePanel
           open={isPanelOpen}

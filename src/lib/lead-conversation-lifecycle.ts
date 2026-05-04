@@ -383,6 +383,65 @@ export class LeadConversationLifecycleService {
     return updated;
   }
 
+  static async reopenConversation(leadId: string, options?: ActorContext & { at?: Date; ensureToken?: boolean }) {
+    const current = await this.loadLead(leadId);
+    if (!current) {
+      throw new Error("LEAD_NOT_FOUND");
+    }
+    if (current.conversationState === "ACTIVE") {
+      return options?.ensureToken ? (await this.ensureClientChatToken(String(leadId), current)).lead : current;
+    }
+
+    let reopened = (await (prisma as any).lead.update({
+      where: { id: String(leadId) },
+      data: {
+        conversationState: "ACTIVE",
+        conversationClosedAt: null,
+        conversationArchivedAt: null,
+        conversationLastActivityAt: options?.at || new Date(),
+      },
+      select: {
+        id: true,
+        realtorId: true,
+        teamId: true,
+        clientChatToken: true,
+        pipelineStage: true,
+        respondedAt: true,
+        conversationState: true,
+        conversationArchivedAt: true,
+        conversationClosedAt: true,
+        conversationLastActivityAt: true,
+        property: {
+          select: {
+            ownerId: true,
+          },
+        },
+        team: {
+          select: {
+            ownerId: true,
+          },
+        },
+      },
+    })) as LeadConversationRecord;
+
+    if (options?.ensureToken && !reopened.clientChatToken) {
+      reopened = (await this.ensureClientChatToken(String(leadId), reopened)).lead;
+    }
+
+    await LeadEventService.record({
+      leadId: String(leadId),
+      type: "CHAT_REOPENED",
+      actorId: options?.actorId ?? null,
+      actorRole: options?.actorRole ?? null,
+      title: "Conversa reaberta",
+      metadata: buildMetadata(options?.reason),
+    });
+
+    await this.emitStateChanged(reopened);
+    await this.recalculateAssistants(reopened);
+    return reopened;
+  }
+
   static async syncProfessionalReplyState(
     leadId: string,
     options?: ActorContext & { previousStage?: string | null; respondedAt?: Date | null }

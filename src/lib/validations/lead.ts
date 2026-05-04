@@ -1,5 +1,21 @@
 import { z } from "zod";
 
+const leadLostReasonSchema = z.enum([
+  "CLIENT_DESISTIU",
+  "FECHOU_OUTRO_IMOVEL",
+  "CONDICAO_FINANCEIRA",
+  "NAO_RESPONDEU",
+  "OUTRO",
+]);
+
+const leadWonReasonSchema = z.enum([
+  "VISITA_CONVERTEU",
+  "PROPOSTA_ACEITA",
+  "NEGOCIACAO_DIRETA",
+  "INDICACAO",
+  "OUTRO",
+]);
+
 // Schema para aceitar lead
 export const acceptLeadSchema = z.object({
   realtorId: z.string().min(1, "realtorId é obrigatório"),
@@ -31,6 +47,12 @@ export const updatePipelineStageSchema = z.object({
     "WON",
     "LOST",
   ]),
+  transitionReason: z.string().trim().max(300, "Motivo muito longo").optional(),
+  note: z.string().trim().max(600, "Nota muito longa").optional(),
+  lostReason: leadLostReasonSchema.nullable().optional(),
+  wonReason: leadWonReasonSchema.nullable().optional(),
+  applyAutomation: z.boolean().optional(),
+  source: z.string().trim().max(40, "Origem inválida").optional(),
 });
 
 // Schema para criar lead (contact form)
