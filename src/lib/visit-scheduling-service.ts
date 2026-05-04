@@ -7,6 +7,7 @@ import { randomBytes } from "crypto";
 import { LeadDistributionService } from "./lead-distribution-service";
 import { resolveDevelopmentLeadLink } from "./development-lead-linking";
 import { createPublicCode } from "./public-code";
+import { buildVisitRequestEventMetadata } from "./visit-request-lifecycle";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
@@ -231,9 +232,17 @@ export class VisitSchedulingService {
     await LeadEventService.record({
       leadId: lead.id,
       type: "VISIT_REQUESTED",
+      title: "VISIT_REQUESTED",
       metadata: {
-        visitDate: visitDate.toISOString(),
-        visitTime,
+        ...buildVisitRequestEventMetadata({
+          clientMessageId: initialClientMessageId,
+          messageText: clientNotes || null,
+          source: isDirect ? "direct_schedule" : "visit_request_form",
+          createdAt: new Date(),
+          explicitVisitDate: visitDate,
+          explicitVisitTime: visitTime,
+          requestKind: "DIRECT_SCHEDULED",
+        }),
       },
     });
     if (!(lead as any).realtorId && !isDirect) {

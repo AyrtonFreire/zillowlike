@@ -24,6 +24,10 @@ import {
   type OfflineAssistantPropertyContextSignals,
   type OfflineAssistantQualification,
 } from "@/lib/offline-assistant-intelligence";
+import {
+  buildVisitRequestEventMetadata,
+  shouldPersistVisitRequestEvent,
+} from "@/lib/visit-request-lifecycle";
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -1818,6 +1822,13 @@ export class LeadAutoReplyService {
           select: { metadata: true },
         })
         .catch(() => null);
+      const lastVisitRequestedEvent = await (prisma as any).leadEvent
+        .findFirst({
+          where: { leadId: lead.id, type: "VISIT_REQUESTED" as any },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true, metadata: true },
+        })
+        .catch(() => null);
       const prevState2 = enrichStateWithPropertyContext(readOfflineAssistantState((lastAutoReplyEvent2 as any)?.metadata), {
         propertyPurpose: safeString(lead.property?.purpose) || null,
       });
@@ -2025,22 +2036,30 @@ export class LeadAutoReplyService {
           try {
             const tz = safeTimezone(settings.timezone);
             const prefs = extractVisitPreferences(msg.content, { now, timeZone: tz });
-            const hasAnyPrefs = Boolean(
-              safeString((prefs as any)?.period) || safeString((prefs as any)?.time) || (Array.isArray((prefs as any)?.days) && (prefs as any).days.length)
-            );
-            if (!prevState2WithSlots.visitRequested || hasAnyPrefs) {
+            const shouldPersistVisitEvent = shouldPersistVisitRequestEvent({
+              hasPreviousRequest: Boolean((lastVisitRequestedEvent as any)?.createdAt || prevState2WithSlots.visitRequested),
+              messageText: msg.content,
+              preferences: prefs,
+            });
+            if (shouldPersistVisitEvent) {
+              const visitMetadata = buildVisitRequestEventMetadata({
+                previousMetadata: (lastVisitRequestedEvent as any)?.metadata,
+                clientMessageId,
+                messageText: msg.content,
+                preferences: prefs,
+                source: classifier && classifier.confidence >= 0.6 ? "llm" : "heuristic",
+                promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+                createdAt: msg.createdAt,
+              });
               await LeadEventService.record({
                 leadId: lead.id,
                 type: "VISIT_REQUESTED" as any,
                 title: "VISIT_REQUESTED",
                 metadata: {
-                  clientMessageId,
-                  source: classifier && classifier.confidence >= 0.6 ? "llm" : "heuristic",
+                  ...visitMetadata,
                   heuristicIntent,
                   llmIntent: classifier?.intent || null,
                   llmConfidence: classifier?.confidence ?? null,
-                  promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
-                  preferences: prefs,
                 },
               });
             }
@@ -2902,19 +2921,27 @@ export class LeadAutoReplyService {
       if (visitHandoffNeeded) {
         try {
           const prefs = extractVisitPreferences(msg.content, { now, timeZone: tz });
-          const hasAnyPrefs = Boolean(
-            safeString((prefs as any)?.period) || safeString((prefs as any)?.time) || (Array.isArray((prefs as any)?.days) && (prefs as any).days.length)
-          );
-          if (!prevState.visitRequested || hasAnyPrefs) {
+          const shouldPersistVisitEvent = shouldPersistVisitRequestEvent({
+            hasPreviousRequest: Boolean((lastVisitRequestedEvent as any)?.createdAt || prevState.visitRequested),
+            messageText: msg.content,
+            preferences: prefs,
+          });
+          if (shouldPersistVisitEvent) {
+            const visitMetadata = buildVisitRequestEventMetadata({
+              previousMetadata: (lastVisitRequestedEvent as any)?.metadata,
+              clientMessageId,
+              messageText: msg.content,
+              preferences: prefs,
+              source: "ai_json",
+              promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+              createdAt: msg.createdAt,
+            });
             await LeadEventService.record({
               leadId: lead.id,
               type: "VISIT_REQUESTED" as any,
               title: "VISIT_REQUESTED",
               metadata: {
-                clientMessageId,
-                source: "ai_json",
-                promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
-                preferences: prefs,
+                ...visitMetadata,
               },
             });
           }

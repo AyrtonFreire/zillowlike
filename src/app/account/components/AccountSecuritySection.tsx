@@ -36,7 +36,8 @@ type SecurityResponse = {
   overview: {
     protectionScore: number;
     backupCodesUnused: number;
-    currentSessionHash: string;
+    currentSessionHash: string | null;
+    sessionContextReady?: boolean;
     recentReauth: boolean;
     recommendations: string[];
   };
@@ -162,6 +163,8 @@ export function AccountSecuritySection() {
     return "error" as const;
   }, [data?.overview.protectionScore]);
 
+  const sessionContextReady = Boolean(data?.overview.sessionContextReady ?? true);
+
   return (
     <div className="space-y-6">
       <SectionCard
@@ -173,6 +176,13 @@ export function AccountSecuritySection() {
         }
       >
         {error ? <InlineFeedbackBanner tone="error" title="Falha ao carregar segurança" message={error} /> : null}
+        {!loading && data && !sessionContextReady ? (
+          <InlineFeedbackBanner
+            tone="warning"
+            title="Sessão atual precisa ser renovada"
+            message="Seu histórico e score já estão disponíveis, mas para identificar a sessão atual e liberar ações sensíveis você precisa sair e entrar novamente."
+          />
+        ) : null}
 
         {loading ? (
           <div className="flex items-center justify-center py-12 text-neutral-500">
@@ -233,7 +243,8 @@ export function AccountSecuritySection() {
                     onClick={() => {
                       void executeAction({ type: "revoke-others" });
                     }}
-                    disabled={working !== null}
+                    disabled={working !== null || !sessionContextReady}
+                    className="w-full sm:w-auto sm:min-w-[220px]"
                   >
                     Encerrar outras sessões
                   </Button>
@@ -259,8 +270,9 @@ export function AccountSecuritySection() {
                             onClick={() => {
                               void executeAction({ type: "revoke-session", sessionHash: item.id });
                             }}
-                            disabled={working !== null}
+                            disabled={working !== null || !sessionContextReady}
                             leftIcon={working === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                            className="w-full sm:w-auto sm:min-w-[140px]"
                           >
                             Encerrar
                           </Button>

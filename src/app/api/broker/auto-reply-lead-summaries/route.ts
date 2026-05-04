@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
+import { evaluateVisitRequestState } from "@/lib/visit-request-lifecycle";
 
 export const runtime = "nodejs";
 
@@ -206,6 +207,9 @@ export async function GET(req: NextRequest) {
     let lastClientMessages: any[] = [];
     let lastAssistantMessages: any[] = [];
     let eventsRaw: any[] = [];
+    let leadVisitRows: any[] = [];
+    let latestVisitConfirmedEvents: any[] = [];
+    let latestVisitRejectedEvents: any[] = [];
 
     try {
       lastClientMessages = await (prisma as any).leadClientMessage.findMany({
@@ -264,6 +268,25 @@ export async function GET(req: NextRequest) {
       eventsRaw = [];
     }
 
+    [leadVisitRows, latestVisitConfirmedEvents, latestVisitRejectedEvents] = await Promise.all([
+      (prisma as any).lead.findMany({
+        where: { id: { in: leadIds } },
+        select: { id: true, visitDate: true, ownerApproved: true },
+      }).catch(() => []),
+      (prisma as any).leadEvent.findMany({
+        where: { leadId: { in: leadIds }, type: "VISIT_CONFIRMED" as any },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true },
+      }).catch(() => []),
+      (prisma as any).leadEvent.findMany({
+        where: { leadId: { in: leadIds }, type: "VISIT_REJECTED" as any },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true },
+      }).catch(() => []),
+    ]);
+
     const lastClientByLead = new Map<string, any>();
     for (const m of Array.isArray(lastClientMessages) ? lastClientMessages : []) {
       const leadId = safeString(m?.leadId);
@@ -281,6 +304,9 @@ export async function GET(req: NextRequest) {
     const lastEventByLead = new Map<string, any>();
     const lastSentEventByLead = new Map<string, any>();
     const lastVisitRequestedByLead = new Map<string, any>();
+    const leadVisitMap = new Map<string, any>((Array.isArray(leadVisitRows) ? leadVisitRows : []).map((row: any) => [safeString(row?.id), row]));
+    const lastVisitConfirmedByLead = new Map<string, any>((Array.isArray(latestVisitConfirmedEvents) ? latestVisitConfirmedEvents : []).map((row: any) => [safeString(row?.leadId), row]));
+    const lastVisitRejectedByLead = new Map<string, any>((Array.isArray(latestVisitRejectedEvents) ? latestVisitRejectedEvents : []).map((row: any) => [safeString(row?.leadId), row]));
 
     for (const e of Array.isArray(eventsRaw) ? eventsRaw : []) {
       const leadId = safeString(e?.leadId);
@@ -337,7 +363,14 @@ export async function GET(req: NextRequest) {
         const guardrails = sentMeta ? readGuardrailsFromEventMeta(sentMeta) : null;
 
         const visitPrefsFromVisitRequested = lastVisitRequested ? readVisitPreferencesFromVisitRequestedEventMeta(lastVisitRequested?.metadata) : null;
-        const visitRequested = Boolean(stateFromSent?.visitRequested) || Boolean(visitPrefsFromVisitRequested);
+        const visitState = evaluateVisitRequestState({
+          requestedAt: lastVisitRequested?.createdAt,
+          confirmedAt: lastVisitConfirmedByLead.get(leadId)?.createdAt,
+          rejectedAt: lastVisitRejectedByLead.get(leadId)?.createdAt,
+          leadVisitDate: leadVisitMap.get(leadId)?.visitDate,
+          ownerApproved: leadVisitMap.get(leadId)?.ownerApproved,
+        });
+        const visitRequested = visitState.isPending || (Boolean(stateFromSent?.visitRequested) && !lastVisitRequested);
         const visitPreferences = visitPrefsFromVisitRequested || stateFromSent?.visitPreferences || null;
 
         const handoffNeeded =

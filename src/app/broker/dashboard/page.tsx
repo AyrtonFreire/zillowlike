@@ -10,7 +10,6 @@ import {
   Home,
   Users,
   Clock,
-  Plus,
   Activity,
   MessageSquare,
   Sparkles,
@@ -199,8 +198,6 @@ export default function BrokerDashboard() {
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [myLeads, setMyLeads] = useState<MyLead[]>([]);
-  const [myLeadsLoading, setMyLeadsLoading] = useState(true);
-  const [myLeadsError, setMyLeadsError] = useState<string | null>(null);
   const [leadFilter, setLeadFilter] = useState<"ALL" | "NEW" | "IN_SERVICE">("ALL");
 
   const [offlineSummary, setOfflineSummary] = useState<OfflineAssistantDashboardSummary | null>(null);
@@ -295,9 +292,6 @@ export default function BrokerDashboard() {
 
   const fetchMyLeads = useCallback(async () => {
     try {
-      setMyLeadsError(null);
-      setMyLeadsLoading(true);
-
       const headers: Record<string, string> = {};
       if (myPipelineEtagRef.current) headers["If-None-Match"] = myPipelineEtagRef.current;
 
@@ -318,9 +312,6 @@ export default function BrokerDashboard() {
     } catch (error) {
       console.error("Error fetching my leads:", error);
       setMyLeads([]);
-      setMyLeadsError("Não conseguimos carregar seus leads ativos agora. Se quiser, tente novamente em alguns instantes.");
-    } finally {
-      setMyLeadsLoading(false);
     }
   }, []);
 
@@ -422,63 +413,11 @@ export default function BrokerDashboard() {
     }
   }, [userId, fetchUnreadMessages, fetchMyLeadsSilent]);
 
-  const isSameDay = (a: Date, b: Date) => {
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
-  };
-
-  const today = new Date();
-  const activeMyLeads = myLeads.filter((lead: any) => lead?.pipelineStage !== "WON" && lead?.pipelineStage !== "LOST");
-  const newLeads = activeMyLeads.filter((lead: any) => (lead.pipelineStage || "NEW") === "NEW");
-  const inServiceLeads = activeMyLeads.filter((lead: any) => (lead.pipelineStage || "NEW") !== "NEW");
-  const leadsToday = activeMyLeads.filter((lead) =>
-    isSameDay(new Date(lead.createdAt), today)
-  );
-
-  const dayTotal = newLeads.length + inServiceLeads.length;
-  const pipelineStageMeta: Array<{ stage: PipelineStage; label: string; color: string }> = [
-    { stage: "NEW", label: "Novos", color: "#3b82f6" },
-    { stage: "CONTACT", label: "Contato", color: "#06b6d4" },
-    { stage: "VISIT", label: "Visita", color: "#14b8a6" },
-    { stage: "PROPOSAL", label: "Proposta", color: "#f59e0b" },
-    { stage: "DOCUMENTS", label: "Documentação", color: "#fb7185" },
-    { stage: "WON", label: "Fechado", color: "#22c55e" },
-    { stage: "LOST", label: "Perdido", color: "#94a3b8" },
-  ];
-  const pipelineCounts = pipelineStageMeta.reduce(
-    (acc, stage) => {
-      acc[stage.stage] = 0;
-      return acc;
-    },
-    {} as Record<PipelineStage, number>
-  );
-  myLeads.forEach((lead) => {
-    const stage = (lead.pipelineStage || "NEW") as PipelineStage;
-    if (pipelineCounts[stage] !== undefined) {
-      pipelineCounts[stage] += 1;
-    }
+  const newLeads = myLeads.filter((lead: any) => (lead?.pipelineStage || "NEW") === "NEW");
+  const inServiceLeads = myLeads.filter((lead: any) => {
+    const stage = lead?.pipelineStage || "NEW";
+    return stage !== "NEW" && stage !== "WON" && stage !== "LOST";
   });
-  const pipelineTotal = myLeads.length;
-  const dayChartData = pipelineStageMeta
-    .map((m) => ({
-      key: m.stage.toLowerCase(),
-      name: m.label,
-      value: Math.max(0, Number(pipelineCounts[m.stage] || 0)),
-      color: m.color,
-    }))
-    .filter((x) => x.value > 0);
-
-  const dayBaseline = typeof metrics?.leadsLast7Days === "number" ? metrics.leadsLast7Days / 7 : null;
-  const dayTrend =
-    dayBaseline && dayBaseline > 0
-      ? {
-          value: Math.round(Math.abs(((leadsToday.length - dayBaseline) / dayBaseline) * 100)),
-          isPositive: leadsToday.length >= dayBaseline,
-        }
-      : null;
 
   const filteredLeads = leads.filter((lead) => {
     if (leadFilter === "NEW") {
@@ -868,203 +807,6 @@ export default function BrokerDashboard() {
             </Link>
           </div>
         </div>
-
-        {/* Resumo dos Leads */}
-        <div className="mb-8">
-          <StatCard
-            title="Resumo dos Leads"
-            action={
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:inline text-xs text-gray-500">vs média 7d</span>
-                <TrendPill trend={dayTrend} />
-              </div>
-            }
-          >
-            {myLeadsError ? (
-              <div className="flex items-center justify-center py-4 text-sm text-gray-500">
-                {myLeadsError}
-              </div>
-            ) : myLeadsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Skeleton className="h-3 w-20 rounded" />
-                      <Skeleton className="mt-2 h-7 w-10 rounded" />
-                    </div>
-                    <Skeleton className="h-20 w-20 rounded-full" />
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    <Skeleton className="h-3 w-full rounded" />
-                    <Skeleton className="h-3 w-11/12 rounded" />
-                    <Skeleton className="h-3 w-10/12 rounded" />
-                  </div>
-                </div>
-                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                    <Skeleton className="h-3 w-16 rounded" />
-                    <Skeleton className="mt-2 h-8 w-10 rounded" />
-                    <Skeleton className="mt-2 h-3 w-32 rounded" />
-                    <Skeleton className="mt-4 h-2 w-full rounded-full" />
-                  </div>
-                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                    <Skeleton className="h-3 w-24 rounded" />
-                    <Skeleton className="mt-2 h-8 w-10 rounded" />
-                    <Skeleton className="mt-2 h-3 w-36 rounded" />
-                    <Skeleton className="mt-4 h-2 w-full rounded-full" />
-                  </div>
-                </div>
-              </div>
-            ) : activeMyLeads.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5">
-                <div className="text-sm font-semibold text-gray-900">Sua operação ainda não tem leads ativos</div>
-                <p className="mt-2 text-sm text-gray-600">Quando seus imóveis e seu perfil profissional começarem a gerar oportunidades, este resumo vira sua central rápida do dia.</p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <Link href="/broker/properties/new" className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">
-                    Publicar imóvel
-                  </Link>
-                  <Link href="/profile?onboarding=broker" className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">
-                    Revisar perfil profissional
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                className="grid grid-cols-1 md:grid-cols-12 gap-4"
-              >
-                <button
-                  type="button"
-                  onClick={() => router.push("/broker/leads")}
-                  className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 text-left hover:shadow-sm transition-shadow"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-500">Total de leads</p>
-                      <p className="text-2xl font-semibold text-gray-900">{pipelineTotal}</p>
-                      <p className="mt-1 text-xs text-gray-500">Todos os status</p>
-                    </div>
-                    <div className="h-20 w-20">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={
-                              dayChartData.length > 0
-                                ? dayChartData
-                                : [{ name: "Leads", value: pipelineTotal, color: "#94a3b8" }]
-                            }
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={26}
-                            outerRadius={36}
-                            paddingAngle={3}
-                            stroke="rgba(255,255,255,0.9)"
-                            strokeWidth={2}
-                            isAnimationActive
-                          >
-                            {(
-                              dayChartData.length > 0
-                                ? dayChartData
-                                : [{ name: "Leads", value: pipelineTotal, color: "#94a3b8" }]
-                            ).map((entry) => (
-                              <Cell key={String((entry as any).name)} fill={(entry as any).color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            cursor={false}
-                            contentStyle={{
-                              borderRadius: 12,
-                              border: "1px solid rgba(229,231,235,1)",
-                              boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
-                            }}
-                            formatter={(value: any, name: any) => [`${value}`, String(name || "")]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {dayChartData.length > 1 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {dayChartData.map((row) => (
-                        <span
-                          key={row.key}
-                          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700"
-                        >
-                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-                          <span>
-                            {row.name}: {row.value}
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </button>
-
-                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
-                    onClick={() => router.push("/broker/leads")}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500">Novos</p>
-                        <p className="mt-1 text-3xl font-semibold text-gray-900 tabular-nums">{newLeads.length}</p>
-                        <p className="mt-1 text-xs text-gray-500">Leads no topo do funil</p>
-                      </div>
-                      <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-                        <Sparkles className="w-5 h-5" />
-                      </div>
-                    </div>
-                    <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dayTotal > 0 ? (newLeads.length / dayTotal) * 100 : 0}%` }}
-                        transition={{ duration: 0.45 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: "#3b82f6" }}
-                      />
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
-                    onClick={() => router.push("/broker/leads")}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500">Leads de hoje</p>
-                        <p className="mt-1 text-3xl font-semibold text-gray-900 tabular-nums">{leadsToday.length}</p>
-                        <p className="mt-1 text-xs text-gray-500">Oportunidades que chegaram nas últimas horas</p>
-                      </div>
-                      <div className="h-10 w-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
-                        <Plus className="h-5 w-5" />
-                      </div>
-                    </div>
-                    <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dayTotal > 0 ? (leadsToday.length / dayTotal) * 100 : 0}%` }}
-                        transition={{ duration: 0.45 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: "#14b8a6" }}
-                      />
-                    </div>
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
-          </StatCard>
-        </div>
-
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

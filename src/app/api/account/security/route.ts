@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     const userId = String((session as any)?.userId || (session as any)?.user?.id || (session as any)?.user?.sub || "").trim();
     const sessionKey = String((session as any)?.sessionKey || (session as any)?.user?.sessionKey || "").trim();
-    if (!userId || !sessionKey) {
+    if (!userId) {
       return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
     }
 
@@ -78,9 +78,10 @@ export async function GET(req: NextRequest) {
       where: { userId, usedAt: null },
     });
 
-    const currentSessionHash = hashSessionKey(sessionKey);
+    const sessionContextReady = Boolean(sessionKey);
+    const currentSessionHash = sessionContextReady ? hashSessionKey(sessionKey) : null;
     const cookieValue = req.cookies.get(RECENT_REAUTH_COOKIE_NAME)?.value;
-    const recentReauth = verifyRecentReauthCookieValue(cookieValue, userId, sessionKey);
+    const recentReauth = sessionContextReady ? verifyRecentReauthCookieValue(cookieValue, userId, sessionKey) : false;
 
     const protectionItems = [
       {
@@ -125,7 +126,7 @@ export async function GET(req: NextRequest) {
         provider: record.provider,
         createdAt: record.createdAt,
         expiresAt: record.expiresAt,
-        isCurrent: record.sessionHash === currentSessionHash,
+        isCurrent: Boolean(currentSessionHash) && record.sessionHash === currentSessionHash,
       }))
       .sort((a, b) => {
         if (a.isCurrent && !b.isCurrent) return -1;
@@ -154,8 +155,9 @@ export async function GET(req: NextRequest) {
         protectionScore,
         backupCodesUnused,
         currentSessionHash,
+        sessionContextReady,
         recentReauth,
-        recommendations,
+        recommendations: sessionContextReady ? recommendations : ["Renovar login para identificar sua sessão atual", ...recommendations].slice(0, 4),
       },
       protectionItems,
       sessions,

@@ -19,14 +19,14 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="group inline-flex min-h-[56px] w-full items-center justify-between gap-3 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white via-white to-neutral-50/90 px-3.5 py-3 text-left text-neutral-900 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md hover:shadow-teal-100/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20 focus-visible:ring-offset-2 sm:w-auto sm:min-w-[240px]"
+      className="group inline-flex min-h-[56px] w-full items-center justify-between gap-3 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white via-white to-neutral-50/90 px-3.5 py-3 text-left text-neutral-900 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md hover:shadow-teal-100/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20 focus-visible:ring-offset-2 sm:w-auto sm:min-w-[260px]"
     >
       <span className="flex min-w-0 items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-gradient-to-br from-neutral-50 to-white text-neutral-600 shadow-sm transition-colors group-hover:border-teal-200 group-hover:text-teal-700">
           {icon}
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[15px] font-semibold tracking-[0.01em]">{label}</span>
+          <span className="block text-[15px] font-semibold tracking-[0.01em] leading-5">{label}</span>
         </span>
       </span>
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-400 transition-all group-hover:bg-teal-50 group-hover:text-teal-700">

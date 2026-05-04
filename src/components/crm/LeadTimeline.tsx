@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { buildVisitRequestCardCopy } from "@/lib/visit-request-lifecycle";
 import { 
   Clock, 
   MessageCircle, 
@@ -244,17 +245,13 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
       });
     case "VISIT_REQUESTED":
       {
-        const prefs = meta?.preferences || null;
-        const period = prefs?.period ? String(prefs.period) : "";
-        const days = Array.isArray(prefs?.days) ? (prefs.days as any[]).map((x: any) => String(x)).filter(Boolean) : [];
-        const time = prefs?.time ? String(prefs.time) : "";
-        const parts = [period || null, days.length ? days.join("/") : null, time || null].filter(Boolean);
-        const prefText = parts.length ? `Preferências: ${parts.join(" · ")}` : "";
-        const description = event.description || prefText || undefined;
+        const visitCard = buildVisitRequestCardCopy({ metadata: event.metadata || null });
+        const defaultTitle = event.title && event.title !== "VISIT_REQUESTED" ? event.title : visitCard.title;
+        const description = event.description || visitCard.message || undefined;
         return withActor({
           id: event.id,
           type: "status_change",
-          title: event.title || "Visita solicitada",
+          title: defaultTitle || "Visita solicitada",
           description,
           date,
           icon: "calendar",

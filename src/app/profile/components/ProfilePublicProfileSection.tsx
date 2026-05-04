@@ -253,17 +253,21 @@ export function ProfilePublicProfileSection({
 
           {isBrokerProfile ? (
             <div className="rounded-2xl border border-neutral-200 bg-white p-4">
-              <Input
-                label="Área de atuação"
-                value={serviceAreaDraft}
-                onChange={(event) => setServiceAreaDraft(event.target.value)}
-                maxLength={50}
-                placeholder="Adicione uma área de atuação"
-              />
-              <Button type="button" variant="primary" onClick={addServiceArea}>
-                Adicionar
-              </Button>
-              <div className="mt-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    label="Área de atuação"
+                    value={serviceAreaDraft}
+                    onChange={(event) => setServiceAreaDraft(event.target.value)}
+                    maxLength={50}
+                    placeholder="Adicione uma área de atuação"
+                  />
+                </div>
+                <Button type="button" variant="primary" onClick={addServiceArea} className="w-full justify-center sm:w-auto sm:min-w-[140px]">
+                  Adicionar
+                </Button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {serviceAreas.map((area) => (
                   <span key={area} className="inline-flex items-center rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
                     {area}

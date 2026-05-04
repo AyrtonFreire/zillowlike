@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { getAgencyAiConfig } from "@/lib/agency-profile";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
+import {
+  buildVisitRequestCardCopy,
+  evaluateVisitRequestState,
+} from "@/lib/visit-request-lifecycle";
 
 type AssistantAction = {
   type: string;
@@ -1286,6 +1290,16 @@ export class RealtorAssistantService {
       .catch(() => []);
     const visitConfirmedMap = new Map<string, any>((visitConfirmedEvents || []).map((e: any) => [String(e.leadId), e]));
 
+    const visitRejectedEvents = await (prisma as any).leadEvent
+      .findMany({
+        where: { leadId: { in: leadIds }, type: "VISIT_REJECTED" as any },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true, description: true, metadata: true },
+      })
+      .catch(() => []);
+    const visitRejectedMap = new Map<string, any>((visitRejectedEvents || []).map((e: any) => [String(e.leadId), e]));
+
     const firstClientMessages = await prisma.leadClientMessage.findMany({
       where: { leadId: { in: leadIds }, fromClient: true },
       orderBy: { createdAt: "asc" },
@@ -1603,9 +1617,14 @@ export class RealtorAssistantService {
       const visitRequested = visitRequestedMap.get(String(lead.id)) as any;
       if (visitRequested?.createdAt) {
         const requestedAt = safeDate(visitRequested.createdAt);
-        const confirmedAt = safeDate((visitConfirmedMap.get(String(lead.id)) as any)?.createdAt);
-        const isConfirmedByEvent = !!(requestedAt && confirmedAt && confirmedAt.getTime() > requestedAt.getTime());
-        const isConfirmedByLead = !!lead.visitDate;
+        const visitRejected = visitRejectedMap.get(String(lead.id)) as any;
+        const visitState = evaluateVisitRequestState({
+          requestedAt: visitRequested.createdAt,
+          confirmedAt: (visitConfirmedMap.get(String(lead.id)) as any)?.createdAt,
+          rejectedAt: visitRejected?.createdAt,
+          leadVisitDate: lead.visitDate,
+          ownerApproved: typeof lead.ownerApproved === "boolean" ? lead.ownerApproved : lead.ownerApproved ?? null,
+        });
         const visitRequestedClientMessageId = safeString((visitRequested as any)?.metadata?.clientMessageId);
         const autoForVisit = lastAutoReplyMap.get(String(lead.id)) as any;
         const autoClientMessageId = safeString(autoForVisit?.metadata?.clientMessageId);
@@ -1613,24 +1632,22 @@ export class RealtorAssistantService {
         const isAutoReplySameMessage = !!(visitRequestedClientMessageId && autoClientMessageId && visitRequestedClientMessageId === autoClientMessageId);
         const shouldSuppressLegacyFalseVisit = isAutoReplySameMessage && autoVisitHandoffFlag === false;
 
-        if (conversationActive && requestedAt && !isConfirmedByEvent && !isConfirmedByLead && !shouldSuppressLegacyFalseVisit) {
+        if (conversationActive && requestedAt && visitState.isPending && !shouldSuppressLegacyFalseVisit) {
           const key = `VISIT_REQUESTED:${lead.id}`;
           dedupeKeys.add(key);
 
-          const dueAt = addMinutes(requestedAt, 60);
+          const dueBaseAt = visitState.isRejectedAfterRequest && visitState.rejectedAt ? visitState.rejectedAt : requestedAt;
+          const dueAt = addMinutes(dueBaseAt, 60);
           const msToDue = dueAt.getTime() - now.getTime();
-          const priority: "LOW" | "MEDIUM" | "HIGH" = msToDue <= 0 || now.getTime() - requestedAt.getTime() <= 2 * 60 * 60 * 1000 ? "HIGH" : "MEDIUM";
-
-          const prefs = (visitRequested as any)?.metadata?.preferences || null;
-          const pPeriod = safeString((prefs as any)?.period);
-          const pTime = safeString((prefs as any)?.time);
-          const pDays = Array.isArray((prefs as any)?.days) ? (prefs as any).days.filter(Boolean) : [];
-          const prefsText = [pPeriod, pTime, pDays.length ? pDays.join(", ") : ""].filter(Boolean).join(" | ");
-
-          const lastClientPreview = safeString((lastClient as any)?.content).slice(0, 140);
-          const message = prefsText
-            ? `Solicitação de visita. Preferências: ${prefsText}${lastClientPreview ? `. Última: “${lastClientPreview}”` : "."}`
-            : `Solicitação de visita${lastClientPreview ? `. Última: “${lastClientPreview}”` : "."}`;
+          const isFreshUpdate = now.getTime() - dueBaseAt.getTime() <= 2 * 60 * 60 * 1000;
+          const priority: "LOW" | "MEDIUM" | "HIGH" = msToDue <= 0 || isFreshUpdate ? "HIGH" : "MEDIUM";
+          const rejectionReason = safeString(visitRejected?.description || visitRejected?.metadata?.reason) || null;
+          const visitCard = buildVisitRequestCardCopy({
+            metadata: (visitRequested as any)?.metadata || null,
+            fallbackRequestText: safeString((lastClient as any)?.content) || null,
+            rejectedByOwner: visitState.isRejectedAfterRequest,
+            rejectionReason,
+          });
 
           await this.upsertFromRule({
             context: "REALTOR",
@@ -1638,16 +1655,25 @@ export class RealtorAssistantService {
             leadId: lead.id,
             type: "VISIT_REQUESTED",
             priority,
-            title: "Solicitação de visita",
-            message,
+            title: visitCard.title,
+            message: visitCard.message,
             dueAt,
             dedupeKey: key,
             primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
             secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
             metadata: {
               requestedAt: requestedAt.toISOString(),
-              prefs: prefs || null,
+              rejectedAt: visitState.rejectedAt ? visitState.rejectedAt.toISOString() : null,
+              rejectedByOwner: visitState.isRejectedAfterRequest,
+              rejectionReason,
               clientMessageId: visitRequestedClientMessageId || null,
+              requestKind: visitCard.meta.requestKind,
+              requestVersion: visitCard.meta.requestVersion,
+              requestText: visitCard.meta.requestText,
+              requestPreview: visitCard.meta.requestPreview,
+              preferences: visitCard.meta.preferences,
+              explicitVisitDate: visitCard.meta.explicitVisitDate,
+              explicitVisitTime: visitCard.meta.explicitVisitTime,
             },
           });
         }

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
+import { evaluateVisitRequestState } from "@/lib/visit-request-lifecycle";
 
 export const runtime = "nodejs";
 
@@ -177,6 +178,10 @@ export async function GET(req: NextRequest) {
     const windowLeadIds = windowLeads.map((x) => x.leadId);
 
     let eventsRaw: any[] = [];
+    let leadVisitRows: any[] = [];
+    let latestVisitRequestedEvents: any[] = [];
+    let latestVisitConfirmedEvents: any[] = [];
+    let latestVisitRejectedEvents: any[] = [];
     if (windowLeadIds.length) {
       try {
         eventsRaw = await (prisma as any).leadEvent.findMany({
@@ -193,20 +198,48 @@ export async function GET(req: NextRequest) {
         if (error?.code !== "P2021") throw error;
         eventsRaw = [];
       }
+
+      [leadVisitRows, latestVisitRequestedEvents, latestVisitConfirmedEvents, latestVisitRejectedEvents] = await Promise.all([
+        (prisma as any).lead.findMany({
+          where: { id: { in: windowLeadIds } },
+          select: { id: true, visitDate: true, ownerApproved: true },
+        }).catch(() => []),
+        (prisma as any).leadEvent.findMany({
+          where: { leadId: { in: windowLeadIds }, type: "VISIT_REQUESTED" as any },
+          orderBy: { createdAt: "desc" },
+          distinct: ["leadId"],
+          select: { leadId: true, createdAt: true, metadata: true },
+        }).catch(() => []),
+        (prisma as any).leadEvent.findMany({
+          where: { leadId: { in: windowLeadIds }, type: "VISIT_CONFIRMED" as any },
+          orderBy: { createdAt: "desc" },
+          distinct: ["leadId"],
+          select: { leadId: true, createdAt: true },
+        }).catch(() => []),
+        (prisma as any).leadEvent.findMany({
+          where: { leadId: { in: windowLeadIds }, type: "VISIT_REJECTED" as any },
+          orderBy: { createdAt: "desc" },
+          distinct: ["leadId"],
+          select: { leadId: true, createdAt: true },
+        }).catch(() => []),
+      ]);
     }
 
     const latestSentByLead = new Map<string, any>();
-    const hasVisitRequestedByLead = new Set<string>();
     for (const e of Array.isArray(eventsRaw) ? eventsRaw : []) {
       const leadId = safeString(e?.leadId);
       if (!leadId) continue;
       const t = safeString(e?.type);
       if (t === "AUTO_REPLY_SENT" && !latestSentByLead.has(leadId)) latestSentByLead.set(leadId, e);
-      if (t === "VISIT_REQUESTED") hasVisitRequestedByLead.add(leadId);
     }
 
+    const leadVisitMap = new Map<string, any>((Array.isArray(leadVisitRows) ? leadVisitRows : []).map((row: any) => [safeString(row?.id), row]));
+    const latestVisitRequestedByLead = new Map<string, any>((Array.isArray(latestVisitRequestedEvents) ? latestVisitRequestedEvents : []).map((row: any) => [safeString(row?.leadId), row]));
+    const latestVisitConfirmedByLead = new Map<string, any>((Array.isArray(latestVisitConfirmedEvents) ? latestVisitConfirmedEvents : []).map((row: any) => [safeString(row?.leadId), row]));
+    const latestVisitRejectedByLead = new Map<string, any>((Array.isArray(latestVisitRejectedEvents) ? latestVisitRejectedEvents : []).map((row: any) => [safeString(row?.leadId), row]));
+
     const handoffLeadIds = new Set<string>();
-    const visitLeadIds = new Set<string>(Array.from(hasVisitRequestedByLead));
+    const visitLeadIds = new Set<string>();
     const hotLeadIds = new Set<string>();
     const urgentLeadIds = new Set<string>();
     const qualifiedLeadIds = new Set<string>();
@@ -235,7 +268,16 @@ export async function GET(req: NextRequest) {
         handoffLeadIds.add(leadId);
       }
 
-      if (aiJson?.visitHandoffNeeded === true) {
+      const visitRequestedEvent = latestVisitRequestedByLead.get(leadId);
+      const visitState = evaluateVisitRequestState({
+        requestedAt: visitRequestedEvent?.createdAt,
+        confirmedAt: latestVisitConfirmedByLead.get(leadId)?.createdAt,
+        rejectedAt: latestVisitRejectedByLead.get(leadId)?.createdAt,
+        leadVisitDate: leadVisitMap.get(leadId)?.visitDate,
+        ownerApproved: leadVisitMap.get(leadId)?.ownerApproved,
+      });
+
+      if (visitState.isPending || (aiJson?.visitHandoffNeeded === true && !visitRequestedEvent)) {
         visitLeadIds.add(leadId);
       }
 

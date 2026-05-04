@@ -395,11 +395,11 @@ export default function AccountPageClient() {
                 <div className="text-sm font-semibold text-neutral-950">Você tem alterações não salvas</div>
                 <p className="mt-1 text-sm text-neutral-600">Salve ou descarte antes de sair desta área.</p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="secondary" onClick={() => void loadProfile({ silent: true })} disabled={saving}>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                <Button type="button" variant="secondary" onClick={() => void loadProfile({ silent: true })} disabled={saving} className="w-full justify-center sm:w-auto sm:min-w-[140px]">
                   Descartar
                 </Button>
-                <Button type="button" onClick={() => void saveProfile()} disabled={saving} leftIcon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}>
+                <Button type="button" onClick={() => void saveProfile()} disabled={saving} leftIcon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} className="w-full justify-center sm:w-auto sm:min-w-[200px]">
                   {saving ? "Salvando..." : "Salvar alterações"}
                 </Button>
               </div>
