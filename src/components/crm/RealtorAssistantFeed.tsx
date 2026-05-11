@@ -6,12 +6,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import {
   CheckCircle2,
-  ChevronDown,
   Clock,
   Copy,
   ExternalLink,
   Eye,
   MessageCircle,
+  MoreHorizontal,
   Phone,
   Sparkles,
   Trash2,
@@ -100,12 +100,6 @@ function getPriorityLabel(priority: AssistantItem["priority"]) {
   return "Baixa";
 }
 
-function getPriorityClasses(priority: AssistantItem["priority"]) {
-  if (priority === "HIGH") return "bg-red-50 text-red-700 border-red-100";
-  if (priority === "MEDIUM") return "bg-amber-50 text-amber-700 border-amber-100";
-  return "bg-gray-50 text-gray-600 border-gray-200";
-}
-
 function stripNoiseFromTitle(title: string) {
   const t = String(title || "").trim();
   if (!t) return t;
@@ -146,6 +140,8 @@ function buildWhatsAppPhoneUrl(phone: string, text?: string) {
 }
 
 function getActionLabel(action: AssistantAction, item?: AssistantItem | null) {
+  const explicitLabel = String((action as any)?.label || (action as any)?.title || "").trim();
+  if (explicitLabel) return explicitLabel;
   if (action.type === "OPEN_CHAT") {
     if (item?.type === "UNANSWERED_CLIENT_MESSAGE") return "Responder";
     return "Abrir conversa";
@@ -154,6 +150,8 @@ function getActionLabel(action: AssistantAction, item?: AssistantItem | null) {
     if (item && isReminderType(item.type)) return "Ver detalhes";
     return "Abrir lead";
   }
+  if (action.type === "OPEN_PAGE") return "Abrir contexto";
+  if (action.type === "SET_REMINDER") return "Lembrar depois";
   return "Abrir";
 }
 
@@ -166,18 +164,29 @@ function getActionIcon(action: AssistantAction) {
 function getMessageSendLabel(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
   if (t === "NEW_LEAD") return "Fazer primeiro contato";
+  if (t === "LEAD_NO_FIRST_CONTACT" || t === "CLIENT_NO_FIRST_CONTACT") return "Enviar primeiro contato";
   if (t === "STALE_LEAD") return "Enviar follow-up";
+  if (t === "VISIT_REQUESTED") return "Combinar visita";
   if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return "Confirmar visita";
+  if (t === "NEGOTIATION_REQUEST" || t === "COUNTEROFFER_REQUEST") return "Responder negociação";
+  if (t === "PRICE_CLARIFICATION_NEEDED" || t === "TOTAL_COST_QUESTION") return "Esclarecer valores";
+  if (t === "ADDRESS_REQUEST") return "Responder localização";
+  if (t === "URGENT_CLIENT_REQUEST") return "Atender agora";
+  if (t === "RISK_OF_LOSS") return "Tentar reverter";
+  if (t === "DOCS_AND_CONTRACT_QUESTION") return "Esclarecer documentos";
+  if (t === "FINANCING_QUESTION") return "Responder financiamento";
+  if (t === "RULES_AND_PERMISSIONS") return "Responder regras";
+  if (t === "CALLBACK_REQUEST") return "Combinar retorno";
+  if (t === "MORE_MEDIA_REQUEST") return "Enviar material";
+  if (t === "MATCHING_OPPORTUNITY") return "Sugerir opções";
   return "Responder";
 }
 
 function canSendAiDraftToClient(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
   return (
-    t === "UNANSWERED_CLIENT_MESSAGE" ||
-    t === "NEW_LEAD" ||
-    t === "LEAD_NO_FIRST_CONTACT" ||
-    t === "STALE_LEAD" ||
+    isMessageOrientedType(t) ||
+    t === "VISIT_REQUESTED" ||
     t === "VISIT_TODAY" ||
     t === "VISIT_TOMORROW"
   );
@@ -197,7 +206,7 @@ function getAiButtonLabel(itemType: string | null | undefined) {
 
 function getAiDraftSectionTitle(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
-  if (t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE") return "Plano sugerido";
+  if (isReminderLikeType(t) || isAnalyticalType(t)) return "Plano sugerido";
   return "Texto pronto";
 }
 
@@ -206,9 +215,114 @@ function isReminderType(itemType: string | null | undefined) {
   return t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE";
 }
 
+function isReminderLikeType(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return isReminderType(t) || t === "CLIENT_OVERDUE_NEXT_ACTION";
+}
+
 function isInternalChecklistType(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
   return isReminderType(t) || t === "WEEKLY_SUMMARY";
+}
+
+function isAnalyticalType(itemType: string | null | undefined) {
+  return String(itemType || "").trim() === "WEEKLY_SUMMARY";
+}
+
+function isMessageOrientedType(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return [
+    "NEW_LEAD",
+    "UNANSWERED_CLIENT_MESSAGE",
+    "CLIENT_PENDING_REPLY",
+    "CLIENT_NO_FIRST_CONTACT",
+    "LEAD_NO_FIRST_CONTACT",
+    "STALE_LEAD",
+    "VISIT_REQUESTED",
+    "NEGOTIATION_REQUEST",
+    "COUNTEROFFER_REQUEST",
+    "PRICE_CLARIFICATION_NEEDED",
+    "ADDRESS_REQUEST",
+    "URGENT_CLIENT_REQUEST",
+    "RISK_OF_LOSS",
+    "TOTAL_COST_QUESTION",
+    "DOCS_AND_CONTRACT_QUESTION",
+    "FINANCING_QUESTION",
+    "RULES_AND_PERMISSIONS",
+    "CALLBACK_REQUEST",
+    "MORE_MEDIA_REQUEST",
+    "MATCHING_OPPORTUNITY",
+  ].includes(t);
+}
+
+function shouldPreferChatPrimary(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return isMessageOrientedType(t) || t === "VISIT_TODAY" || t === "VISIT_TOMORROW";
+}
+
+function isOpenAction(action: AssistantAction | null | undefined): action is AssistantAction {
+  if (!action) return false;
+  return action.type === "OPEN_CHAT" || action.type === "OPEN_LEAD" || action.type === "OPEN_PAGE";
+}
+
+function isSameAction(a: AssistantAction | null | undefined, b: AssistantAction | null | undefined) {
+  if (!a || !b) return false;
+  return (
+    String(a.type || "") === String(b.type || "") &&
+    String(a.leadId || "") === String(b.leadId || "") &&
+    String((a as any)?.url || "") === String((b as any)?.url || "")
+  );
+}
+
+function getContextualOpenActionLabel(item: AssistantItem, action: AssistantAction) {
+  const t = String(item.type || "").trim();
+
+  if (action.type === "OPEN_CHAT") {
+    if (t === "NEW_LEAD") return "Receber lead";
+    if (t === "LEAD_NO_FIRST_CONTACT" || t === "CLIENT_NO_FIRST_CONTACT") return "Fazer primeiro contato";
+    if (t === "STALE_LEAD") return "Retomar conversa";
+    if (t === "UNANSWERED_CLIENT_MESSAGE" || t === "CLIENT_PENDING_REPLY") return "Responder cliente";
+    if (t === "VISIT_REQUESTED") return "Combinar visita";
+    if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return "Confirmar visita";
+    if (t === "NEGOTIATION_REQUEST" || t === "COUNTEROFFER_REQUEST") return "Responder negociação";
+    if (t === "PRICE_CLARIFICATION_NEEDED" || t === "TOTAL_COST_QUESTION") return "Esclarecer valores";
+    if (t === "ADDRESS_REQUEST") return "Responder localização";
+    if (t === "URGENT_CLIENT_REQUEST") return "Atender agora";
+    if (t === "RISK_OF_LOSS") return "Tentar reverter";
+    if (t === "DOCS_AND_CONTRACT_QUESTION") return "Esclarecer documentos";
+    if (t === "FINANCING_QUESTION") return "Responder financiamento";
+    if (t === "RULES_AND_PERMISSIONS") return "Responder regras";
+    if (t === "CALLBACK_REQUEST") return "Combinar retorno";
+    if (t === "MORE_MEDIA_REQUEST") return "Enviar material";
+    if (t === "MATCHING_OPPORTUNITY") return "Sugerir opções";
+    return getActionLabel(action, item);
+  }
+
+  if (action.type === "OPEN_LEAD") {
+    if (isReminderLikeType(t)) return "Executar tarefa";
+    if (t === "OWNER_APPROVAL_PENDING") return "Destravar visita";
+    if (t === "VISIT_REQUESTED") return "Organizar visita";
+    if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return "Ver visita";
+    if (isMessageOrientedType(t)) return "Ver contexto";
+  }
+
+  if (action.type === "OPEN_PAGE") {
+    if (isAnalyticalType(t)) return "Abrir contexto";
+    if (isReminderLikeType(t)) return "Ver contexto";
+  }
+
+  return getActionLabel(action, item);
+}
+
+function getResolveActionLabel(itemType: string | null | undefined, opts?: { isWhatsAppIntent?: boolean }) {
+  const t = String(itemType || "").trim();
+  if (opts?.isWhatsAppIntent) return "Já estou em contato";
+  if (isAnalyticalType(t)) return "Marcar como lido";
+  if (isReminderLikeType(t)) return "Concluir tarefa";
+  if (isMessageOrientedType(t) || t === "VISIT_TODAY" || t === "VISIT_TOMORROW" || t === "VISIT_REQUESTED") {
+    return "Marcar como revisado";
+  }
+  return "Marcar como resolvido";
 }
 
 function assistantTypeRank(itemType: string | null | undefined): number {
@@ -278,11 +392,12 @@ export default function RealtorAssistantFeed(props: {
 }) {
   const router = useRouter();
 
-  const aiEnabled = false;
+  const aiEnabled = true;
 
   const realtorId = props.realtorId;
   const leadId = props.leadId;
-  const activeTab = "TASKS" as const;
+  const onItemsUpdated = props.onItemsUpdated;
+  const onDidMutate = props.onDidMutate;
   const [items, setItems] = useState<AssistantItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -295,6 +410,7 @@ export default function RealtorAssistantFeed(props: {
   const optimisticHideRef = useRef<Record<string, number>>({});
   const lastRealtimeUpdateRef = useRef<Record<string, number>>({});
   const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
+  const [overflowMenuFor, setOverflowMenuFor] = useState<string | null>(null);
   const [aiForId, setAiForId] = useState<string | null>(null);
   const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -343,9 +459,6 @@ export default function RealtorAssistantFeed(props: {
   );
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
-  const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
-  const resolvedTimerRef = useRef<any>(null);
 
   const showCategoryHeadings = props.showCategoryHeadings !== false;
   const infiniteScrollEnabled = !!props.categoryFilter && props.categoryFilter !== "ALL";
@@ -364,11 +477,6 @@ export default function RealtorAssistantFeed(props: {
 
   useEffect(() => {
     return () => {
-      if (resolvedTimerRef.current) {
-        clearTimeout(resolvedTimerRef.current);
-        resolvedTimerRef.current = null;
-      }
-
       if (deleteConfirmTimerRef.current) {
         clearTimeout(deleteConfirmTimerRef.current);
         deleteConfirmTimerRef.current = null;
@@ -392,22 +500,31 @@ export default function RealtorAssistantFeed(props: {
     };
   }, []);
 
+  const analyticalItems = useMemo(() => {
+    return items.filter(
+      (i) =>
+        isAnalyticalType(i.type) &&
+        (
+          i.status === "ACTIVE" ||
+          !!successById[String(i.id)]
+        )
+    );
+  }, [items, successById]);
+
   const visibleItems = useMemo(() => {
     return items.filter(
       (i) =>
-        String(i.type || "").trim() !== "WEEKLY_SUMMARY" &&
+        !isAnalyticalType(i.type) &&
         (
           i.status === "ACTIVE" ||
-          !!successById[String(i.id)] ||
-          (justResolvedId && i.id === justResolvedId) ||
-          (justSnoozedId && i.id === justSnoozedId)
+          !!successById[String(i.id)]
         )
     );
-  }, [items, justResolvedId, justSnoozedId, successById]);
+  }, [items, successById]);
 
   useEffect(() => {
-    props.onItemsUpdated?.(items);
-  }, [items, props.onItemsUpdated]);
+    onItemsUpdated?.(items);
+  }, [items, onItemsUpdated]);
 
   useEffect(() => {
     return () => {
@@ -444,10 +561,10 @@ export default function RealtorAssistantFeed(props: {
 
   const aiVisibleItem = useMemo(() => {
     if (!aiForId) return null;
-    return visibleItems.find((i) => i.id === aiForId) || null;
-  }, [aiForId, visibleItems]);
+    return [...analyticalItems, ...visibleItems].find((i) => i.id === aiForId) || null;
+  }, [aiForId, analyticalItems, visibleItems]);
 
-  const activeCount = visibleItems.length;
+  const activeCount = visibleItems.length + analyticalItems.length;
 
   const limit = (() => {
     const raw = props.limit;
@@ -809,6 +926,20 @@ export default function RealtorAssistantFeed(props: {
   }, [snoozeMenuFor]);
 
   useEffect(() => {
+    if (!overflowMenuFor) return;
+    const onDown = (ev: MouseEvent) => {
+      const target = ev.target as Element | null;
+      if (!target) return;
+      if (target.closest('[data-overflow-root="true"]')) return;
+      setOverflowMenuFor(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [overflowMenuFor]);
+
+  useEffect(() => {
     if (!realtorId) return;
 
     let cancelled = false;
@@ -889,7 +1020,7 @@ export default function RealtorAssistantFeed(props: {
     } catch {
       // ignore
     }
-  }, [realtorId, fetchItems]);
+  }, [realtorId, fetchItems, sortAssistantItems]);
 
   useEffect(() => {
     if (!realtorId) return;
@@ -928,7 +1059,7 @@ export default function RealtorAssistantFeed(props: {
       }
 
       etagRef.current = null;
-      props.onDidMutate?.();
+      onDidMutate?.();
 
       if (payload?.action === "resolve" && data?.item?.id) {
         optimisticHideRef.current[String(data.item.id)] = Date.now() + 6000;
@@ -1072,7 +1203,7 @@ export default function RealtorAssistantFeed(props: {
           setRepliedForId(null);
         }, 2000);
 
-        props.onDidMutate?.();
+        onDidMutate?.();
         etagRef.current = null;
         if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
         delayedRefreshRef.current = setTimeout(() => {
@@ -1085,7 +1216,7 @@ export default function RealtorAssistantFeed(props: {
         setReplyingForId(null);
       }
     },
-    [fetchItems, props.onDidMutate, recordAssistantEvent]
+    [fetchItems, onDidMutate, recordAssistantEvent]
   );
 
   const handleOpenAction = (action: AssistantAction, item: AssistantItem) => {
@@ -1106,6 +1237,17 @@ export default function RealtorAssistantFeed(props: {
         return;
       }
       router.push("/broker/leads");
+      return;
+    }
+
+    if (action.type === "OPEN_PAGE") {
+      const url = String((action as any)?.url || "").trim();
+      if (!url) return;
+      if (/^https?:\/\//i.test(url)) {
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      router.push(url);
       return;
     }
 
@@ -1161,7 +1303,7 @@ export default function RealtorAssistantFeed(props: {
 
       setDeleteConfirmForId(null);
       etagRef.current = null;
-      props.onDidMutate?.();
+      onDidMutate?.();
       if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
       delayedRefreshRef.current = setTimeout(() => {
         etagRef.current = null;
@@ -1213,7 +1355,7 @@ export default function RealtorAssistantFeed(props: {
         </div>
       )}
 
-      {visibleItems.length > 0 && (
+      {activeCount > 0 && (
         <div className={props.embedded ? "space-y-3" : "mt-4 space-y-3"}>
           {aiEnabled &&
             !aiVisibleItem &&
@@ -1341,6 +1483,234 @@ export default function RealtorAssistantFeed(props: {
             </div>
           )}
 
+          {(!props.categoryFilter || props.categoryFilter === "ALL" || props.categoryFilter === "Outros") && analyticalItems.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-semibold text-violet-700">Resumos e diagnósticos</p>
+                <p className="text-[11px] font-semibold text-violet-500">{analyticalItems.length}</p>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {analyticalItems.map((item) => {
+                  const dueLabel = formatShortDateTime(item.dueAt || null);
+                  const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
+                  const dateLabel = snoozeLabel || dueLabel;
+                  const messageIsLong = String(item.message || "").trim().length > 220;
+                  const isExpanded = expandedId === item.id;
+                  const successState = successById[String(item.id)];
+                  const isTransientPreview = false;
+
+                  return (
+                    <motion.div
+                      key={`analysis-${item.id}`}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.18 }}
+                      className={
+                        successState
+                          ? "rounded-[26px] border border-emerald-200/70 bg-emerald-50 px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+                          : "rounded-[26px] border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-indigo-50 px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+                      }
+                    >
+                      {successState ? (
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 border border-emerald-200 text-emerald-700">
+                              <CheckCircle2 className="w-5 h-5" />
+                            </span>
+                            <div>
+                              <p className="text-[13px] font-extrabold text-emerald-900">Resumo atualizado</p>
+                              <p className="mt-0.5 text-[12px] font-semibold text-emerald-800">{successState.message}</p>
+                            </div>
+                          </div>
+                          <p className="text-[11px] font-semibold text-emerald-700">2s</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border border-violet-200 bg-violet-50 text-violet-700">
+                                <span className="inline-block w-2 h-2 rounded-full bg-violet-500" />
+                                {dateLabel ? `Resumo analítico · ${dateLabel}` : "Resumo analítico"}
+                              </span>
+                            </div>
+
+                            <div className="relative" data-snooze-root="true">
+                              <button
+                                type="button"
+                                disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => {
+                                  setOverflowMenuFor(null);
+                                  setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id));
+                                }}
+                                className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-violet-200 bg-white text-violet-700 hover:bg-violet-50 disabled:opacity-60"
+                                title="Lembrar depois"
+                              >
+                                <Clock className="w-5 h-5" />
+                              </button>
+
+                              {snoozeMenuFor === item.id && (
+                                <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
+                                  {snoozeOptions.map((opt) => (
+                                    <button
+                                      key={opt.minutes}
+                                      type="button"
+                                      disabled={actingId === item.id}
+                                      onClick={async () => {
+                                        setSnoozeMenuFor(null);
+                                        await performAction(item.id, { action: "snooze", minutes: opt.minutes });
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 min-w-0">
+                            <p className="text-[18px] leading-6 font-extrabold text-gray-900">{stripNoiseFromTitle(item.title)}</p>
+                            <p className={`text-[15px] leading-6 font-semibold text-gray-800 ${isExpanded ? "" : "line-clamp-4"}`}>
+                              {item.message}
+                            </p>
+                            {messageIsLong && (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                                className="mt-1 text-[12px] font-semibold text-violet-700 hover:text-violet-800"
+                              >
+                                {isExpanded ? "Ver menos" : "Ver mais"}
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="mt-5 flex flex-wrap gap-3">
+                            {aiEnabled && (
+                              <button
+                                type="button"
+                                disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={async () => {
+                                  setAiItemSnapshot({
+                                    id: item.id,
+                                    leadId: item.leadId ?? null,
+                                    type: item.type,
+                                    title: item.title,
+                                    message: item.message,
+                                  });
+                                  await generateAi({ id: item.id });
+                                }}
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
+                              >
+                                <Sparkles className="w-4 h-4" />
+                                {aiLoadingId === item.id ? "Gerando..." : getAiButtonLabel(item.type)}
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                              onClick={() => performAction(item.id, { action: "resolve" })}
+                              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              Marcar como lido
+                            </button>
+                          </div>
+
+                          {aiEnabled && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
+                            <div className="mt-3 rounded-xl border border-violet-200 bg-white/80 px-3 py-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-[11px] font-semibold text-gray-900">Sugestão do Assistente</p>
+                                  {aiError ? (
+                                    <p className="mt-1 text-[11px] text-red-600">{aiError}</p>
+                                  ) : (
+                                    <p className="mt-1 text-[11px] text-gray-700">{aiResult?.summary}</p>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    try {
+                                      if (aiLoadingId === item.id) {
+                                        aiAbortRef.current?.abort();
+                                      }
+                                    } catch {
+                                    }
+                                    setAiForId(null);
+                                    setAiError(null);
+                                    setAiResult(null);
+                                  }}
+                                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                                  title="Fechar"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {!aiError && aiResult?.draft && (
+                                <div className="mt-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[11px] font-semibold text-gray-900">{getAiDraftSectionTitle(item.type)}</p>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        await copyText(aiResult.draft);
+                                        try {
+                                          recordAssistantEvent({
+                                            event: "DRAFT_COPIED",
+                                            itemId: String(item.id),
+                                            leadId: item.leadId ?? null,
+                                            itemType: item.type ?? null,
+                                            metadata: { source: "realtor_feed", location: "analysis_ai_box" },
+                                          });
+                                        } catch {
+                                        }
+                                        setCopiedForId(item.id);
+                                        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+                                        copiedTimerRef.current = setTimeout(() => {
+                                          setCopiedForId(null);
+                                        }, 2000);
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                      {copiedForId === item.id ? "Copiado" : "Copiar"}
+                                    </button>
+                                  </div>
+                                  <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
+                                    {aiResult.draft}
+                                  </div>
+                                </div>
+                              )}
+
+                              {aiError && (
+                                <div className="mt-2">
+                                  <button
+                                    type="button"
+                                    disabled={aiLoadingId === item.id}
+                                    onClick={() => generateAi({ id: item.id })}
+                                    className="text-[11px] font-semibold text-violet-700 hover:text-violet-800 disabled:opacity-60"
+                                  >
+                                    Tentar novamente
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+
           {(
             (props.categoryFilter && props.categoryFilter !== "ALL"
               ? ([props.categoryFilter] as const)
@@ -1411,25 +1781,15 @@ export default function RealtorAssistantFeed(props: {
                       const openLeadAction: AssistantAction | null = item.leadId
                         ? { type: "OPEN_LEAD", leadId: item.leadId }
                         : null;
-                      const taskLabel = getRealtorAssistantTaskLabel(item.type);
                       const isReminder = isReminderType(item.type);
+                      const isReminderLike = isReminderLikeType(item.type);
                       const isInternalChecklist = isInternalChecklistType(item.type);
                       const meta: any = (item as any)?.metadata || null;
                       const isAgencyNotice = String(item.type || "").trim() === "AGENCY_NOTICE";
                       const isWhatsAppIntent = String(meta?.source || "").toUpperCase() === "WHATSAPP";
-                      const resolveLabel = isWhatsAppIntent
-                        ? "Estou em contato"
-                        : isInternalChecklist
-                          ? "Marcar como feito"
-                          : "Resolver";
-                      const resolveTitle = isWhatsAppIntent
-                        ? "Marcar como feito (já estou em contato)"
-                        : isInternalChecklist
-                          ? "Marcar como feito"
-                          : "Marcar como resolvido";
-                      const isResolvedPreview = justResolvedId === item.id && item.status === "RESOLVED";
-                      const isSnoozedPreview = justSnoozedId === item.id && item.status === "SNOOZED";
-                      const isTransientPreview = isResolvedPreview || isSnoozedPreview;
+                      const resolveLabel = getResolveActionLabel(item.type, { isWhatsAppIntent });
+                      const resolveTitle = resolveLabel;
+                      const isTransientPreview = false;
 
                       const dateLabel = snoozeLabel || dueLabel;
                       const now = new Date();
@@ -1442,9 +1802,39 @@ export default function RealtorAssistantFeed(props: {
                           return d.getTime() < now.getTime();
                         })();
 
-                      const responderIsPrimary = item.type === "UNANSWERED_CLIENT_MESSAGE";
-                      const primaryOpenAction = responderIsPrimary ? openChatAction : openLeadAction;
+                      const fallbackPrimaryAction = defaultPrimaryAction(item);
+                      const fallbackSecondaryOpenAction = item.leadId
+                        ? fallbackPrimaryAction?.type === "OPEN_CHAT"
+                          ? openLeadAction
+                          : openChatAction
+                        : null;
+                      const openActionCandidates = [
+                        item.primaryAction ?? null,
+                        item.secondaryAction ?? null,
+                        fallbackPrimaryAction,
+                        fallbackSecondaryOpenAction,
+                      ].filter((action, index, list): action is AssistantAction => {
+                        if (!isOpenAction(action)) return false;
+                        return list.findIndex((candidate) => isSameAction(candidate as AssistantAction | null, action)) === index;
+                      });
+                      const primaryOpenAction = (
+                        shouldPreferChatPrimary(item.type)
+                          ? openActionCandidates.find((action) => action.type === "OPEN_CHAT")
+                          : isReminderLike
+                            ? openActionCandidates.find((action) => action.type === "OPEN_LEAD")
+                            : null
+                      ) || openActionCandidates[0] || null;
+                      const secondaryOpenAction = openActionCandidates.find((action) => !isSameAction(action, primaryOpenAction)) || null;
+                      const primaryActionLabel = primaryOpenAction ? getContextualOpenActionLabel(item, primaryOpenAction) : null;
                       const PrimaryOpenIcon = primaryOpenAction ? getActionIcon(primaryOpenAction) : null;
+                      const SecondaryOpenIcon = secondaryOpenAction ? getActionIcon(secondaryOpenAction) : null;
+                      const aiExecutionAction = (
+                        canSendAiDraftToClient(item.type)
+                          ? [secondaryOpenAction, primaryOpenAction, openChatAction, openLeadAction].find((action) => action?.type === "OPEN_CHAT")
+                          : [secondaryOpenAction, primaryOpenAction, openLeadAction, openChatAction].find(Boolean)
+                      ) || null;
+                      const AiExecutionIcon = aiExecutionAction ? getActionIcon(aiExecutionAction) : null;
+                      const showInlineResolve = isReminderLike;
 
                       const messageIsLong = String(item.message || "").trim().length > 120;
                       const isExpanded = expandedId === item.id;
@@ -1483,11 +1873,6 @@ export default function RealtorAssistantFeed(props: {
                       ]
                         .filter(Boolean)
                         .join(" · ");
-
-                      const draftForThisItem =
-                        !aiError && aiResult?.itemId === item.id && typeof aiResult?.draft === "string"
-                          ? String(aiResult.draft).trim()
-                          : "";
 
                       const effectivePriority =
                         item.status === "ACTIVE" && isOverdue ? "HIGH" : item.priority;
@@ -1562,35 +1947,92 @@ export default function RealtorAssistantFeed(props: {
                                   </span>
                                 </div>
 
-                                <div className="relative" data-snooze-root="true">
-                                  <button
-                                    type="button"
-                                    disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                                    onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
-                                    className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                                    title="Lembrar depois"
-                                  >
-                                    <Clock className="w-5 h-5" />
-                                  </button>
+                                <div className="flex items-center gap-2">
+                                  <div className="relative" data-snooze-root="true">
+                                    <button
+                                      type="button"
+                                      disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                      onClick={() => {
+                                        setOverflowMenuFor(null);
+                                        setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id));
+                                      }}
+                                      className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                      title="Lembrar depois"
+                                    >
+                                      <Clock className="w-5 h-5" />
+                                    </button>
 
-                                  {snoozeMenuFor === item.id && (
-                                    <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
-                                      {snoozeOptions.map((opt) => (
+                                    {snoozeMenuFor === item.id && (
+                                      <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
+                                        {snoozeOptions.map((opt) => (
+                                          <button
+                                            key={opt.minutes}
+                                            type="button"
+                                            disabled={actingId === item.id}
+                                            onClick={async () => {
+                                              setSnoozeMenuFor(null);
+                                              await performAction(item.id, { action: "snooze", minutes: opt.minutes });
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                          >
+                                            {opt.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="relative" data-overflow-root="true">
+                                    <button
+                                      type="button"
+                                      disabled={actingId === item.id || isTransientPreview}
+                                      onClick={() => {
+                                        setSnoozeMenuFor(null);
+                                        setOverflowMenuFor((prev) => (prev === item.id ? null : item.id));
+                                      }}
+                                      className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                      title="Mais ações"
+                                    >
+                                      <MoreHorizontal className="w-5 h-5" />
+                                    </button>
+
+                                    {overflowMenuFor === item.id && (
+                                      <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
                                         <button
-                                          key={opt.minutes}
                                           type="button"
-                                          disabled={actingId === item.id}
+                                          disabled={actingId === item.id || item.status !== "ACTIVE"}
                                           onClick={async () => {
-                                            setSnoozeMenuFor(null);
-                                            await performAction(item.id, { action: "snooze", minutes: opt.minutes });
+                                            setOverflowMenuFor(null);
+                                            await performAction(item.id, { action: "resolve" });
                                           }}
-                                          className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                                         >
-                                          {opt.label}
+                                          <CheckCircle2 className="w-4 h-4" />
+                                          {resolveLabel}
                                         </button>
-                                      ))}
-                                    </div>
-                                  )}
+                                        {item.leadId && (
+                                          <button
+                                            type="button"
+                                            disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                            onClick={async () => {
+                                              if (deleteConfirmForId === item.id) {
+                                                setOverflowMenuFor(null);
+                                              }
+                                              await requestCloseLead(item);
+                                            }}
+                                            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold ${
+                                              deleteConfirmForId === item.id
+                                                ? "bg-red-50 text-red-700 hover:bg-red-100"
+                                                : "text-gray-700 hover:bg-gray-50"
+                                            } disabled:opacity-60`}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                            {deleteConfirmForId === item.id ? "Confirmar encerrar lead" : "Encerrar lead"}
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
 
@@ -1844,149 +2286,94 @@ export default function RealtorAssistantFeed(props: {
 
                         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                           <div className="flex flex-wrap gap-3">
-                            <button
-                              type="button"
-                              disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                              onClick={() => performAction(item.id, { action: "resolve" })}
-                              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
-                              title={resolveTitle}
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              {isResolvedPreview ? "Feito" : isReminder ? "Concluir" : resolveLabel}
-                            </button>
-
-                            {item.status === "ACTIVE" && item.leadId && (
+                            {primaryOpenAction && primaryActionLabel && (
                               <button
                                 type="button"
                                 disabled={isTransientPreview || item.status !== "ACTIVE"}
-                                onClick={() => requestCloseLead(item)}
-                                className={
-                                  deleteConfirmForId === item.id
-                                    ? "inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-red-200 bg-red-50 text-[13px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-60"
-                                    : "inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
-                                }
-                                title={
-                                  deleteConfirmForId === item.id
-                                    ? "Clique novamente para encerrar"
-                                    : "Encerrar lead"
-                                }
+                                onClick={() => handleOpenAction(primaryOpenAction, item)}
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
                               >
-                                <Trash2 className="w-4 h-4" />
-                                {deleteConfirmForId === item.id ? "Confirmar" : "Encerrar lead"}
+                                {PrimaryOpenIcon && <PrimaryOpenIcon className="w-4 h-4" />}
+                                {primaryActionLabel}
                               </button>
                             )}
 
-                            {isReminder ? (
-                              openLeadAction && (
-                                <button
-                                  type="button"
-                                  disabled={isTransientPreview || item.status !== "ACTIVE"}
-                                  onClick={() => handleOpenAction(openLeadAction, item)}
-                                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                  {getActionLabel(openLeadAction, item)}
-                                </button>
-                              )
-                            ) : (
-                              <>
-                                {responderIsPrimary && openChatAction && (
-                                  <button
-                                    type="button"
-                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
-                                    onClick={() => handleOpenAction(openChatAction, item)}
-                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
-                                  >
-                                    <MessageCircle className="w-4 h-4" />
-                                    {getActionLabel(openChatAction, item)}
-                                  </button>
-                                )}
+                            {!isAgencyNotice && aiEnabled && (
+                              <button
+                                type="button"
+                                disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={async () => {
+                                  setAiItemSnapshot({
+                                    id: item.id,
+                                    leadId: item.leadId ?? null,
+                                    type: item.type,
+                                    title: item.title,
+                                    message: item.message,
+                                  });
 
-                                {isAgencyNotice && openChatAction && (
-                                  <button
-                                    type="button"
-                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
-                                    onClick={() => handleOpenAction(openChatAction, item)}
-                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
-                                  >
-                                    <MessageCircle className="w-4 h-4" />
-                                    Abrir conversa
-                                  </button>
-                                )}
+                                  if (isWhatsAppIntent) {
+                                    const propertyTitle =
+                                      String(property?.title || "").trim() ||
+                                      String(meta?.propertyTitle || "").trim() ||
+                                      "o imóvel";
+                                    const propertyUrl = String(meta?.propertyUrl || "").trim();
 
-                                {!isAgencyNotice && aiEnabled && (
-                                  <button
-                                    type="button"
-                                    disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                                    onClick={async () => {
-                                      setAiItemSnapshot({
-                                        id: item.id,
-                                        leadId: item.leadId ?? null,
-                                        type: item.type,
-                                        title: item.title,
-                                        message: item.message,
-                                      });
+                                    const draft = await generateAi({ id: item.id });
+                                    const baseText =
+                                      String(draft || "").trim() ||
+                                      `Olá! Tudo bem? Vi seu interesse no imóvel “${propertyTitle}”. Posso te ajudar?`;
+                                    const text = propertyUrl ? `${baseText}\n\n${propertyUrl}` : baseText;
+                                    const url = buildWhatsAppShareUrl(text);
+                                    window.open(url, "_blank", "noopener,noreferrer");
+                                    return;
+                                  }
 
-                                      if (isWhatsAppIntent) {
-                                        const propertyTitle =
-                                          String(property?.title || "").trim() ||
-                                          String(meta?.propertyTitle || "").trim() ||
-                                          "o imóvel";
-                                        const propertyUrl = String(meta?.propertyUrl || "").trim();
+                                  await generateAi({ id: item.id });
+                                }}
+                                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-[13px] font-bold disabled:opacity-60 ${
+                                  primaryOpenAction
+                                    ? "border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                                    : "glass-teal text-white"
+                                }`}
+                              >
+                                <Sparkles className="w-4 h-4" />
+                                {aiLoadingId === item.id
+                                  ? "Gerando..."
+                                  : isWhatsAppIntent &&
+                                      (item.type === "NEW_LEAD" || item.type === "LEAD_NO_FIRST_CONTACT")
+                                    ? "Gerar primeiro contato via whatsapp"
+                                    : getAiButtonLabel(item.type)}
+                              </button>
+                            )}
 
-                                        const draft = await generateAi({ id: item.id });
-                                        const baseText =
-                                          String(draft || "").trim() ||
-                                          `Olá! Tudo bem? Vi seu interesse no imóvel “${propertyTitle}”. Posso te ajudar?`;
-                                        const text = propertyUrl ? `${baseText}\n\n${propertyUrl}` : baseText;
-                                        const url = buildWhatsAppShareUrl(text);
-                                        window.open(url, "_blank", "noopener,noreferrer");
-                                        return;
-                                      }
+                            {secondaryOpenAction && (
+                              <button
+                                type="button"
+                                disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => handleOpenAction(secondaryOpenAction, item)}
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                {SecondaryOpenIcon && <SecondaryOpenIcon className="w-4 h-4" />}
+                                {getActionLabel(secondaryOpenAction, item)}
+                              </button>
+                            )}
 
-                                      await generateAi({ id: item.id });
-                                    }}
-                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
-                                  >
-                                    <Sparkles className="w-4 h-4" />
-                                    {aiLoadingId === item.id
-                                      ? "Gerando..."
-                                      : isWhatsAppIntent &&
-                                          (item.type === "NEW_LEAD" || item.type === "LEAD_NO_FIRST_CONTACT")
-                                        ? "Gerar primeiro contato via whatsapp"
-                                        : getAiButtonLabel(item.type)}
-                                  </button>
-                                )}
-
-                                {!responderIsPrimary && primaryOpenAction && (
-                                  <button
-                                    type="button"
-                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
-                                    onClick={() => handleOpenAction(primaryOpenAction, item)}
-                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
-                                  >
-                                    {PrimaryOpenIcon && <PrimaryOpenIcon className="w-4 h-4" />}
-                                    {getActionLabel(primaryOpenAction, item)}
-                                  </button>
-                                )}
-
-                                {responderIsPrimary && openLeadAction && (
-                                  <button
-                                    type="button"
-                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
-                                    onClick={() => handleOpenAction(openLeadAction, item)}
-                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                    {getActionLabel(openLeadAction, item)}
-                                  </button>
-                                )}
-                              </>
+                            {showInlineResolve && (
+                              <button
+                                type="button"
+                                disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => performAction(item.id, { action: "resolve" })}
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                title={resolveTitle}
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                Concluir
+                              </button>
                             )}
                           </div>
                         </div>
 
-                        {aiEnabled && !isReminder && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
+                        {aiEnabled && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
                           <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
@@ -2063,8 +2450,19 @@ export default function RealtorAssistantFeed(props: {
                                   <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
                                     {aiResult.draft}
                                   </div>
-                                  {!!item.leadId && canSendAiDraftToClient(item.type) && (
-                                    <div className="mt-2 flex justify-end">
+                                  <div className="mt-2 flex flex-wrap justify-end gap-2">
+                                    {!!aiExecutionAction && !!item.leadId && (
+                                      <button
+                                        type="button"
+                                        disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                        onClick={() => handleOpenAction(aiExecutionAction, item)}
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                      >
+                                        {AiExecutionIcon && <AiExecutionIcon className="w-3.5 h-3.5" />}
+                                        {getActionLabel(aiExecutionAction, item)}
+                                      </button>
+                                    )}
+                                    {!!item.leadId && canSendAiDraftToClient(item.type) && (
                                       <button
                                         type="button"
                                         disabled={replyingForId === item.id}
@@ -2085,8 +2483,8 @@ export default function RealtorAssistantFeed(props: {
                                             ? "Enviando..."
                                             : getMessageSendLabel(item.type)}
                                       </button>
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
                               </>
                             )}
