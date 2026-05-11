@@ -192,6 +192,11 @@ function canSendAiDraftToClient(itemType: string | null | undefined) {
   );
 }
 
+function shouldAutoResolveAfterReply(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return isMessageOrientedType(t) && t !== "NEW_LEAD";
+}
+
 function getAiButtonLabel(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
   if (t === "UNANSWERED_CLIENT_MESSAGE") return "Responder com IA";
@@ -1203,6 +1208,10 @@ export default function RealtorAssistantFeed(props: {
           setRepliedForId(null);
         }, 2000);
 
+        if (shouldAutoResolveAfterReply(params.itemType)) {
+          resolveItemsOptimistically([ownerId]);
+        }
+
         onDidMutate?.();
         etagRef.current = null;
         if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
@@ -1216,7 +1225,7 @@ export default function RealtorAssistantFeed(props: {
         setReplyingForId(null);
       }
     },
-    [fetchItems, onDidMutate, recordAssistantEvent]
+    [fetchItems, onDidMutate, recordAssistantEvent, resolveItemsOptimistically]
   );
 
   const handleOpenAction = (action: AssistantAction, item: AssistantItem) => {

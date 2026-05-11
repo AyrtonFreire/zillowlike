@@ -1631,15 +1631,27 @@ export class RealtorAssistantService {
         const autoVisitHandoffFlag = (autoForVisit as any)?.metadata?.aiJson?.visitHandoffNeeded;
         const isAutoReplySameMessage = !!(visitRequestedClientMessageId && autoClientMessageId && visitRequestedClientMessageId === autoClientMessageId);
         const shouldSuppressLegacyFalseVisit = isAutoReplySameMessage && autoVisitHandoffFlag === false;
+        const dueBaseAt = visitState.isRejectedAfterRequest && visitState.rejectedAt ? visitState.rejectedAt : requestedAt;
+        const hasHumanReplyAfterVisitCheckpoint = Boolean(
+          dueBaseAt &&
+            lastHumanProChatAt &&
+            !Number.isNaN(new Date(lastHumanProChatAt).getTime()) &&
+            new Date(lastHumanProChatAt).getTime() >= dueBaseAt.getTime()
+        );
 
-        if (conversationActive && requestedAt && visitState.isPending && !shouldSuppressLegacyFalseVisit) {
+        if (
+          conversationActive &&
+          requestedAt &&
+          visitState.isPending &&
+          !shouldSuppressLegacyFalseVisit &&
+          !hasHumanReplyAfterVisitCheckpoint
+        ) {
           const key = `VISIT_REQUESTED:${lead.id}`;
           dedupeKeys.add(key);
-
-          const dueBaseAt = visitState.isRejectedAfterRequest && visitState.rejectedAt ? visitState.rejectedAt : requestedAt;
-          const dueAt = addMinutes(dueBaseAt, 60);
+          const effectiveDueBaseAt = dueBaseAt || requestedAt;
+          const dueAt = addMinutes(effectiveDueBaseAt, 60);
           const msToDue = dueAt.getTime() - now.getTime();
-          const isFreshUpdate = now.getTime() - dueBaseAt.getTime() <= 2 * 60 * 60 * 1000;
+          const isFreshUpdate = now.getTime() - effectiveDueBaseAt.getTime() <= 2 * 60 * 60 * 1000;
           const priority: "LOW" | "MEDIUM" | "HIGH" = msToDue <= 0 || isFreshUpdate ? "HIGH" : "MEDIUM";
           const rejectionReason = safeString(visitRejected?.description || visitRejected?.metadata?.reason) || null;
           const visitCard = buildVisitRequestCardCopy({
@@ -1667,6 +1679,7 @@ export class RealtorAssistantService {
               rejectedByOwner: visitState.isRejectedAfterRequest,
               rejectionReason,
               clientMessageId: visitRequestedClientMessageId || null,
+              lastHumanAt: lastHumanProChatAt ? new Date(lastHumanProChatAt).toISOString() : null,
               requestKind: visitCard.meta.requestKind,
               requestVersion: visitCard.meta.requestVersion,
               requestText: visitCard.meta.requestText,
