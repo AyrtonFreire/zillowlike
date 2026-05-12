@@ -118,6 +118,7 @@ export default function UserChatsPage() {
 
   const leadIdFromUrl = searchParams.get("lead");
   const tokenFromUrl = searchParams.get("token");
+  const chatEntry = searchParams.get("entry") || "";
   const openChat = searchParams.get("openChat") === "1";
   const openChatPropertyId = searchParams.get("propertyId") || "";
   const openChatDirect = (searchParams.get("direct") || "").toLowerCase() === "1";
@@ -258,7 +259,7 @@ export default function UserChatsPage() {
     const leadId = String(data?.leadId || "");
     if (!leadId) return;
 
-    router.replace(`/chats?lead=${encodeURIComponent(leadId)}`);
+    router.replace(`/chats?lead=${encodeURIComponent(leadId)}&entry=contact`);
   }, [openChat, openChatDirect, openChatPropertyId, router, session]);
 
   const fetchChatByToken = useCallback(async (token: string) => {
@@ -623,6 +624,21 @@ export default function UserChatsPage() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         <h1 className="text-2xl font-bold text-gray-900">Conversas</h1>
         <p className="text-gray-600 mt-1">Gerencie suas conversas com corretores e anunciantes.</p>
+
+        {chatEntry === "contact" ? (
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-teal-900">Acompanhe esta conversa em Conversas</div>
+              <p className="mt-1 text-sm text-teal-800">Sempre que você falar com um corretor sobre um imóvel, o histórico ficará disponível aqui para retomar rapidamente.</p>
+            </div>
+            <Link
+              href="/chats"
+              className="inline-flex items-center justify-center rounded-xl border border-teal-300 bg-white px-3 py-2 text-sm font-semibold text-teal-800 hover:bg-teal-100"
+            >
+              Ver todas as conversas
+            </Link>
+          </div>
+        ) : null}
 
         <div ref={panelRef} className="mt-4 md:mt-6 min-h-[360px] md:min-h-[520px] bg-white rounded-xl border border-gray-200 overflow-hidden flex min-w-0" style={chatPanelHeight ? { height: `${chatPanelHeight}px` } : undefined}>
           <div className={`w-full md:w-80 border-r border-gray-200 flex flex-col min-h-0 bg-gray-50 ${selectedChat ? "hidden md:flex" : "flex"}`}>

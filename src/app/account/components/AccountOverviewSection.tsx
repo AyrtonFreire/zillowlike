@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Bell, BriefcaseBusiness, Building2, Camera, CheckCircle2, Loader2, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Bell, BriefcaseBusiness, Building2, Camera, CheckCircle2, Loader2, Mail, MapPin, MessageCircle, Phone, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { SectionCard, StatusBadge } from "@/app/profile/components/ProfilePrimitives";
 import { formatRealtorTypeLabel, formatRoleLabel, type UserProfile } from "@/app/profile/types";
@@ -334,6 +334,23 @@ export function AccountOverviewSection({
               <Button type="button" variant="secondary">Ver comparação completa</Button>
             </Link>
           </div>
+          <Link href="/chats" className="mt-5 group flex items-start justify-between gap-4 rounded-[24px] border border-teal-200 bg-teal-50/70 p-5 transition hover:border-teal-300 hover:bg-white">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                <MessageCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-lg font-semibold text-neutral-950">Minhas conversas</div>
+                <p className="mt-2 text-sm leading-7 text-neutral-600">
+                  Acompanhe chats ativos com corretores e imóveis que você já contatou, sem precisar voltar ao anúncio para encontrar a conversa.
+                </p>
+                <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 group-hover:text-teal-800">
+                  Abrir conversas
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+          </Link>
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             <Link href="/realtor/register" className="group rounded-[24px] border border-indigo-200 bg-indigo-50/50 p-5 transition hover:border-indigo-300 hover:bg-white">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-indigo-700 shadow-sm">
@@ -343,7 +360,7 @@ export function AccountOverviewSection({
               <p className="mt-2 text-sm leading-7 text-neutral-600">
                 Ideal para atuação individual, inclusive quando você trabalha vinculado a uma imobiliária mas continua operando como pessoa corretora.
               </p>
-              <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 group-hover:text-indigo-800">
+              <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 group-hover:text-indigo-800">
                 Começar como corretor
                 <ArrowRight className="h-4 w-4" />
               </div>

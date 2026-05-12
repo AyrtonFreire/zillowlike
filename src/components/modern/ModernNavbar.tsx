@@ -479,11 +479,12 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             {role === 'USER' && session && (
               <Link
                 href="/chats"
-                className={`relative rounded-xl p-2.5 transition-colors ${
-                  forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
+                className={`relative inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
+                  forceLight ? 'text-gray-700 hover:bg-gray-100 hover:text-gray-900' : 'text-white/90 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Bell className="w-5 h-5" />
+                <MessageCircle className="w-5 h-5" />
+                <span>Conversas</span>
                 {hasUnreadUserChats && (
                   <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border border-white" />
                 )}

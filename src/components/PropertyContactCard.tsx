@@ -54,7 +54,6 @@ type ContactCardProps = {
 
 export default function PropertyContactCard({
   propertyId,
-  propertyTitle,
   disableActions,
   variant = "card",
   ownerRole,
@@ -89,6 +88,8 @@ export default function PropertyContactCard({
   const router = useRouter();
 
   const isAuthenticated = !!session;
+  const sessionRole = ((session as any)?.user?.role || (session as any)?.role || "USER") as string;
+  const isRegularUser = isAuthenticated && sessionRole === "USER";
 
   // Determinar cenário
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
@@ -268,7 +269,7 @@ export default function PropertyContactCard({
   };
 
   const getChatCallbackUrl = () => {
-    return `/chats?openChat=1&propertyId=${encodeURIComponent(propertyId)}&direct=1`;
+    return `/chats?openChat=1&propertyId=${encodeURIComponent(propertyId)}&direct=1&entry=contact`;
   };
 
   const createLeadAndOpenChat = async () => {
@@ -318,7 +319,18 @@ export default function PropertyContactCard({
         throw new Error("Não conseguimos abrir o chat agora.");
       }
 
-      router.push(`/chats?lead=${encodeURIComponent(leadId)}`);
+      const chatHref = `/chats?lead=${encodeURIComponent(leadId)}&entry=contact`;
+      toast.showToast({
+        type: "info",
+        title: "Conversa iniciada",
+        message: "Acompanhe esta conversa em Conversas.",
+        duration: 6000,
+        actionLabel: "Abrir conversas",
+        onAction: () => {
+          router.push(chatHref);
+        },
+      });
+      router.push(chatHref);
     } catch (err: any) {
       toast.error(err?.message || "Não conseguimos abrir o chat agora.");
     } finally {
@@ -654,6 +666,15 @@ export default function PropertyContactCard({
             <MessageCircle className="w-5 h-5" />
             {chatLoading ? "Abrindo..." : "Chat"}
           </button>
+          {isRegularUser && (
+            <Link
+              href="/chats"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-teal-700 transition hover:text-teal-800"
+            >
+              Acompanhe esta conversa em Conversas
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
         </div>
       </div>
     </div>
