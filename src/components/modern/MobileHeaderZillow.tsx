@@ -374,6 +374,26 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                   </Link>
                 </div>
 
+                <div className="border-b border-gray-100">
+                  <Link
+                    href="/para-profissionais"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setExpandedSection(null);
+                    }}
+                    className="w-full flex items-center justify-between px-5 py-3.5 text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ClipboardList className="w-5 h-5 text-brand-teal" />
+                      <div>
+                        <span className="block text-sm font-semibold text-gray-900">Para profissionais</span>
+                        <span className="block text-xs text-gray-500">Corretor, corretor vinculado ou imobiliária</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </Link>
+                </div>
+
                 {/* Resources */}
                 <div className="mt-2 border-t border-gray-100 pt-2">
                   <button
@@ -602,15 +622,31 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => {
-                      setIsRightMenuOpen(false);
-                      signIn();
-                    }}
-                    className="w-full text-left px-6 py-3 text-base font-semibold text-brand-teal"
-                  >
-                    Entrar / Criar conta
-                  </button>
+                  <>
+                    <Link
+                      href="/auth/register"
+                      onClick={() => setIsRightMenuOpen(false)}
+                      className="block px-6 py-3 text-base font-semibold text-gray-900 border-b"
+                    >
+                      Criar conta
+                    </Link>
+                    <Link
+                      href="/para-profissionais"
+                      onClick={() => setIsRightMenuOpen(false)}
+                      className="block px-6 py-3 text-base font-semibold text-gray-900 border-b"
+                    >
+                      Para profissionais
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setIsRightMenuOpen(false);
+                        signIn();
+                      }}
+                      className="w-full text-left px-6 py-3 text-base font-semibold text-brand-teal"
+                    >
+                      Entrar
+                    </button>
+                  </>
                 )}
               </div>
             </motion.div>

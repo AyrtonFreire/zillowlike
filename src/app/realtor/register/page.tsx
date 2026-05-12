@@ -26,7 +26,7 @@ export default function RealtorRegisterPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/api/auth/signin?callbackUrl=/realtor/register");
+      router.push("/auth/signin?flow=professional&callbackUrl=/realtor/register");
     }
   }, [status, router]);
 
@@ -80,10 +80,10 @@ export default function RealtorRegisterPage() {
         return;
       }
 
-      setSuccess("Cadastro concluído. Agora complete seu perfil profissional para publicar sua apresentação, regiões de atuação e canais de contato.");
+      setSuccess("Perfil ativado. Agora vamos concluir seu onboarding com headline, bio, regiões atendidas e canais públicos de contato.");
       await update();
       setTimeout(() => {
-        router.push("/profile?onboarding=broker");
+        router.push("/account?section=overview&onboarding=broker");
       }, 1200);
     } catch {
       setError("Erro inesperado. Tente novamente.");
@@ -104,9 +104,13 @@ export default function RealtorRegisterPage() {
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Ativar perfil de corretor</h1>
               <p className="text-xs sm:text-sm text-gray-600">
-                Depois da ativação, seu perfil profissional passa a ser editado na área central de perfil.
+                Você já tem sua conta OggaHub. Agora vamos liberar seu perfil profissional como pessoa corretora.
               </p>
             </div>
+          </div>
+
+          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+            Este fluxo é para <span className="font-semibold">corretor(a)</span>, inclusive quando você atua vinculado a uma imobiliária. Se a conta precisa representar a <span className="font-semibold">empresa</span> e abrir um workspace do time, use o cadastro de <a href="/agency/register" className="underline font-semibold">imobiliária</a>.
           </div>
 
           {error && (
@@ -160,14 +164,14 @@ export default function RealtorRegisterPage() {
                 >
                   <option value="">Selecione</option>
                   <option value="AUTONOMO">Corretor(a) autônomo(a)</option>
-                  <option value="IMOBILIARIA">Imobiliária</option>
+                  <option value="IMOBILIARIA">Corretor(a) vinculado(a) a uma imobiliária</option>
                 </select>
               </div>
             </div>
 
             {creci && (
               <p className="text-[11px] text-gray-500">
-                Validamos o formato do CRECI antes da ativação. Em seguida, você será levado ao perfil profissional para completar headline, bio, regiões atendidas e canais públicos.
+                Validamos o formato do CRECI antes da ativação. Em seguida, você será levado para um checklist guiado com os próximos passos mais importantes do seu perfil profissional.
               </p>
             )}
 
@@ -181,7 +185,7 @@ export default function RealtorRegisterPage() {
           </form>
 
           <p className="mt-4 text-[11px] text-gray-500">
-            Você será redirecionado para <span className="font-semibold">/profile</span> para completar seu perfil profissional.
+            Depois da ativação, você será redirecionado para a sua área de configurações com um onboarding guiado do corretor.
           </p>
         </div>
       </main>

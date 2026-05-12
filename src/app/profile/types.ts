@@ -130,7 +130,7 @@ export function formatRoleLabel(role?: string | null) {
 export function formatRealtorTypeLabel(value?: string | null) {
   if (!value) return null;
   if (value === "AUTONOMO") return "Corretor(a) autônomo(a)";
-  if (value === "IMOBILIARIA") return "Imobiliária";
+  if (value === "IMOBILIARIA") return "Corretor(a) vinculado(a) a uma imobiliária";
   return value;
 }
 

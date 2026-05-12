@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
@@ -14,6 +14,7 @@ const IMAGES = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,6 +23,8 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const isProfessionalFlow = useMemo(() => searchParams.get("flow") === "professional", [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +57,7 @@ export default function RegisterPage() {
       }
 
       router.push(`/auth/verify-email-sent?email=${encodeURIComponent(email)}`);
-    } catch (err) {
+    } catch {
       setError("Erro inesperado. Tente novamente.");
       setIsLoading(false);
     }
@@ -75,13 +78,20 @@ export default function RegisterPage() {
 
           <div className="mb-8">
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-              Criar sua conta
+              {isProfessionalFlow ? "Criar sua conta para começar como profissional" : "Criar sua conta"}
             </h1>
             <p className="text-sm text-gray-600">
-              Cadastre-se com seu e-mail para salvar favoritos, criar alertas e
-              gerenciar anúncios.
+              {isProfessionalFlow
+                ? "Primeiro você cria sua conta base. Depois ativa o perfil de corretor ou cadastra a imobiliária no fluxo certo."
+                : "Cadastre-se com seu e-mail para salvar favoritos, criar alertas e gerenciar anúncios."}
             </p>
           </div>
+
+          {isProfessionalFlow ? (
+            <div className="mb-5 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-xs leading-6 text-teal-900">
+              Este cadastro cria sua <span className="font-semibold">conta base</span>. Na próxima etapa, você escolhe se vai ativar um perfil de <span className="font-semibold">corretor</span> ou cadastrar uma <span className="font-semibold">imobiliária</span>.
+            </div>
+          ) : null}
 
           <div className="space-y-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-lg">
             {error && (

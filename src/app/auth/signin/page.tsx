@@ -16,6 +16,7 @@ export default function SignInPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const isProfessionalFlow = searchParams.get("flow") === "professional" || callbackUrl === "/realtor/register" || callbackUrl === "/agency/register";
 
   const [idx, setIdx] = useState(0);
   const [login, setLogin] = useState("");
@@ -64,9 +65,8 @@ export default function SignInPage() {
       } else {
         router.push(callbackUrl);
       }
-    } catch (err) {
+    } catch {
       setError("Erro inesperado. Tente novamente.");
-    } finally {
       setIsLoading(false);
     }
   }
@@ -89,10 +89,17 @@ export default function SignInPage() {
               Entrar
             </h1>
             <p className="text-sm text-gray-600">
-              Acesse sua conta para salvar favoritos, criar alertas e gerenciar
-              seus anúncios.
+              {isProfessionalFlow
+                ? "Entre na sua conta base para continuar a ativação do perfil de corretor ou o cadastro da imobiliária."
+                : "Acesse sua conta para salvar favoritos, criar alertas e gerenciar seus anúncios."}
             </p>
           </div>
+
+          {isProfessionalFlow ? (
+            <div className="mb-5 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-xs leading-6 text-teal-900">
+              Depois do login, você volta para o fluxo profissional certo sem precisar procurar novamente onde ativar seu papel.
+            </div>
+          ) : null}
 
           <div className="space-y-4 rounded-3xl border border-gray-200/90 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)] sm:p-7">
             {error && (
@@ -189,7 +196,7 @@ export default function SignInPage() {
             <p className="text-xs text-gray-600">
               Ainda não tem conta?{" "}
               <Link
-                href="/auth/register"
+                href={isProfessionalFlow ? "/auth/register?flow=professional" : "/auth/register"}
                 className="text-teal-700 hover:text-teal-800 font-semibold"
               >
                 Criar conta

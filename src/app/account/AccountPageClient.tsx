@@ -46,16 +46,23 @@ function getDashboardHref(profile?: UserProfile | null) {
 }
 
 function getRoleCopy(profile?: UserProfile | null) {
-  if (profile?.role === "REALTOR" || profile?.role === "AGENCY") {
+  if (profile?.role === "REALTOR") {
     return {
       title: "Configurações do corretor",
       description: "Conta, perfil profissional, segurança e newsletter semanal em um só lugar, com navegação simples e direta.",
     };
   }
 
+  if (profile?.role === "AGENCY") {
+    return {
+      title: "Configurações da agência",
+      description: "Conta principal da imobiliária, segurança e dados de apresentação reunidos em uma experiência centralizada.",
+    };
+  }
+
   return {
     title: "Configurações da conta",
-    description: "Revise perfil, acesso, segurança e newsletter semanal em uma única experiência.",
+    description: "Revise perfil, acesso, segurança e descubra o caminho certo para virar corretor ou cadastrar sua imobiliária.",
   };
 }
 
@@ -219,6 +226,7 @@ export default function AccountPageClient() {
           <AccountOverviewSection
             profile={profile}
             publicUrl={publicUrl}
+            brokerOnboarding={brokerOnboarding}
             uploadingAvatar={uploadingAvatar}
             onUploadAvatar={uploadAvatar}
             onGoToSection={(id) => {

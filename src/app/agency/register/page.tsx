@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Building2, ShieldAlert } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
@@ -26,7 +26,7 @@ export default function AgencyRegisterPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      signIn(undefined, { callbackUrl: "/agency/register" });
+      router.push("/auth/signin?flow=professional&callbackUrl=/agency/register");
       return;
     }
 
@@ -113,10 +113,10 @@ export default function AgencyRegisterPage() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-                Registrar como Agência
+                Cadastrar minha imobiliária
               </h1>
               <p className="text-xs sm:text-sm text-gray-600">
-                Crie o perfil de agência para monitorar leads e organizar corretores.
+                Use esta conta para representar a empresa, criar o workspace do time e centralizar a operação da imobiliária.
               </p>
             </div>
           </div>
@@ -126,12 +126,16 @@ export default function AgencyRegisterPage() {
             <div>
               <p className="font-semibold">Importante</p>
               <p className="mt-1">
-                Ao virar Agência, sua conta passa a ser usada apenas para gestão/monitoramento.
+                Ao virar agência, sua conta passa a operar como <span className="font-semibold">empresa</span> e deixa de funcionar como corretor individual.
               </p>
               <p className="mt-1">
-                Se você também atua como corretor(a), recomendamos manter uma conta separada.
+                Essa mudança é <span className="font-semibold">definitiva</span> e cria um workspace próprio para sua imobiliária. Se você quiser manter atuação separada como corretor, use outra conta.
               </p>
             </div>
+          </div>
+
+          <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-800">
+            Este fluxo é para a <span className="font-semibold">empresa</span>. Se você quer apenas operar como pessoa corretora, inclusive vinculada a uma imobiliária, use a ativação de <Link href="/realtor/register" className="underline font-semibold">perfil de corretor</Link>.
           </div>
 
           {error && (
@@ -189,7 +193,7 @@ export default function AgencyRegisterPage() {
                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
               />
               <span>
-                Entendi que minha conta passará a ser do tipo Agência e que essa mudança é definitiva.
+                Entendi que minha conta passará a representar a imobiliária, deixará de operar como corretor individual e que essa mudança é definitiva.
               </span>
             </label>
 
@@ -198,7 +202,7 @@ export default function AgencyRegisterPage() {
               disabled={loading}
               className="mt-2 w-full inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Salvando..." : "Confirmar e virar Agência"}
+              {loading ? "Salvando..." : "Criar workspace da imobiliária"}
             </button>
           </form>
 
