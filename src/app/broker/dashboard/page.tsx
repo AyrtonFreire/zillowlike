@@ -607,6 +607,7 @@ export default function BrokerDashboard() {
                         <OfflineLeadCard
                           key={row.leadId}
                           variant="compact"
+                          href={`/broker/chats?lead=${row.leadId}`}
                           data={{
                             leadId: row.leadId,
                             contactName: row.contactName,
@@ -617,9 +618,6 @@ export default function BrokerDashboard() {
                             handoffNeeded: row.handoffNeeded,
                             leadTemperature: row.leadTemperature,
                             counts: row.counts,
-                            commercialSummary: row.commercialSummary,
-                            propertyContext: row.propertyContext,
-                            operationalPlaybook: row.operationalPlaybook,
                           }}
                         />
                       ))}

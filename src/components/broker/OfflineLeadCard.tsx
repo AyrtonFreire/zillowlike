@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Calendar,
   CheckCheck,
-  ChevronDown,
   Clock,
   Copy,
   Flame,
@@ -41,27 +40,16 @@ export type OfflineLeadCardData = {
   visitPreferences?: { period?: string | null; days?: string[] | null; time?: string | null } | null;
   counts?: { sent?: number | null; failed?: number | null; skipped?: number | null } | null;
 
-  // Content (mostly full mode)
+  // Content (full mode)
   lastClientMessagePreview?: string | null;
-  lastAssistantMessagePreview?: string | null;
   policy?: { nextQuestion?: string | null; recommendedAction?: string | null } | null;
   handoff?: { recommendedAction?: string | null } | null;
   qualification?: { recommendedAction?: string | null; dataCompleteness?: number | null } | null;
-  commercialSummary?: string | null;
-  propertyContext?: {
-    propertySummary?: string | null;
-    regionSummary?: string | null;
-    fitHighlights?: string[] | null;
-    attentionFlags?: string[] | null;
-  } | null;
   operationalPlaybook?: {
     headline?: string | null;
-    whyNow?: string | null;
     pipelineStage?: string | null;
-    actionChecklist?: string[] | null;
     followUpDraft?: string | null;
   } | null;
-  clientSlots?: Record<string, any> | null;
 };
 
 interface OfflineLeadCardProps {
@@ -105,58 +93,7 @@ function BadgePill({ badge }: { badge: OfflineBadge }) {
   );
 }
 
-function renderSlotsChips(clientSlots: Record<string, any> | null | undefined): React.ReactNode {
-  if (!clientSlots || typeof clientSlots !== "object") return null;
-  const chips: string[] = [];
-
-  const purpose = String(clientSlots.purpose || "").toUpperCase();
-  if (purpose === "COMPRA") chips.push("Compra");
-  if (purpose === "LOCACAO") chips.push("Locação");
-
-  const beds = Number(clientSlots.bedroomsNeeded);
-  if (Number.isFinite(beds) && beds > 0) chips.push(`${beds} ${beds === 1 ? "quarto" : "quartos"}`);
-
-  const parking = Number(clientSlots.parkingSpotsNeeded);
-  if (Number.isFinite(parking)) chips.push(parking > 0 ? `${parking} ${parking === 1 ? "vaga" : "vagas"}` : "Sem vaga");
-
-  const budget = clientSlots.budget;
-  if (budget && typeof budget === "object") {
-    const min = Number(budget.min);
-    const max = Number(budget.max);
-    if (Number.isFinite(min) || Number.isFinite(max)) {
-      const fmt = (v: number) => `R$ ${Math.round(v).toLocaleString("pt-BR")}`;
-      if (Number.isFinite(min) && Number.isFinite(max)) chips.push(`${fmt(min)} – ${fmt(max)}`);
-      else if (Number.isFinite(max)) chips.push(`Até ${fmt(max)}`);
-      else if (Number.isFinite(min)) chips.push(`A partir de ${fmt(min)}`);
-    }
-  }
-
-  const region = String(clientSlots.searchRegion || "").trim();
-  if (region) chips.push(region);
-
-  const move = String(clientSlots.moveTime || "").trim();
-  if (move) chips.push(`Mudança: ${move}`);
-
-  const stage = String(clientSlots.decisionStage || "").toLowerCase().replace(/_/g, " ");
-  if (stage) chips.push(`Estágio: ${stage}`);
-
-  if (chips.length === 0) return null;
-  return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      {chips.map((c, i) => (
-        <span
-          key={`${c}-${i}`}
-          className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-700"
-        >
-          {c}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 export default function OfflineLeadCard({ data, variant = "full", href, onCopyToast }: OfflineLeadCardProps) {
-  const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const badges = pickPrimaryBadges(
@@ -182,7 +119,8 @@ export default function OfflineLeadCard({ data, variant = "full", href, onCopyTo
   const contact = data.contactName || "Cliente";
   const title = data.propertyTitle || "Lead";
   const when = formatRelativeTime(data.lastActivityAt || null);
-  const linkHref = href || `/broker/leads/${data.leadId}`;
+  const chatHref = `/broker/chats?lead=${data.leadId}`;
+  const leadDetailHref = `/broker/leads/${data.leadId}`;
   const draft = data.operationalPlaybook?.followUpDraft || "";
 
   async function handleCopy() {
@@ -199,10 +137,9 @@ export default function OfflineLeadCard({ data, variant = "full", href, onCopyTo
 
   // COMPACT variant (dashboard mini-card)
   if (variant === "compact") {
-    const preview = data.commercialSummary || data.operationalPlaybook?.headline || data.propertyContext?.propertySummary || null;
     return (
       <Link
-        href={linkHref}
+        href={href || chatHref}
         className="block rounded-xl border border-gray-100 bg-white px-3 py-3 hover:border-gray-200 hover:shadow-sm transition-all"
       >
         <p className="text-[12px] font-semibold text-gray-900 line-clamp-1">{contact}</p>
@@ -214,10 +151,6 @@ export default function OfflineLeadCard({ data, variant = "full", href, onCopyTo
               <BadgePill key={b.kind} badge={b} />
             ))}
           </div>
-        ) : null}
-
-        {preview ? (
-          <p className="mt-2 text-[11px] text-gray-600 line-clamp-2">{preview}</p>
         ) : null}
 
         <div className="mt-2 flex items-center justify-between gap-2">
@@ -235,14 +168,6 @@ export default function OfflineLeadCard({ data, variant = "full", href, onCopyTo
     ? formatLeadTemperatureLabel(String(data.leadTemperature))
     : null;
   const playbook = data.operationalPlaybook;
-  const checklist = Array.isArray(playbook?.actionChecklist) ? playbook!.actionChecklist!.slice(0, 3) : [];
-  const fitHighlights = Array.isArray(data.propertyContext?.fitHighlights)
-    ? data.propertyContext!.fitHighlights!.slice(0, 2)
-    : [];
-  const attentionFlags = Array.isArray(data.propertyContext?.attentionFlags)
-    ? data.propertyContext!.attentionFlags!.slice(0, 2)
-    : [];
-  const nextStepText = data.policy?.nextQuestion || null;
   const headlineLabel = headlineAction ? formatRecommendedActionLabel(headlineAction) : null;
   const stageLabel = playbook?.pipelineStage ? formatPipelineStageLabel(playbook.pipelineStage) : null;
 
@@ -318,88 +243,16 @@ export default function OfflineLeadCard({ data, variant = "full", href, onCopyTo
         ) : null}
       </div>
 
-      {/* Accordion: contexto completo */}
-      {(data.commercialSummary ||
-        data.propertyContext?.propertySummary ||
-        data.propertyContext?.regionSummary ||
-        nextStepText ||
-        playbook?.whyNow ||
-        checklist.length > 0 ||
-        fitHighlights.length > 0 ||
-        attentionFlags.length > 0 ||
-        data.clientSlots) ? (
-        <details
-          className="mt-4 group"
-          open={expanded}
-          onToggle={(e) => setExpanded((e.target as HTMLDetailsElement).open)}
-        >
-          <summary className="cursor-pointer list-none inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900">
-            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
-            Ver contexto completo
-          </summary>
-
-          <div className="mt-3 space-y-2.5 rounded-lg bg-gray-50 px-3 py-3 text-xs text-gray-700">
-            {data.commercialSummary ? (
-              <p>
-                <span className="font-semibold text-gray-900">Resumo comercial: </span>
-                {data.commercialSummary}
-              </p>
-            ) : null}
-            {data.propertyContext?.propertySummary ? (
-              <p>
-                <span className="font-semibold text-gray-900">Imóvel: </span>
-                {data.propertyContext.propertySummary}
-              </p>
-            ) : null}
-            {data.propertyContext?.regionSummary ? (
-              <p>
-                <span className="font-semibold text-gray-900">Região: </span>
-                {data.propertyContext.regionSummary}
-              </p>
-            ) : null}
-            {nextStepText ? (
-              <p>
-                <span className="font-semibold text-gray-900">Pergunta a fazer: </span>
-                {nextStepText}
-              </p>
-            ) : null}
-            {playbook?.whyNow ? (
-              <p>
-                <span className="font-semibold text-gray-900">Por quê agora: </span>
-                {playbook.whyNow}
-              </p>
-            ) : null}
-            {checklist.length > 0 ? (
-              <div>
-                <p className="font-semibold text-gray-900">Checklist:</p>
-                <ul className="mt-1 list-disc pl-5 space-y-0.5">
-                  {checklist.map((item, i) => (
-                    <li key={i}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {fitHighlights.length > 0 ? (
-              <p>
-                <span className="font-semibold text-emerald-700">Aderência: </span>
-                {fitHighlights.join(" · ")}
-              </p>
-            ) : null}
-            {attentionFlags.length > 0 ? (
-              <p>
-                <span className="font-semibold text-rose-700">Pontos de atenção: </span>
-                {attentionFlags.join(" · ")}
-              </p>
-            ) : null}
-            {renderSlotsChips(data.clientSlots)}
-          </div>
-        </details>
-      ) : null}
-
-      {/* CTA */}
-      <div className="mt-4 flex justify-end">
+      {/* Rodapé: link secundário + CTA principal */}
+      <div className="mt-4 flex items-center justify-between gap-3">
         <Link
-          href={linkHref}
+          href={leadDetailHref}
+          className="text-xs text-gray-500 hover:text-gray-700 underline-offset-2 hover:underline"
+        >
+          Ver detalhes do lead →
+        </Link>
+        <Link
+          href={chatHref}
           className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 transition-colors"
         >
           Responder no chat

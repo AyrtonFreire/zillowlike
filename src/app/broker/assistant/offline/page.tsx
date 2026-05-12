@@ -623,14 +623,10 @@ export default function BrokerAssistantOfflinePage() {
                             counts: row.counts,
                             visitPreferences: row.visitPreferences,
                             lastClientMessagePreview: row.lastClientMessagePreview,
-                            lastAssistantMessagePreview: row.lastAssistantMessagePreview,
                             policy: row.policy,
                             handoff: row.handoff,
                             qualification: row.qualification,
-                            commercialSummary: row.commercialSummary,
-                            propertyContext: row.propertyContext,
                             operationalPlaybook: row.operationalPlaybook,
-                            clientSlots: row.clientSlots,
                           }}
                           onCopyToast={(msg) => setToast({ message: msg, type: "success" })}
                         />
