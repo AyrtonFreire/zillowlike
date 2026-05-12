@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
 import { evaluateVisitRequestState } from "@/lib/visit-request-lifecycle";
+import { getLeadIdsResolvedByHuman } from "@/lib/auto-reply-resolution";
 
 export const runtime = "nodejs";
 
@@ -159,12 +160,21 @@ export async function GET(req: NextRequest) {
     }
 
     const windowLeads = Array.from(byLead.values()).sort((a, b) => b.lastActivityAt.getTime() - a.lastActivityAt.getTime());
+    const windowLeadIds = windowLeads.map((x) => x.leadId);
+
+    // Filtra leads cujo corretor já respondeu depois da última mensagem do cliente.
+    // Esses não contam como trabalho pendente (handoff/urgent/visit/etc.), mas as
+    // métricas de output do AI (sent/failed/avgDataCompleteness/topVariant/topGuardrailScenario)
+    // continuam refletindo o histórico real.
+    const resolvedIds = await getLeadIdsResolvedByHuman(windowLeadIds);
+    const unresolvedLeads = windowLeads.filter((x) => !resolvedIds.has(x.leadId));
+    const unresolvedLeadIds = unresolvedLeads.map((x) => x.leadId);
 
     const windowTotals = {
-      leads: windowLeads.length,
+      leads: unresolvedLeads.length,
       sent: windowLeads.reduce((acc, x) => acc + x.sent, 0),
       failed: windowLeads.reduce((acc, x) => acc + x.failed, 0),
-      lastActivityAt: windowLeads.length ? windowLeads[0].lastActivityAt.toISOString() : null,
+      lastActivityAt: unresolvedLeads.length ? unresolvedLeads[0].lastActivityAt.toISOString() : null,
       handoffLeads: 0,
       visitRequestedLeads: 0,
       hotLeads: 0,
@@ -174,8 +184,6 @@ export async function GET(req: NextRequest) {
       topVariant: null as string | null,
       topGuardrailScenario: null as string | null,
     };
-
-    const windowLeadIds = windowLeads.map((x) => x.leadId);
 
     let eventsRaw: any[] = [];
     let leadVisitRows: any[] = [];
@@ -249,6 +257,8 @@ export async function GET(req: NextRequest) {
     let completenessCount = 0;
 
     for (const leadId of windowLeadIds) {
+      const isResolved = resolvedIds.has(leadId);
+
       const sentEvt = latestSentByLead.get(leadId);
       const sentMeta = asObject(sentEvt?.metadata) || null;
       const aiJson = readAiJsonFromEventMeta(sentEvt?.metadata);
@@ -264,27 +274,31 @@ export async function GET(req: NextRequest) {
       const variant = safeString(experiment?.variant) || "CONTROL";
       const guardrailScenario = safeString(guardrails?.scenario) || "NONE";
 
-      if (handoff?.needed === true || finalHandoffNeeded === true || (finalHandoffNeeded === null && handoffNeeded === true)) {
-        handoffLeadIds.add(leadId);
+      // Contadores de trabalho pendente: só incluem leads que o corretor ainda não respondeu.
+      if (!isResolved) {
+        if (handoff?.needed === true || finalHandoffNeeded === true || (finalHandoffNeeded === null && handoffNeeded === true)) {
+          handoffLeadIds.add(leadId);
+        }
+
+        const visitRequestedEvent = latestVisitRequestedByLead.get(leadId);
+        const visitState = evaluateVisitRequestState({
+          requestedAt: visitRequestedEvent?.createdAt,
+          confirmedAt: latestVisitConfirmedByLead.get(leadId)?.createdAt,
+          rejectedAt: latestVisitRejectedByLead.get(leadId)?.createdAt,
+          leadVisitDate: leadVisitMap.get(leadId)?.visitDate,
+          ownerApproved: leadVisitMap.get(leadId)?.ownerApproved,
+        });
+
+        if (visitState.isPending || (aiJson?.visitHandoffNeeded === true && !visitRequestedEvent)) {
+          visitLeadIds.add(leadId);
+        }
+
+        if (leadTemperature === "HOT") hotLeadIds.add(leadId);
+        if (responsePriority === "URGENT") urgentLeadIds.add(leadId);
+        if (Number.isFinite(completeness) && completeness >= 70) qualifiedLeadIds.add(leadId);
       }
 
-      const visitRequestedEvent = latestVisitRequestedByLead.get(leadId);
-      const visitState = evaluateVisitRequestState({
-        requestedAt: visitRequestedEvent?.createdAt,
-        confirmedAt: latestVisitConfirmedByLead.get(leadId)?.createdAt,
-        rejectedAt: latestVisitRejectedByLead.get(leadId)?.createdAt,
-        leadVisitDate: leadVisitMap.get(leadId)?.visitDate,
-        ownerApproved: leadVisitMap.get(leadId)?.ownerApproved,
-      });
-
-      if (visitState.isPending || (aiJson?.visitHandoffNeeded === true && !visitRequestedEvent)) {
-        visitLeadIds.add(leadId);
-      }
-
-      if (leadTemperature === "HOT") hotLeadIds.add(leadId);
-      if (responsePriority === "URGENT") urgentLeadIds.add(leadId);
-      if (Number.isFinite(completeness) && completeness >= 70) qualifiedLeadIds.add(leadId);
-
+      // Telemetria de output do AI: contabiliza histórico completo (inclusive resolvidos).
       variantCounts.set(variant, Number(variantCounts.get(variant) || 0) + 1);
       guardrailScenarioCounts.set(guardrailScenario, Number(guardrailScenarioCounts.get(guardrailScenario) || 0) + 1);
       if (Number.isFinite(completeness)) {
@@ -302,7 +316,7 @@ export async function GET(req: NextRequest) {
     windowTotals.topVariant = Array.from(variantCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     windowTotals.topGuardrailScenario = Array.from(guardrailScenarioCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
-    const topLeadIds = windowLeadIds.slice(0, 3);
+    const topLeadIds = unresolvedLeadIds.slice(0, 3);
 
     let leadsInfo: any[] = [];
     if (topLeadIds.length) {

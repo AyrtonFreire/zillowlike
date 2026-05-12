@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
 import { evaluateVisitRequestState } from "@/lib/visit-request-lifecycle";
+import { getLeadIdsResolvedByHuman } from "@/lib/auto-reply-resolution";
 
 export const runtime = "nodejs";
 
@@ -424,13 +425,16 @@ export async function GET(req: NextRequest) {
         return tb - ta;
       });
 
+    const resolvedIds = await getLeadIdsResolvedByHuman(items.map((i) => i.leadId));
+    const filteredItems = items.filter((i) => !resolvedIds.has(i.leadId));
+
     return NextResponse.json({
       range: label,
       since,
       enabled: Boolean(settings.enabled),
       rollout: (settings as any)?.rollout || null,
       versions: (settings as any)?.versions || null,
-      items,
+      items: filteredItems,
     });
   } catch (error) {
     console.error("Erro ao buscar resumos por lead do assistente offline:", error);
