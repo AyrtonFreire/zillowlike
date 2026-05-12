@@ -5,7 +5,6 @@ import { useDraggable } from "@dnd-kit/core";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, ChevronRight, Loader2, MessageCircle, Bell, BellOff, AlertTriangle, CalendarClock, Clock3, Flame } from "lucide-react";
-import { PIPELINE_STAGE_META, type CanonicalPipelineStage } from "@/lib/lead-pipeline";
 import { getLeadNextActionState, getLeadStageAgeDays, getLeadTemperature, isLeadStale } from "@/lib/lead-operational-signals";
 
 interface DraggableLeadCardProps {
@@ -83,8 +82,6 @@ export default function DraggableLeadCard({
   const nextActionAt = lead.nextActionDate ? new Date(lead.nextActionDate) : null;
   const hasNextAction = !!lead.nextActionDate || !!lead.nextActionNote;
   const isOverdue = nextActionAt ? !Number.isNaN(nextActionAt.getTime()) && nextActionAt.getTime() < now.getTime() : false;
-  const stageKey = (String(lead.pipelineStage || "NEW").toUpperCase() as CanonicalPipelineStage);
-  const stageMeta = PIPELINE_STAGE_META[stageKey] || PIPELINE_STAGE_META.NEW;
   const nextActionState = getLeadNextActionState(lead, now);
   const stageAgeDays = getLeadStageAgeDays(lead, now);
   const leadTemperature = getLeadTemperature(lead, now);
@@ -96,17 +93,29 @@ export default function DraggableLeadCard({
   const visitDateLabel = lead.visitDate
     ? new Date(lead.visitDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
     : null;
+  const visitLabel = visitDateLabel ? `${visitDateLabel}${lead.visitTime ? ` • ${lead.visitTime}` : ""}` : null;
   const temperatureMeta =
     leadTemperature === "hot"
-      ? { label: "Quente", className: "bg-rose-50 text-rose-700 border-rose-200" }
+      ? { label: "Quente", className: "border-rose-200 bg-rose-50 text-rose-700" }
       : leadTemperature === "warm"
-        ? { label: "Em jogo", className: "bg-amber-50 text-amber-700 border-amber-200" }
-        : { label: "Frio", className: "bg-slate-50 text-slate-600 border-slate-200" };
+        ? { label: "Em jogo", className: "border-amber-200 bg-amber-50 text-amber-700" }
+        : { label: "Frio", className: "border-slate-200 bg-slate-50 text-slate-600" };
+  const primaryLabel = lead.contact?.name || "Lead sem nome";
+  const primaryInsight = lead.nextActionNote
+    ? `Próxima ação: ${lead.nextActionNote}`
+    : lead.lastMessagePreview
+      ? `${lead.lastMessageFromClient ? "Cliente" : "Você"}: ${lead.lastMessagePreview}`
+      : lead.outcomeDescription || "Sem atualização recente";
+  const nextActionLabel = nextActionState.overdue
+    ? "Ação atrasada"
+    : nextActionState.today
+      ? "Ação hoje"
+      : nextActionAt
+        ? `Ação ${nextActionAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`
+        : null;
 
   const style = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     opacity: isDragging ? 0 : 1,
   };
 
@@ -143,32 +152,28 @@ export default function DraggableLeadCard({
       }}
     >
       <div
-        className={`bg-white rounded-2xl border ${
-          isDragging ? "border-teal-400 shadow-xl" : "border-gray-200"
-        } p-3 md:p-3 text-xs md:text-[13px] text-gray-900 flex flex-col gap-2 overflow-hidden transition-all duration-150 will-change-transform ${
+        className={`flex flex-col gap-3 overflow-hidden rounded-[24px] border bg-white/95 p-3.5 text-slate-900 transition-all duration-150 will-change-transform md:p-4 ${
           isDragging
-            ? ""
-            : "hover:-translate-y-[1px] hover:shadow-md hover:border-gray-300"
+            ? "border-teal-400 shadow-xl"
+            : "border-slate-200 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.4)] hover:-translate-y-[1px] hover:border-slate-300 hover:shadow-[0_18px_40px_-28px_rgba(15,23,42,0.28)]"
         }`}
       >
-      {/* Mobile layout (mantém o visual atual) */}
-      <div className="md:hidden">
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-3">
           {selectionMode && (
             <button
               type="button"
               onClick={onToggleSelected}
               onPointerDown={(e) => e.stopPropagation()}
-              className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${
-                selected ? "bg-purple-600 border-purple-600" : "bg-white border-gray-300"
+              className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                selected ? "border-purple-600 bg-purple-600" : "border-slate-300 bg-white"
               }`}
               aria-label={selected ? "Desmarcar lead" : "Selecionar lead"}
             >
-              <span className={`w-2.5 h-2.5 rounded-sm ${selected ? "bg-white" : "bg-transparent"}`} />
+              <span className={`h-2.5 w-2.5 rounded-sm ${selected ? "bg-white" : "bg-transparent"}`} />
             </button>
           )}
 
-          <div className="relative w-10 h-10 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100 md:h-16 md:w-16">
             <Image
               src={lead.property.images[0]?.url || "/placeholder.jpg"}
               alt={lead.property.title}
@@ -177,90 +182,83 @@ export default function DraggableLeadCard({
             />
           </div>
 
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold line-clamp-2">{lead.property.title}</p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-1">
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${stageMeta.bgColor} ${stageMeta.color} ${stageMeta.borderColor}`}>
-                {stageMeta.shortLabel}
-              </span>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${temperatureMeta.className}`}>
-                <Flame className="w-3 h-3" />
-                {temperatureMeta.label}
-              </span>
-              {!!lead.hasUnreadMessages && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                  <MessageCircle className="w-3 h-3" />
-                  Não lida
-                </span>
-              )}
-              {hasNextAction && (
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                    isOverdue ? "bg-red-50 text-red-700 border-red-200" : "bg-amber-50 text-amber-800 border-amber-200"
-                  }`}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-slate-950 md:text-[15px] md:tracking-tight">{primaryLabel}</p>
+                <p className="mt-0.5 line-clamp-2 text-[12px] text-slate-600 md:truncate md:text-[13px]">{lead.property.title}</p>
+              </div>
+              {showAdvanceButton && (
+                <button
+                  type="button"
+                  onClick={onAdvance}
+                  disabled={isUpdating || selectionMode}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="inline-flex h-8 shrink-0 items-center rounded-xl bg-emerald-600 px-2.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 md:h-9 md:px-3 md:text-[12px]"
                 >
-                  <AlertTriangle className="w-3 h-3" />
-                  Próx. ação
-                </span>
-              )}
-              {lead.visitDate && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-purple-50 text-purple-700 border-purple-200">
-                  <CalendarClock className="w-3 h-3" />
-                  {visitDateLabel || "Visita"}
-                </span>
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin md:h-4 md:w-4" />
+                      Movendo...
+                    </>
+                  ) : (
+                    "Avançar"
+                  )}
+                </button>
               )}
             </div>
 
-            {priceLabel ? <p className="mt-1 text-[12px] font-bold text-teal-700">{priceLabel}</p> : null}
+            {priceLabel ? <p className="mt-1 text-[12px] font-semibold text-teal-700 md:text-[13px]">{priceLabel}</p> : null}
 
-            <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-              <MapPin className="w-3 h-3" />
+            <p className="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
+              <MapPin className="h-3 w-3 md:h-3.5 md:w-3.5" />
               <span className="truncate">
                 {lead.property.neighborhood && `${lead.property.neighborhood}, `}
                 {lead.property.city} - {lead.property.state}
               </span>
             </p>
-            {lead.contact?.name && (
-              <p className="text-[11px] text-gray-500 mt-0.5">Cliente: {lead.contact.name}</p>
-            )}
-            {!!lead.lastMessagePreview && (
-              <p className="text-[11px] text-gray-600 mt-1 line-clamp-2">
-                {lead.lastMessageFromClient ? "Cliente: " : "Você: "}
-                {lead.lastMessagePreview}
-              </p>
-            )}
-            {!lead.lastMessagePreview && lead.outcomeDescription ? (
-              <p className="text-[11px] text-gray-600 mt-1 line-clamp-2">{lead.outcomeDescription}</p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-gray-500">
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">
-                <Clock3 className="w-3 h-3" />
+
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${temperatureMeta.className}`}>
+                <Flame className="h-3 w-3" />
+                {temperatureMeta.label}
+              </span>
+              {lead.hasUnreadMessages ? <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700">Não lida</span> : null}
+              {nextActionLabel ? <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${isOverdue ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}><AlertTriangle className="h-3 w-3" />{nextActionLabel}</span> : null}
+              {visitLabel ? <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-[10px] font-semibold text-purple-700"><CalendarClock className="h-3 w-3" />{visitLabel}</span> : null}
+            </div>
+
+            <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-slate-600">{primaryInsight}</p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500 md:mt-3">
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">
+                <Clock3 className="h-3 w-3" />
                 {stageAgeDays}d na etapa
               </span>
-              {staleLead ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">48h+</span> : null}
-              {lead.outcomeReason ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">{lead.outcomeReason}</span> : null}
+              {staleLead ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">48h sem contato</span> : null}
+              {lead.outcomeReason ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">{lead.outcomeReason}</span> : null}
             </div>
           </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/broker/leads/${lead.id}`}
               onPointerDown={(e) => e.stopPropagation()}
-              className="inline-flex items-center text-[11px] text-blue-600 hover:text-blue-700"
+              className="inline-flex items-center text-[11px] font-medium text-blue-600 hover:text-blue-700 md:text-[12px]"
             >
               Ver detalhes
-              <ChevronRight className="w-3 h-3 ml-0.5" />
+              <ChevronRight className="ml-0.5 h-3 w-3 md:h-3.5 md:w-3.5" />
             </Link>
             {onOpenChat && !selectionMode && (
               <button
                 type="button"
                 onClick={onOpenChat}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-[11px] text-gray-600 hover:text-gray-900"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 md:text-[12px]"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
+                <MessageCircle className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 Chat
               </button>
             )}
@@ -270,131 +268,14 @@ export default function DraggableLeadCard({
                 onClick={onToggleReminder}
                 disabled={isReminderUpdating}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-[11px] text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 disabled:opacity-50 md:text-[12px]"
               >
-                {hasNextAction ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                {hasNextAction ? <BellOff className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <Bell className="h-3.5 w-3.5 md:h-4 md:w-4" />}
                 {isReminderUpdating ? "Salvando..." : "Lembrete"}
               </button>
             )}
           </div>
-          {showAdvanceButton && (
-            <button
-              type="button"
-              onClick={onAdvance}
-              disabled={isUpdating || selectionMode}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isUpdating ? (
-                <>
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  Movendo...
-                </>
-              ) : (
-                "Avançar"
-              )}
-            </button>
-          )}
         </div>
-      </div>
-
-      {/* Desktop layout (redesign) */}
-      <div className="hidden md:block">
-        <div className="relative w-full h-20 rounded-xl overflow-hidden bg-gray-100">
-          <Image
-            src={lead.property.images[0]?.url || "/placeholder.jpg"}
-            alt={lead.property.title}
-            fill
-            className="object-cover"
-          />
-          {selectionMode && (
-            <button
-              type="button"
-              onClick={onToggleSelected}
-              onPointerDown={(e) => e.stopPropagation()}
-              className={`absolute top-2 left-2 w-5 h-5 rounded-md border flex items-center justify-center ${
-                selected ? "bg-purple-600 border-purple-600" : "bg-white/95 border-gray-300"
-              }`}
-              aria-label={selected ? "Desmarcar lead" : "Selecionar lead"}
-            >
-              <span className={`w-2.5 h-2.5 rounded-sm ${selected ? "bg-white" : "bg-transparent"}`} />
-            </button>
-          )}
-        </div>
-
-        <div className="mt-2 min-w-0">
-          <p className="font-semibold text-[14px] leading-snug truncate">{lead.property.title}</p>
-          {lead.contact?.name && <p className="text-[12px] text-gray-600 truncate">{lead.contact.name}</p>}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${stageMeta.bgColor} ${stageMeta.color} ${stageMeta.borderColor}`}>
-              {stageMeta.shortLabel}
-            </span>
-            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${temperatureMeta.className}`}>
-              <Flame className="w-3 h-3" />
-              {temperatureMeta.label}
-            </span>
-            {lead.hasUnreadMessages ? <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Não lida</span> : null}
-            {nextActionState.overdue ? <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">Atrasada</span> : null}
-            {!nextActionState.overdue && nextActionState.today ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Hoje</span> : null}
-            {lead.visitDate ? <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{visitDateLabel}{lead.visitTime ? ` • ${lead.visitTime}` : ""}</span> : null}
-          </div>
-          {priceLabel ? <p className="mt-2 text-[13px] font-bold text-teal-700">{priceLabel}</p> : null}
-          {lead.nextActionNote ? <p className="mt-2 line-clamp-2 text-[11px] text-gray-600">Próxima ação: {lead.nextActionNote}</p> : null}
-          {!lead.nextActionNote && lead.lastMessagePreview ? <p className="mt-2 line-clamp-2 text-[11px] text-gray-600">{lead.lastMessageFromClient ? "Cliente: " : "Você: "}{lead.lastMessagePreview}</p> : null}
-          {!lead.nextActionNote && !lead.lastMessagePreview && lead.outcomeDescription ? <p className="mt-2 line-clamp-2 text-[11px] text-gray-600">{lead.outcomeDescription}</p> : null}
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-gray-500">
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">
-              <Clock3 className="w-3 h-3" />
-              {stageAgeDays}d na etapa
-            </span>
-            {staleLead ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">48h sem contato</span> : null}
-            {lead.outcomeReason ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5">{lead.outcomeReason}</span> : null}
-          </div>
-        </div>
-
-        <div className="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href={`/broker/leads/${lead.id}`}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="inline-flex items-center text-[12px] text-blue-600 hover:text-blue-700"
-            >
-              Ver detalhes
-              <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-            </Link>
-            {onOpenChat && !selectionMode && (
-              <button
-                type="button"
-                onClick={onOpenChat}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-[12px] text-gray-600 hover:text-gray-900"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat
-              </button>
-            )}
-          </div>
-
-          {showAdvanceButton && (
-            <button
-              type="button"
-              onClick={onAdvance}
-              disabled={isUpdating || selectionMode}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isUpdating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Movendo...
-                </>
-              ) : (
-                "Avançar"
-              )}
-            </button>
-          )}
-        </div>
-      </div>
       </div>
     </div>
   );

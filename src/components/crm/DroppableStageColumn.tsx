@@ -34,22 +34,25 @@ export default function DroppableStageColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl bg-white flex flex-col h-full min-h-0 transition-all duration-200 w-72 md:w-auto flex-shrink-0 md:flex-shrink ${
+      className={`flex h-full min-h-0 w-72 flex-shrink-0 flex-col rounded-[26px] border border-slate-200/80 bg-white/90 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.45)] transition-all duration-200 backdrop-blur md:w-auto md:flex-shrink ${
         isOver
-          ? "bg-blue-50 ring-2 ring-blue-200"
+          ? "border-teal-300 bg-teal-50/70 ring-4 ring-teal-100"
           : ""
       } ${className || ""}`}
     >
-      <div className="p-3 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-sm font-semibold text-gray-900">{label}</p>
+      <div className="border-b border-slate-100 px-4 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold tracking-tight text-slate-950">{label}</p>
+            {description ? <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-500">{description}</p> : null}
+          </div>
           <div className="flex items-center gap-2">
             {headerRight}
             <span
-              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
                 isOver
-                  ? "bg-blue-100 text-blue-700 border-blue-200"
-                  : "bg-white text-gray-700 border-gray-200"
+                  ? "border-teal-200 bg-teal-100 text-teal-700"
+                  : "border-slate-200 bg-slate-50 text-slate-700"
               }`}
             >
               {count}
@@ -58,7 +61,7 @@ export default function DroppableStageColumn({
               <button
                 type="button"
                 onClick={onToggleCollapsed}
-                className="p-1 -mr-1 text-gray-400 hover:text-gray-700 rounded-md hover:bg-black/5"
+                className="-mr-1 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                 aria-label={collapsed ? "Expandir coluna" : "Recolher coluna"}
               >
                 <ChevronDown className={`w-4 h-4 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
@@ -66,11 +69,10 @@ export default function DroppableStageColumn({
             )}
           </div>
         </div>
-        {description ? <p className="text-[11px] leading-4 text-gray-500">{description}</p> : null}
       </div>
 
       {!collapsed && (
-        <div className="flex-1 overflow-y-auto p-2 space-y-3 min-h-0">
+        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-3 py-3">
           {children}
         </div>
       )}

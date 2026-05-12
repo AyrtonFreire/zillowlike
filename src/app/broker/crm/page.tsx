@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Sparkles,
   Search,
-  Clock,
   ListChecks,
   BedDouble,
   Bath,
@@ -175,6 +174,16 @@ const VIEW_PRESETS: Array<{ key: FunnelViewPreset; label: string }> = [
   { key: "documents", label: "Docs travados" },
   { key: "hot", label: "Quentes" },
 ];
+
+const PRIMARY_STAGES: PipelineLead["pipelineStage"][] = ["NEW", "CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS"];
+const OUTCOME_STAGES: PipelineLead["pipelineStage"][] = ["WON", "LOST"];
+
+const KPI_TONE_CLASSES = {
+  rose: "border-rose-200/80 bg-white text-rose-700",
+  amber: "border-amber-200/80 bg-white text-amber-700",
+  violet: "border-violet-200/80 bg-white text-violet-700",
+  teal: "border-teal-200/80 bg-white text-teal-700",
+} as const;
 
 export default function BrokerCrmPage() {
   const { data: session } = useSession();
@@ -903,119 +912,291 @@ export default function BrokerCrmPage() {
     };
   }, [filteredLeads, leadsByStage, nowTimestamp, stageInsights]);
 
+  const kpiTiles = useMemo(() => [
+    {
+      key: "hot",
+      label: "Quentes",
+      value: dashboardMetrics.hot,
+      helper: dashboardMetrics.stale > 0 ? `${dashboardMetrics.stale} sem contato` : "Exigem reação rápida",
+      icon: Flame,
+      tone: "rose" as const,
+    },
+    {
+      key: "overdue",
+      label: "Ações vencidas",
+      value: dashboardMetrics.overdue,
+      helper: "Próximas ações atrasadas",
+      icon: AlertTriangle,
+      tone: "amber" as const,
+    },
+    {
+      key: "visits",
+      label: "Visitas 7d",
+      value: dashboardMetrics.visits,
+      helper: "Agenda comercial da semana",
+      icon: CalendarClock,
+      tone: "violet" as const,
+    },
+    {
+      key: "conversion",
+      label: "Conversão",
+      value: `${progressPercent}%`,
+      helper: dashboardMetrics.bottleneck ? `Gargalo: ${STAGE_CONFIG[dashboardMetrics.bottleneck].label}` : "Sem gargalo crítico",
+      icon: TrendingUp,
+      tone: "teal" as const,
+    },
+  ], [dashboardMetrics, progressPercent]);
+
+  const renderStageColumn = (stage: PipelineLead["pipelineStage"], compact?: boolean) => {
+    const config = STAGE_CONFIG[stage];
+    const stageLeads = leadsByStage[stage];
+    const Icon = config.icon;
+    const insight = stageInsights[stage];
+    const isCollapsed = !!collapsedByStage[stage];
+    const visibleCount = visibleCountByStage[stage] || 20;
+    const visibleLeads = isCollapsed ? [] : stageLeads.slice(0, visibleCount);
+    const helperLabel =
+      stage === "WON" || stage === "LOST"
+        ? stageLeads.length > 0
+          ? `${stageLeads.length} registros consolidados`
+          : "Nenhum registro recente"
+        : insight.overdueCount > 0
+          ? `${insight.overdueCount} atenção imediata`
+          : insight.hotCount > 0
+            ? `${insight.hotCount} oportunidades quentes`
+            : "Fluxo sob controle";
+
+    return (
+      <DroppableStageColumn
+        key={stage}
+        stageId={stage}
+        label={config.label}
+        description={config.description}
+        count={stageLeads.length}
+        collapsed={isCollapsed}
+        headerRight={
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                insight.health.tone === "critical"
+                  ? "bg-red-50 text-red-700"
+                  : insight.health.tone === "warning"
+                    ? "bg-amber-50 text-amber-700"
+                    : insight.health.tone === "healthy"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-neutral-100 text-neutral-600"
+              }`}
+            >
+              {insight.health.label}
+            </span>
+            <span className="hidden xl:inline text-[10px] text-neutral-500">{helperLabel}</span>
+          </div>
+        }
+        onToggleCollapsed={() =>
+          setCollapsedByStage((prev) => ({
+            ...prev,
+            [stage]: !prev[stage],
+          }))
+        }
+        className={compact ? "min-w-0" : "min-w-[292px] xl:min-w-[316px]"}
+      >
+        {stageLeads.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-[22px] border border-dashed border-neutral-200 bg-neutral-50/70 px-5 py-10 text-center">
+            <Icon className={`mb-3 h-8 w-8 ${config.color} opacity-35`} />
+            <p className="text-sm font-semibold text-neutral-700">Nenhum lead nesta etapa</p>
+            <p className="mt-1 max-w-[220px] text-xs leading-6 text-neutral-500">
+              Revise filtros ou mova oportunidades para cá conforme a negociação avançar.
+            </p>
+          </div>
+        ) : (
+          <>
+            {visibleLeads.map((lead) => (
+              <DraggableLeadCard
+                key={lead.id}
+                lead={lead}
+                isUpdating={updating[lead.id]}
+                selectionMode={selectionMode}
+                selected={selectedLeadIds.includes(String(lead.id))}
+                onToggleSelected={() => toggleSelectLead(String(lead.id))}
+                onHoverStart={(rect) => {
+                  if (hoverPreviewCloseTimer.current) {
+                    window.clearTimeout(hoverPreviewCloseTimer.current);
+                  }
+                  setHoverPreviewLead(lead);
+                  setHoverPreviewRect(rect);
+                }}
+                onHoverEnd={closeHoverPreviewSoon}
+                onOpenLead={() => openLeadPanel(String(lead.id))}
+                onOpenChat={() => {
+                  if (typeof window !== "undefined") {
+                    window.location.href = `/broker/chats?lead=${lead.id}`;
+                  }
+                }}
+                onToggleReminder={() => {
+                  const hasReminder = !!lead.nextActionDate || !!lead.nextActionNote;
+                  if (hasReminder) {
+                    saveReminder(String(lead.id), null, null);
+                  } else {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 1);
+                    d.setHours(10, 0, 0, 0);
+                    saveReminder(String(lead.id), d.toISOString(), null);
+                  }
+                }}
+                isReminderUpdating={reminderUpdating[lead.id]}
+                showAdvanceButton={!selectionMode && stage !== "WON" && stage !== "LOST"}
+                onAdvance={() => handleAdvanceStage(lead.id)}
+              />
+            ))}
+            {stageLeads.length > visibleCount && !isCollapsed && (
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleCountByStage((prev) => ({
+                    ...prev,
+                    [stage]: (prev[stage] || 20) + 20,
+                  }))
+                }
+                className="w-full rounded-2xl border border-neutral-200 bg-white px-3 py-2.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              >
+                Mostrar mais ({stageLeads.length - visibleCount})
+              </button>
+            )}
+          </>
+        )}
+      </DroppableStageColumn>
+    );
+  };
+
   if (loading) {
     return <CenteredSpinner message="Carregando sua jornada de leads..." />;
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col">
-        <div className="hidden md:block bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="relative">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar por cliente, imóvel, bairro, cidade ou mensagem…"
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                  />
+    <div className="bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.10),_transparent_32%),linear-gradient(180deg,#f8fafc_0%,#f8fafc_45%,#f3f4f6_100%)] min-h-screen flex flex-col">
+      <div className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col px-4 pb-6 pt-4 md:px-6 lg:px-8">
+        <div className="hidden md:block">
+          <div className="rounded-[30px] border border-white/70 bg-white/90 p-5 shadow-[0_20px_70px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700">
+                  Pipeline comercial
                 </div>
+                <h1 className="mt-3 text-[32px] font-semibold tracking-tight text-slate-950">Funil de vendas</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
+                  Acompanhe o pipeline com menos ruído visual, foco nas prioridades e uma leitura mais clara por etapa.
+                </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                  {VIEW_PRESETS.map((preset) => (
-                    <button
-                      key={preset.key}
-                      type="button"
-                      onClick={() => setViewPreset(preset.key)}
-                      className={`whitespace-nowrap px-3 py-2 rounded-xl text-sm font-semibold border ${
-                        viewPreset === preset.key
-                          ? "bg-teal-600 text-white border-teal-600"
-                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+              <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Leads filtrados</div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-950">{totalLeads}</div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectionMode((v) => !v);
-                    setSelectedLeadIds([]);
-                  }}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
-                    selectionMode
-                      ? "bg-purple-600 text-white border-purple-600"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <ListChecks className="w-4 h-4" />
-                  Selecionar
-                </button>
-
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Fechados</div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-950">{wonLeads}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Gargalo</div>
+                  <div className="mt-2 truncate text-sm font-semibold text-slate-950">
+                    {dashboardMetrics.bottleneck ? STAGE_CONFIG[dashboardMetrics.bottleneck].label : "Sem alerta crítico"}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 xl:grid-cols-5 gap-3">
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-rose-700"><Flame className="w-4 h-4" /> Quentes</div>
-                <div className="mt-2 text-2xl font-bold text-rose-900">{dashboardMetrics.hot}</div>
-                <div className="text-xs text-rose-700">Leads exigindo reação rápida. {dashboardMetrics.stale} sem contato.</div>
+            <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar por cliente, imóvel, bairro, cidade ou mensagem…"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                />
               </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-700"><AlertTriangle className="w-4 h-4" /> Ações vencidas</div>
-                <div className="mt-2 text-2xl font-bold text-amber-900">{dashboardMetrics.overdue}</div>
-                <div className="text-xs text-amber-700">Próximas ações que já passaram.</div>
-              </div>
-              <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-purple-700"><CalendarClock className="w-4 h-4" /> Visitas 7d</div>
-                <div className="mt-2 text-2xl font-bold text-purple-900">{dashboardMetrics.visits}</div>
-                <div className="text-xs text-purple-700">Agenda comercial da semana.</div>
-              </div>
-              <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-orange-700"><Clock className="w-4 h-4" /> Docs travados</div>
-                <div className="mt-2 text-2xl font-bold text-orange-900">{dashboardMetrics.docsBlocked}</div>
-                <div className="text-xs text-orange-700">Pendências em documentação.</div>
-              </div>
-              <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-teal-700"><TrendingUp className="w-4 h-4" /> Conversão</div>
-                <div className="mt-2 text-2xl font-bold text-teal-900">{progressPercent}%</div>
-                <div className="text-xs text-teal-700">Gargalo atual: {dashboardMetrics.bottleneck ? STAGE_CONFIG[dashboardMetrics.bottleneck].label : "Sem gargalo"}</div>
-              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionMode((v) => !v);
+                  setSelectedLeadIds([]);
+                }}
+                className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition ${
+                  selectionMode
+                    ? "border-violet-500 bg-violet-600 text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <ListChecks className="h-4 w-4" />
+                Selecionar
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {VIEW_PRESETS.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => setViewPreset(preset.key)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    viewPreset === preset.key
+                      ? "bg-slate-950 text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {kpiTiles.map((tile) => {
+                const Icon = tile.icon;
+                return (
+                  <div key={tile.key} className={`rounded-[24px] border px-4 py-4 ${KPI_TONE_CLASSES[tile.tone]}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em]">{tile.label}</div>
+                        <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{tile.value}</div>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950/5">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-xs leading-6 text-slate-600">{tile.helper}</div>
+                  </div>
+                );
+              })}
             </div>
 
             {selectionMode && (
-              <div className="mt-3 flex items-center gap-3">
-                <div className="text-sm text-gray-600">
-                  Selecionados: <span className="font-semibold text-gray-900">{selectedLeadIds.length}</span>
-                </div>
-
-                <button type="button" onClick={selectAllVisible} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
-                  Selecionar tudo (visível)
-                </button>
-
-                <button type="button" onClick={clearSelection} className="text-sm font-semibold text-gray-600 hover:text-gray-900">
-                  Limpar
-                </button>
-
-                <div className="ml-auto flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Mover para:</span>
-                  {STAGE_ORDER.map((st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      disabled={selectedLeadIds.length === 0}
-                      onClick={() => bulkMoveSelected(st)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {STAGE_CONFIG[st].label}
+              <div className="mt-4 rounded-[24px] border border-violet-200 bg-violet-50/80 px-4 py-4">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-violet-900">{selectedLeadIds.length} lead(s) selecionados</div>
+                    <div className="mt-1 text-xs text-violet-700">Escolha uma etapa para mover em lote ou limpe a seleção.</div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={selectAllVisible} className="rounded-full border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50">
+                      Selecionar tudo
                     </button>
-                  ))}
+                    <button type="button" onClick={clearSelection} className="rounded-full border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50">
+                      Limpar
+                    </button>
+                    {STAGE_ORDER.map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        disabled={selectedLeadIds.length === 0}
+                        onClick={() => bulkMoveSelected(st)}
+                        className="rounded-full border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100 disabled:opacity-50"
+                      >
+                        {STAGE_CONFIG[st].label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -1023,53 +1204,39 @@ export default function BrokerCrmPage() {
         </div>
 
         {/* Stats bar mobile */}
-        <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">Progresso geral</span>
-            <span className="text-sm font-semibold text-teal-600">{progressPercent}% fechados</span>
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <motion.div 
-              className="h-full bg-gradient-to-r from-teal-500 to-emerald-500"
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercent}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-              <div className="text-[11px] font-semibold text-rose-700">Quentes</div>
-              <div className="text-lg font-bold text-rose-900">{dashboardMetrics.hot}</div>
+        <div className="md:hidden space-y-3">
+          <div className="rounded-[28px] border border-white/70 bg-white/95 p-4 shadow-[0_18px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700">Pipeline comercial</div>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Funil de vendas</h1>
+              </div>
+              <div className="rounded-2xl border border-teal-100 bg-teal-50 px-3 py-2 text-right">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-700">Conversão</div>
+                <div className="mt-1 text-lg font-semibold text-slate-950">{progressPercent}%</div>
+              </div>
             </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-              <div className="text-[11px] font-semibold text-amber-700">Ações vencidas</div>
-              <div className="text-lg font-bold text-amber-900">{dashboardMetrics.overdue}</div>
-            </div>
-          </div>
-        </div>
 
-        {/* Navegação de etapas no mobile */}
-        <div className="md:hidden sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
-          <div className="p-3 border-b border-gray-200">
-            <div className="relative">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="mt-4 relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar…"
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                placeholder="Buscar por cliente ou imóvel"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
               />
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
+
+            <div className="mt-3 flex flex-wrap gap-2">
               {VIEW_PRESETS.slice(0, 5).map((it) => (
                 <button
                   key={it.key}
                   type="button"
                   onClick={() => setViewPreset(it.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
                     viewPreset === it.key
-                      ? "bg-teal-600 text-white border-teal-600"
-                      : "bg-white text-gray-700 border-gray-200"
+                      ? "bg-slate-950 text-white"
+                      : "border border-slate-200 bg-white text-slate-600"
                   }`}
                 >
                   {it.label}
@@ -1081,61 +1248,72 @@ export default function BrokerCrmPage() {
                   setSelectionMode((v) => !v);
                   setSelectedLeadIds([]);
                 }}
-                className={`ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                  selectionMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-200"
+                className={`ml-auto inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
+                  selectionMode
+                    ? "bg-violet-600 text-white"
+                    : "border border-slate-200 bg-white text-slate-700"
                 }`}
               >
-                <ListChecks className="w-4 h-4" />
+                <ListChecks className="h-3.5 w-3.5" />
                 Selecionar
               </button>
             </div>
-            {selectionMode && (
-              <div className="mt-2 flex items-center justify-between">
-                <div className="text-xs text-gray-600">
-                  Selecionados: <span className="font-semibold text-gray-900">{selectedLeadIds.length}</span>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {kpiTiles.slice(0, 4).map((tile) => (
+                <div key={tile.key} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{tile.label}</div>
+                  <div className="mt-1 text-lg font-semibold text-slate-950">{tile.value}</div>
                 </div>
-                <button type="button" onClick={selectAllVisible} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                  Selecionar tudo
-                </button>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex gap-1 p-2 min-w-max">
+        </div>
+
+        {/* Navegação de etapas no mobile */}
+        <div className="md:hidden sticky top-0 z-20 mt-3 rounded-[24px] border border-white/70 bg-white/95 shadow-sm backdrop-blur">
+          <div className="overflow-x-auto scrollbar-hide px-2 py-2">
+            <div className="flex gap-2 min-w-max">
               {STAGE_ORDER.map((stage) => {
                 const config = STAGE_CONFIG[stage];
                 const count = leadsByStage[stage].length;
                 const Icon = config.icon;
                 const isActive = mobileActiveStage === stage;
-                
+
                 return (
                   <button
                     key={stage}
                     onClick={() => setMobileActiveStage(stage)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                      isActive 
-                        ? `${config.bgColor} ${config.color} ${config.borderColor} border shadow-sm` 
-                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold whitespace-nowrap transition ${
+                      isActive
+                        ? "bg-slate-950 text-white shadow-sm"
+                        : "bg-slate-50 text-slate-600"
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="h-3.5 w-3.5" />
                     {config.label}
-                    {count > 0 && (
-                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
-                        isActive ? "bg-white/50" : "bg-gray-200"
-                      }`}>
-                        {count}
-                      </span>
-                    )}
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? "bg-white/15 text-white" : "bg-white text-slate-500"}`}>
+                      {count}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </div>
+          {selectionMode && (
+            <div className="border-t border-slate-100 px-3 py-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-slate-900">{selectedLeadIds.length} selecionado(s)</span>
+                <button type="button" onClick={selectAllVisible} className="font-semibold text-teal-700">
+                  Selecionar tudo
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (
-          <div className="mx-4 mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+          <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-xs text-yellow-800">
             {error}
           </div>
         )}
@@ -1176,118 +1354,35 @@ export default function BrokerCrmPage() {
           onDragEnd={handleDragEnd}
         >
           {/* Desktop: Grid de colunas */}
-          <div className="hidden md:flex flex-1 min-h-0 w-full">
-            <div className="grid grid-cols-4 lg:grid-cols-7 gap-px bg-gray-200 items-stretch h-full min-h-0 w-full">
-              {STAGE_ORDER.map((stage) => {
-                const config = STAGE_CONFIG[stage];
-                const stageLeads = leadsByStage[stage];
-                const Icon = config.icon;
-                const insight = stageInsights[stage];
+          <div className="hidden md:flex flex-1 min-h-0 w-full pt-6">
+            <div className="flex w-full flex-col gap-6">
+              <section className="rounded-[30px] border border-white/70 bg-white/70 p-4 shadow-[0_18px_50px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
+                <div className="flex items-center justify-between gap-4 px-1 pb-4">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-950">Pipeline ativo</div>
+                    <div className="mt-1 text-xs text-slate-500">Etapas operacionais com foco na próxima melhor ação.</div>
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500">{PRIMARY_STAGES.reduce((sum, stage) => sum + leadsByStage[stage].length, 0)} leads em aberto</div>
+                </div>
+                <div className="overflow-x-auto pb-2">
+                  <div className="flex min-w-max gap-4">
+                    {PRIMARY_STAGES.map((stage) => renderStageColumn(stage))}
+                  </div>
+                </div>
+              </section>
 
-                const isCollapsed = !!collapsedByStage[stage];
-                const visibleCount = visibleCountByStage[stage] || 20;
-                const visibleLeads = isCollapsed ? [] : stageLeads.slice(0, visibleCount);
-
-                return (
-                  <DroppableStageColumn
-                    key={stage}
-                    stageId={stage}
-                    label={config.label}
-                    description={config.description}
-                    count={stageLeads.length}
-                    collapsed={isCollapsed}
-                    headerRight={
-                      <div className="hidden lg:flex flex-col items-end gap-1">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          insight.health.tone === "critical"
-                            ? "bg-red-100 text-red-700"
-                            : insight.health.tone === "warning"
-                              ? "bg-amber-100 text-amber-700"
-                              : insight.health.tone === "healthy"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-gray-100 text-gray-600"
-                        }`}
-                        >
-                          {insight.health.label}
-                        </span>
-                        <span className="text-[10px] text-gray-500">
-                          {insight.overdueCount} atras. • {PIPELINE_STAGE_META[stage].wipLimit ? `WIP ${stageLeads.length}/${PIPELINE_STAGE_META[stage].wipLimit}` : `${insight.hotCount} quentes`}
-                        </span>
-                      </div>
-                    }
-                    onToggleCollapsed={() =>
-                      setCollapsedByStage((prev) => ({
-                        ...prev,
-                        [stage]: !prev[stage],
-                      }))
-                    }
-                    className="rounded-none"
-                  >
-                    {stageLeads.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <Icon className={`w-8 h-8 ${config.color} opacity-30 mb-2`} />
-                        <p className="text-[11px] font-semibold text-gray-500">Nenhum lead nesta etapa</p>
-                        <p className="mt-1 max-w-[180px] text-[11px] leading-5 text-gray-400">Ajuste os filtros rápidos ou mova um lead para cá conforme a negociação avançar.</p>
-                      </div>
-                    ) : (
-                      <>
-                        {visibleLeads.map((lead) => (
-                          <DraggableLeadCard
-                            key={lead.id}
-                            lead={lead}
-                            isUpdating={updating[lead.id]}
-                            selectionMode={selectionMode}
-                            selected={selectedLeadIds.includes(String(lead.id))}
-                            onToggleSelected={() => toggleSelectLead(String(lead.id))}
-                            onHoverStart={(rect) => {
-                              if (hoverPreviewCloseTimer.current) {
-                                window.clearTimeout(hoverPreviewCloseTimer.current);
-                              }
-                              setHoverPreviewLead(lead);
-                              setHoverPreviewRect(rect);
-                            }}
-                            onHoverEnd={closeHoverPreviewSoon}
-                            onOpenLead={() => openLeadPanel(String(lead.id))}
-                            onOpenChat={() => {
-                              if (typeof window !== "undefined") {
-                                window.location.href = `/broker/chats?lead=${lead.id}`;
-                              }
-                            }}
-                            onToggleReminder={() => {
-                              const hasReminder = !!lead.nextActionDate || !!lead.nextActionNote;
-                              if (hasReminder) {
-                                saveReminder(String(lead.id), null, null);
-                              } else {
-                                const d = new Date();
-                                d.setDate(d.getDate() + 1);
-                                d.setHours(10, 0, 0, 0);
-                                saveReminder(String(lead.id), d.toISOString(), null);
-                              }
-                            }}
-                            isReminderUpdating={reminderUpdating[lead.id]}
-                            showAdvanceButton={!selectionMode && stage !== "WON" && stage !== "LOST"}
-                            onAdvance={() => handleAdvanceStage(lead.id)}
-                          />
-                        ))}
-                        {stageLeads.length > visibleCount && !isCollapsed && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setVisibleCountByStage((prev) => ({
-                                ...prev,
-                                [stage]: (prev[stage] || 20) + 20,
-                              }))
-                            }
-                            className="w-full px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                          >
-                            Mostrar mais ({stageLeads.length - visibleCount})
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </DroppableStageColumn>
-                );
-              })}
+              <section className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                <div className="flex items-center justify-between gap-4 px-1 pb-4">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-950">Resultados</div>
+                    <div className="mt-1 text-xs text-slate-500">Etapas finais agrupadas para não competir com o pipeline principal.</div>
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500">{OUTCOME_STAGES.reduce((sum, stage) => sum + leadsByStage[stage].length, 0)} registros</div>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-2">
+                  {OUTCOME_STAGES.map((stage) => renderStageColumn(stage, true))}
+                </div>
+              </section>
             </div>
           </div>
 
@@ -1501,6 +1596,7 @@ export default function BrokerCrmPage() {
           onClose={() => setIsPanelOpen(false)}
           onLeadUpdated={fetchLeads}
         />
+      </div>
     </div>
   );
 }
