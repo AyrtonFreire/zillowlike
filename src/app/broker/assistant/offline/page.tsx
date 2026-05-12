@@ -1,21 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { AlertCircle, Calendar, Clock, Settings } from "lucide-react";
+import { AlertCircle, AlertTriangle, Calendar, Inbox, Send, Settings } from "lucide-react";
 import Toast from "@/components/Toast";
 import Input from "@/components/ui/Input";
 import Accordion from "@/components/ui/Accordion";
 import StatCard from "@/components/dashboard/StatCard";
+import OfflineAssistantTile from "@/components/broker/OfflineAssistantTile";
+import OfflineTechDiagnostics from "@/components/broker/OfflineTechDiagnostics";
+import OfflineLeadFilters from "@/components/broker/OfflineLeadFilters";
+import OfflineLeadCard from "@/components/broker/OfflineLeadCard";
+import { formatPipelineStageLabel } from "@/lib/offline-assistant-intelligence";
 import {
-  formatConversationModeLabel,
-  formatLeadTemperatureLabel,
-  formatPipelineStageLabel,
-  formatPriorityLabel,
-  formatRecommendedActionLabel,
-} from "@/lib/offline-assistant-intelligence";
+  computeTopActionableCounts,
+  leadMatchesFilter,
+  type OfflineLeadFilter,
+} from "@/lib/offline-assistant-presentation";
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -188,8 +190,33 @@ export default function BrokerAssistantOfflinePage() {
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [overview, setOverview] = useState<AutoReplyOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
+  const [filter, setFilter] = useState<OfflineLeadFilter>("ALL");
 
   const canAccess = role === "REALTOR" || role === "ADMIN";
+
+  const items = useMemo(() => metrics?.items || [], [metrics]);
+
+  const filterCounts = useMemo(() => {
+    return {
+      total: items.length,
+      urgent: items.filter((i) => leadMatchesFilter(i, "URGENT")).length,
+      visit: items.filter((i) => leadMatchesFilter(i, "VISIT")).length,
+      handoff: items.filter((i) => leadMatchesFilter(i, "HANDOFF")).length,
+      hot: items.filter((i) => leadMatchesFilter(i, "HOT")).length,
+      qualified: items.filter((i) => leadMatchesFilter(i, "QUALIFIED")).length,
+      failed: items.filter((i) => leadMatchesFilter(i, "FAILED")).length,
+    };
+  }, [items]);
+
+  const filteredItems = useMemo(
+    () => items.filter((i) => leadMatchesFilter(i, filter)),
+    [items, filter],
+  );
+
+  const topCounts = useMemo(
+    () => computeTopActionableCounts({ items, overviewSent: overview?.counts?.sent ?? 0 }),
+    [items, overview],
+  );
 
   const fetchSettings = useCallback(async () => {
     const res = await fetch("/api/broker/auto-reply-settings");
@@ -265,7 +292,7 @@ export default function BrokerAssistantOfflinePage() {
     }
   }, [metrics]);
 
-  const formatTokenLabel = (value: string | null | undefined) => {
+  const formatTokenLabel = useCallback((value: string | null | undefined) => {
     const raw = String(value || "").trim();
     if (!raw) return "—";
     return raw
@@ -274,59 +301,7 @@ export default function BrokerAssistantOfflinePage() {
       .filter(Boolean)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
-  };
-
-  const formatRelativeTime = (iso: string | null) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "";
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffMins < 60) return `${Math.max(diffMins, 1)}min atrás`;
-    if (diffHours < 24) return `${diffHours}h atrás`;
-    if (diffDays < 7) return `${diffDays}d atrás`;
-    return d.toLocaleString("pt-BR");
-  };
-
-  const renderSlotsChips = (clientSlots: Record<string, any> | null) => {
-    if (!clientSlots || typeof clientSlots !== "object") return null;
-    const chips: string[] = [];
-
-    const purpose = String(clientSlots.purpose || "").toUpperCase();
-    if (purpose === "COMPRA") chips.push("Compra");
-    if (purpose === "LOCACAO") chips.push("Locação");
-
-    if (typeof clientSlots.hasPets === "boolean") chips.push(clientSlots.hasPets ? "Com pets" : "Sem pets");
-    if (typeof clientSlots.bedroomsNeeded === "number") chips.push(`${clientSlots.bedroomsNeeded} quartos`);
-    if (typeof clientSlots.parkingSpotsNeeded === "number") {
-      chips.push(clientSlots.parkingSpotsNeeded === 0 ? "Sem vaga" : `${clientSlots.parkingSpotsNeeded} vagas`);
-    }
-    if (clientSlots.budget) chips.push(`Orçamento: ${String(clientSlots.budget)}`);
-    if (clientSlots.moveTime) chips.push(`Mudança: ${String(clientSlots.moveTime)}`);
-    if (clientSlots.searchRegion) chips.push(`Região: ${String(clientSlots.searchRegion)}`);
-    if (clientSlots.financingIntent) chips.push(`Pagamento: ${String(clientSlots.financingIntent).toLowerCase().replace(/_/g, " ")}`);
-    if (clientSlots.decisionStage) chips.push(`Estágio: ${String(clientSlots.decisionStage).toLowerCase().replace(/_/g, " ")}`);
-    if (clientSlots.urgencyLevel) chips.push(`Urgência: ${String(clientSlots.urgencyLevel).toLowerCase()}`);
-    if (Array.isArray(clientSlots.objections) && clientSlots.objections.length) {
-      chips.push(`Objeções: ${clientSlots.objections.slice(0, 2).join(", ")}`);
-    }
-
-    const unique = Array.from(new Set(chips.map((x) => String(x).trim()).filter(Boolean)));
-    if (!unique.length) return null;
-
-    return (
-      <div className="flex flex-wrap gap-2 mt-3">
-        {unique.slice(0, 6).map((c) => (
-          <span key={c} className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-700">
-            {c}
-          </span>
-        ))}
-      </div>
-    );
-  };
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -559,255 +534,110 @@ export default function BrokerAssistantOfflinePage() {
 
               {!overviewLoading && overview ? (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                    {[
-                      { label: "Respostas", value: overview.counts?.sent || 0 },
-                      { label: "Qualificados", value: overview.funnel?.qualifiedLeads || 0 },
-                      { label: "Quentes", value: overview.funnel?.hotLeads || 0 },
-                      { label: "Urgentes", value: overview.funnel?.urgentLeads || 0 },
-                      { label: "Handoffs", value: overview.funnel?.handoffLeads || 0 },
-                      { label: "Visitas", value: overview.funnel?.visitLeads || 0 },
-                    ].map((item) => (
-                      <div key={item.label} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
-                        <div className="mt-1 text-xl font-semibold text-gray-900">{item.value}</div>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <OfflineAssistantTile
+                      label="Precisam de você"
+                      value={topCounts.needsYou}
+                      subtext={
+                        topCounts.urgent + topCounts.handoff > 0
+                          ? `${topCounts.urgent} urgente${topCounts.urgent === 1 ? "" : "s"} + ${topCounts.handoff} retorno`
+                          : "Tudo em dia"
+                      }
+                      icon={AlertTriangle}
+                      tone={topCounts.needsYou > 0 ? "rose" : "emerald"}
+                      onClick={() => setFilter(topCounts.urgent >= topCounts.handoff ? "URGENT" : "HANDOFF")}
+                      active={filter === "URGENT" || filter === "HANDOFF"}
+                    />
+                    <OfflineAssistantTile
+                      label="Visitas pedidas"
+                      value={topCounts.visit}
+                      subtext={topCounts.visit > 0 ? "toque para filtrar" : "Nenhuma no período"}
+                      icon={Calendar}
+                      tone={topCounts.visit > 0 ? "purple" : "gray"}
+                      onClick={() => setFilter("VISIT")}
+                      active={filter === "VISIT"}
+                    />
+                    <OfflineAssistantTile
+                      label="Respostas enviadas"
+                      value={overview.counts?.sent || 0}
+                      subtext="no período"
+                      icon={Send}
+                      tone="teal"
+                    />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="rounded-xl border border-gray-100 bg-white p-4">
-                      <p className="text-sm font-semibold text-gray-900">Rollout e versão</p>
-                      <p className="mt-1 text-xs text-gray-600">
-                        {overview.rollout?.rolloutEnabled ? "Rollout ativo" : "Rollout em controle"} · {overview.rollout?.rolloutPercent ?? 0}% corretores · {overview.rollout?.experimentPercent ?? 0}% leads
-                      </p>
-                      <p className="mt-2 text-xs text-gray-600">Prompt {overview.versions?.promptVersion || "—"} · Guardrails {overview.versions?.guardrailsVersion || "—"}</p>
-                      <p className="mt-1 text-xs text-gray-600">Completude média: {overview.funnel?.averageDataCompleteness ?? 0}%</p>
-                    </div>
-
-                    <div className="rounded-xl border border-gray-100 bg-white p-4">
-                      <p className="text-sm font-semibold text-gray-900">Experimentos e pipeline</p>
-                      <p className="mt-1 text-xs text-gray-600">
-                        Variante líder: {overview.experiments?.[0] ? `${formatTokenLabel(overview.experiments[0].variant)} (${overview.experiments[0].count})` : "—"}
-                      </p>
-                      <p className="mt-2 text-xs text-gray-600">
-                        Pipeline líder: {overview.operational?.pipelineStages?.[0] ? `${formatPipelineStageLabel(overview.operational.pipelineStages[0].stage)} (${overview.operational.pipelineStages[0].count})` : "—"}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-600">Checklist médio do copiloto: {overview.operational?.avgChecklistItems ?? 0}</p>
-                    </div>
-
-                    <div className="rounded-xl border border-gray-100 bg-white p-4">
-                      <p className="text-sm font-semibold text-gray-900">Guardrails</p>
-                      <p className="mt-1 text-xs text-gray-600">
-                        Cenário líder: {overview.guardrails?.scenarios?.[0] ? `${formatTokenLabel(overview.guardrails.scenarios[0].scenario)} (${overview.guardrails.scenarios[0].count})` : "Sem acionamentos"}
-                      </p>
-                      <p className="mt-2 text-xs text-gray-600">
-                        Regra líder: {overview.guardrails?.rules?.[0] ? `${formatTokenLabel(overview.guardrails.rules[0].rule)} (${overview.guardrails.rules[0].count})` : "Sem regras aplicadas"}
-                      </p>
-                    </div>
-                  </div>
+                  <OfflineTechDiagnostics
+                    role={role}
+                    rollout={overview.rollout}
+                    versions={overview.versions}
+                    funnel={overview.funnel}
+                    experiments={overview.experiments}
+                    guardrails={overview.guardrails}
+                    operational={overview.operational}
+                    formatTokenLabel={formatTokenLabel}
+                    formatPipelineStageLabel={formatPipelineStageLabel}
+                  />
                 </>
               ) : null}
 
-              {(metrics?.items || []).length === 0 ? (
+              {items.length === 0 ? (
                 <div className="rounded-2xl border border-gray-100 bg-white p-6">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <AlertCircle className="w-4 h-4 text-gray-500" />
+                    <Inbox className="w-4 h-4 text-gray-500" />
                     Nenhum lead com atividade do assistente no período.
                   </div>
                   <p className="mt-1 text-sm text-gray-600">Se houver novos leads enquanto você estiver offline, eles aparecerão aqui.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {(metrics?.items || []).map((row) => {
-                    const title = row.propertyTitle || "Lead";
-                    const contact = row.contactName || "Cliente";
-                    const when = formatRelativeTime(row.lastActivityAt);
-                    const subtitleParts = [contact, title].filter(Boolean);
+                <>
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h3 className="text-sm font-semibold text-gray-900">Leads no período</h3>
+                  </div>
 
-                    const showVisit = Boolean(row.visitRequested);
-                    const showHandoff = Boolean(row.handoffNeeded);
-                    const showFailed = (row.counts?.failed || 0) > 0;
-                    const showSkippedOnly = (row.counts?.sent || 0) === 0 && (row.counts?.failed || 0) === 0 && (row.counts?.skipped || 0) > 0;
+                  <OfflineLeadFilters value={filter} onChange={setFilter} counts={filterCounts} />
 
-                    const vp = row.visitPreferences;
-                    const vpText = vp
-                      ? [
-                          vp.period ? String(vp.period) : null,
-                          Array.isArray(vp.days) && vp.days.length ? String(vp.days.join("/")) : null,
-                          vp.time ? String(vp.time) : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")
-                      : "";
-                    const leadTemperature = row.qualification?.leadTemperature || null;
-                    const responsePriority = row.handoff?.priority || row.qualification?.responsePriority || null;
-                    const recommendedAction = row.policy?.recommendedAction || row.handoff?.recommendedAction || row.qualification?.recommendedAction || null;
-                    const nextStepText = row.policy?.nextQuestion || row.nextQuestion || null;
-                    const experimentVariant = row.experiment?.variant || null;
-                    const guardrailScenario = row.guardrails?.scenario || null;
-                    const propertySummary = row.propertyContext?.propertySummary || null;
-                    const regionSummary = row.propertyContext?.regionSummary || null;
-                    const fitHighlights = Array.isArray(row.propertyContext?.fitHighlights) ? row.propertyContext?.fitHighlights : [];
-                    const attentionFlags = Array.isArray(row.propertyContext?.attentionFlags) ? row.propertyContext?.attentionFlags : [];
-                    const playbookChecklist = Array.isArray(row.operationalPlaybook?.actionChecklist) ? row.operationalPlaybook?.actionChecklist : [];
-
-                    return (
-                      <Link
-                        key={row.leadId}
-                        href={`/broker/leads/${row.leadId}`}
-                        className="block rounded-2xl border border-gray-100 bg-white p-4 hover:border-gray-200 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 line-clamp-1">{subtitleParts.join(" · ")}</p>
-                            <p className="mt-0.5 text-xs text-gray-500">{when}</p>
-
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {showVisit ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  Visita solicitada{vpText ? `: ${vpText}` : ""}
-                                </span>
-                              ) : null}
-                              {showHandoff ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  Precisa de retorno
-                                </span>
-                              ) : null}
-                              {showSkippedOnly ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700">
-                                  Assistente pulou
-                                </span>
-                              ) : null}
-                              {showFailed ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
-                                  Falhou
-                                </span>
-                              ) : null}
-                              {leadTemperature ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-700">
-                                  {formatLeadTemperatureLabel(leadTemperature)}
-                                </span>
-                              ) : null}
-                              {responsePriority ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
-                                  Prioridade {formatPriorityLabel(responsePriority)}
-                                </span>
-                              ) : null}
-                              {row.conversationMode ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700">
-                                  {formatConversationModeLabel(row.conversationMode)}
-                                </span>
-                              ) : null}
-                              {experimentVariant ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                                  {formatTokenLabel(experimentVariant)}
-                                </span>
-                              ) : null}
-                              {guardrailScenario ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
-                                  Guardrail {formatTokenLabel(guardrailScenario)}
-                                </span>
-                              ) : null}
-                            </div>
-
-                            {row.lastClientMessagePreview ? (
-                              <p className="mt-3 text-xs text-gray-700 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Cliente:</span> {row.lastClientMessagePreview}
-                              </p>
-                            ) : null}
-                            {row.lastAssistantMessagePreview ? (
-                              <p className="mt-1 text-xs text-gray-700 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Assistente:</span> {row.lastAssistantMessagePreview}
-                              </p>
-                            ) : row.nextQuestion ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Próximo passo:</span> {row.nextQuestion}
-                              </p>
-                            ) : null}
-
-                            {row.commercialSummary ? (
-                              <p className="mt-2 text-xs text-gray-600 line-clamp-3">
-                                <span className="font-semibold text-gray-900">Resumo comercial:</span> {row.commercialSummary}
-                              </p>
-                            ) : null}
-
-                            {propertySummary ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
-                                <span className="font-semibold text-gray-900">Contexto do imóvel:</span> {propertySummary}
-                              </p>
-                            ) : null}
-
-                            {regionSummary ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
-                                <span className="font-semibold text-gray-900">Contexto da região:</span> {regionSummary}
-                              </p>
-                            ) : null}
-
-                            {recommendedAction ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Ação sugerida:</span> {formatRecommendedActionLabel(recommendedAction)}
-                              </p>
-                            ) : null}
-
-                            {nextStepText ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Pergunta/next-step:</span> {nextStepText}
-                              </p>
-                            ) : null}
-
-                            {row.operationalPlaybook?.headline ? (
-                              <p className="mt-2 text-xs text-gray-700 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Copiloto:</span> {row.operationalPlaybook.headline}
-                                {row.operationalPlaybook?.pipelineStage ? ` · ${formatPipelineStageLabel(row.operationalPlaybook.pipelineStage)}` : ""}
-                              </p>
-                            ) : null}
-
-                            {row.operationalPlaybook?.whyNow ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Por quê agora:</span> {row.operationalPlaybook.whyNow}
-                              </p>
-                            ) : null}
-
-                            {playbookChecklist.length ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
-                                <span className="font-semibold text-gray-900">Checklist:</span> {playbookChecklist.slice(0, 3).join(" · ")}
-                              </p>
-                            ) : null}
-
-                            {row.operationalPlaybook?.followUpDraft ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-3">
-                                <span className="font-semibold text-gray-900">Draft de follow-up:</span> {row.operationalPlaybook.followUpDraft}
-                              </p>
-                            ) : null}
-
-                            {fitHighlights.length ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Aderência:</span> {fitHighlights.slice(0, 2).join(" · ")}
-                              </p>
-                            ) : null}
-
-                            {attentionFlags.length ? (
-                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                                <span className="font-semibold text-gray-900">Pontos de atenção:</span> {attentionFlags.slice(0, 2).join(" · ")}
-                              </p>
-                            ) : null}
-
-                            {renderSlotsChips(row.clientSlots)}
-                          </div>
-
-                          <div className="flex-shrink-0">
-                            <span className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700">
-                              Abrir lead
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
+                  {filteredItems.length === 0 ? (
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-6">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <AlertCircle className="w-4 h-4 text-gray-500" />
+                        Nenhum lead bate com este filtro.
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600">Tente outro filtro ou volte para “Todos”.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredItems.map((row) => (
+                        <OfflineLeadCard
+                          key={row.leadId}
+                          variant="full"
+                          data={{
+                            leadId: row.leadId,
+                            contactName: row.contactName,
+                            propertyTitle: row.propertyTitle,
+                            lastActivityAt: row.lastActivityAt,
+                            responsePriority: row.handoff?.priority || row.qualification?.responsePriority,
+                            visitRequested: row.visitRequested,
+                            handoffNeeded: row.handoffNeeded,
+                            leadTemperature: row.qualification?.leadTemperature,
+                            qualifiedFlag: leadMatchesFilter(row, "QUALIFIED"),
+                            counts: row.counts,
+                            visitPreferences: row.visitPreferences,
+                            lastClientMessagePreview: row.lastClientMessagePreview,
+                            lastAssistantMessagePreview: row.lastAssistantMessagePreview,
+                            policy: row.policy,
+                            handoff: row.handoff,
+                            qualification: row.qualification,
+                            commercialSummary: row.commercialSummary,
+                            propertyContext: row.propertyContext,
+                            operationalPlaybook: row.operationalPlaybook,
+                            clientSlots: row.clientSlots,
+                          }}
+                          onCopyToast={(msg) => setToast({ message: msg, type: "success" })}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

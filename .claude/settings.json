@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx eslint src/app/broker/dashboard/page.tsx src/app/broker/assistant/offline/page.tsx src/components/broker/OfflineLeadCard.tsx src/components/broker/OfflineAssistantTile.tsx src/components/broker/OfflineTechDiagnostics.tsx src/components/broker/OfflineLeadFilters.tsx src/lib/offline-assistant-presentation.ts 2>&1; Write-Host \"EXIT_CODE: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit 2>&1; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/app/broker/dashboard/page.tsx src/app/broker/assistant/offline/page.tsx src/components/broker/OfflineLeadCard.tsx src/components/broker/OfflineAssistantTile.tsx src/components/broker/OfflineTechDiagnostics.tsx src/components/broker/OfflineLeadFilters.tsx src/lib/offline-assistant-presentation.ts 2>&1; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
+      "PowerShell(Start-Process -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -NoNewWindow -RedirectStandardOutput \"dev-server.log\" -RedirectStandardError \"dev-server.err.log\" -PassThru)"
+    ]
+  }
+}

@@ -13,6 +13,10 @@ import {
   Activity,
   MessageSquare,
   Sparkles,
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  CheckCircle2,
 } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
@@ -20,7 +24,7 @@ import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import LeadListItem from "@/components/dashboard/LeadListItem";
 import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding/BrokerOnboarding";
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
-import { formatConversationModeLabel, formatLeadTemperatureLabel, formatPipelineStageLabel, formatPriorityLabel } from "@/lib/offline-assistant-intelligence";
+import OfflineLeadCard from "@/components/broker/OfflineLeadCard";
 import { motion } from "framer-motion";
 import {
   Cell,
@@ -45,17 +49,6 @@ interface Metrics {
   };
   activeLeads: number;
   leadsWithReminders: number;
-}
-
-function formatTokenLabel(value: string | null | undefined) {
-  const raw = String(value || "").trim();
-  if (!raw) return "—";
-  return raw
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function Skeleton({ className = "" }: { className?: string }) {
@@ -515,187 +508,124 @@ export default function BrokerDashboard() {
           const lastActivityAt = totals?.lastActivityAt || null;
           const periodLabel = offlineSummary?.range === "7d" ? "últimos 7 dias" : "últimas 24h";
 
+          // Headline acionável: prioridade > urgência > visita > tudo em dia
+          const needsRetorno = totals.handoffLeads || 0;
+          const needsUrgent = totals.urgentLeads || 0;
+          const visits = totals.visitRequestedLeads || 0;
+          const sentCount = totals.sent || 0;
+
+          let headlineTone: "rose" | "amber" | "purple" | "emerald" = "emerald";
+          let headlineText = `Tudo em dia · ${sentCount} resposta${sentCount === 1 ? "" : "s"} enviada${sentCount === 1 ? "" : "s"}`;
+          let headlineIcon: typeof AlertCircle = CheckCircle2;
+
+          if (needsUrgent > 0) {
+            headlineTone = "rose";
+            headlineIcon = AlertCircle;
+            headlineText = `${needsUrgent} lead${needsUrgent === 1 ? "" : "s"} urgente${needsUrgent === 1 ? "" : "s"} precisa${needsUrgent === 1 ? "" : "m"} de você`;
+          } else if (needsRetorno > 0) {
+            headlineTone = "amber";
+            headlineIcon = Clock;
+            headlineText = `${needsRetorno} lead${needsRetorno === 1 ? "" : "s"} aguardando retorno`;
+          } else if (visits > 0) {
+            headlineTone = "purple";
+            headlineIcon = Calendar;
+            headlineText = `${visits} ${visits === 1 ? "visita pedida" : "visitas pedidas"}`;
+          }
+
+          const HEADLINE_TONE_CLASSES: Record<typeof headlineTone, string> = {
+            rose: "border-rose-200 bg-rose-50 text-rose-900",
+            amber: "border-amber-200 bg-amber-50 text-amber-900",
+            purple: "border-purple-200 bg-purple-50 text-purple-900",
+            emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+          };
+          const HEADLINE_ICON_CLASSES: Record<typeof headlineTone, string> = {
+            rose: "text-rose-600",
+            amber: "text-amber-600",
+            purple: "text-purple-600",
+            emerald: "text-emerald-600",
+          };
+
+          // Subtexto: breakdown numérico em uma linha
+          const subtextParts = [
+            needsRetorno > 0 ? `${needsRetorno} retorno` : null,
+            visits > 0 && headlineTone !== "purple" ? `${visits} visita${visits === 1 ? "" : "s"}` : null,
+            totals.failed > 0 ? `${totals.failed} falha${totals.failed === 1 ? "" : "s"}` : null,
+            totals.hotLeads > 0 ? `${totals.hotLeads} quente${totals.hotLeads === 1 ? "" : "s"}` : null,
+            totals.qualifiedLeads > 0 ? `${totals.qualifiedLeads} qualificado${totals.qualifiedLeads === 1 ? "" : "s"}` : null,
+          ].filter(Boolean);
+
+          const HeadlineIcon = headlineIcon;
+          const markSeen = () => {
+            try {
+              if (typeof window !== "undefined" && lastActivityAt) {
+                window.localStorage.setItem("zlw_offline_assistant_seen_at", String(lastActivityAt));
+              }
+            } catch {
+            }
+          };
+
           return (
             <div className="mb-8">
               <StatCard
-                title="Assistente offline"
+                title="Assistente Offline"
                 action={
                   <Link
                     href="/broker/assistant/offline"
-                    onClick={() => {
-                      try {
-                        if (typeof window !== "undefined" && lastActivityAt) {
-                          window.localStorage.setItem("zlw_offline_assistant_seen_at", String(lastActivityAt));
-                        }
-                      } catch {
-                      }
-                    }}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    onClick={markSeen}
+                    className="inline-flex items-center gap-1 text-sm text-teal-700 hover:text-teal-800 font-semibold"
                   >
                     Ver detalhes
+                    <ArrowRight className="w-4 h-4" />
                   </Link>
                 }
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      if (typeof window !== "undefined" && lastActivityAt) {
-                        window.localStorage.setItem("zlw_offline_assistant_seen_at", String(lastActivityAt));
-                      }
-                    } catch {
-                    }
-                    router.push("/broker/assistant/offline");
-                  }}
-                  className="w-full text-left rounded-xl border border-gray-100 bg-white p-4 hover:border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-900">
-                          Atividade em {totals.leads} lead{totals.leads > 1 ? "s" : ""} ({periodLabel})
-                        </p>
+                <div className="space-y-3">
+                  {/* Headline acionável */}
+                  <div className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${HEADLINE_TONE_CLASSES[headlineTone]}`}>
+                    <HeadlineIcon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${HEADLINE_ICON_CLASSES[headlineTone]}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center flex-wrap gap-2">
+                        <p className="text-sm font-semibold">{headlineText}</p>
                         {newLeads > 0 ? (
-                          <span className="inline-flex items-center rounded-full bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 text-[11px] font-bold">
-                            {newLeads} novo{newLeads > 1 ? "s" : ""}
+                          <span className="inline-flex items-center rounded-full bg-white/80 text-rose-700 border border-rose-200 px-2 py-0.5 text-[11px] font-bold">
+                            {newLeads} novo{newLeads === 1 ? "" : "s"}
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {totals.sent} enviada{totals.sent > 1 ? "s" : ""}
-                        {totals.failed > 0 ? ` · ${totals.failed} falha${totals.failed > 1 ? "s" : ""}` : ""}
-                        {totals.handoffLeads > 0 ? ` · ${totals.handoffLeads} precisam retorno` : ""}
-                        {totals.visitRequestedLeads > 0 ? ` · ${totals.visitRequestedLeads} pediram visita` : ""}
-                        {totals.hotLeads > 0 ? ` · ${totals.hotLeads} quentes` : ""}
-                        {totals.urgentLeads > 0 ? ` · ${totals.urgentLeads} urgentes` : ""}
-                        {totals.qualifiedLeads > 0 ? ` · ${totals.qualifiedLeads} qualificados` : ""}
+                      <p className="mt-0.5 text-xs opacity-80">
+                        {subtextParts.length > 0
+                          ? subtextParts.join(" · ")
+                          : `${periodLabel} · ${sentCount} resposta${sentCount === 1 ? "" : "s"}`}
                       </p>
-
-                      <p className="mt-1 text-xs text-gray-500">
-                        Rollout {offlineSummary?.rollout?.rolloutEnabled ? "ativo" : "controle"} · {offlineSummary?.rollout?.rolloutPercent ?? 0}% corretores · {offlineSummary?.rollout?.experimentPercent ?? 0}% leads · prompt {offlineSummary?.versions?.promptVersion || "—"}
-                      </p>
-
-                      <p className="mt-1 text-xs text-gray-500">
-                        Completude média {totals.avgDataCompleteness}%
-                        {totals.topVariant ? ` · variante ${formatTokenLabel(totals.topVariant)}` : ""}
-                        {totals.topGuardrailScenario ? ` · guardrail ${formatTokenLabel(totals.topGuardrailScenario)}` : ""}
-                      </p>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {totals.handoffLeads > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
-                            <Clock className="w-3.5 h-3.5" />
-                            Precisa retorno
-                          </span>
-                        ) : null}
-                        {totals.visitRequestedLeads > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            Visita solicitada
-                          </span>
-                        ) : null}
-                        {totals.failed > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
-                            Falhas
-                          </span>
-                        ) : null}
-                        {totals.hotLeads > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-700">
-                            Leads quentes
-                          </span>
-                        ) : null}
-                        {totals.urgentLeads > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
-                            Prioridade urgente
-                          </span>
-                        ) : null}
-                        {totals.qualifiedLeads > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                            Qualificados
-                          </span>
-                        ) : null}
-                        {totals.topVariant ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                            {formatTokenLabel(totals.topVariant)}
-                          </span>
-                        ) : null}
-                        {totals.topGuardrailScenario ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
-                            Guardrail {formatTokenLabel(totals.topGuardrailScenario)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex-shrink-0">
-                      <span className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700">
-                        Abrir
-                      </span>
                     </div>
                   </div>
 
+                  {/* Mini cards de leads */}
                   {(offlineSummary?.items || []).length > 0 ? (
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {(offlineSummary?.items || []).slice(0, 3).map((row) => {
-                        const t = row.propertyTitle || "Lead";
-                        const c = row.contactName || "Cliente";
-                        return (
-                          <div key={row.leadId} className="rounded-lg border border-gray-100 bg-white px-3 py-2">
-                            <p className="text-[11px] font-semibold text-gray-900 line-clamp-1">
-                              {c} · {t}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-gray-600">
-                              {row.handoffNeeded ? "Precisa retorno" : ""}
-                              {row.handoffNeeded && row.visitRequested ? " · " : ""}
-                              {row.visitRequested ? "Visita" : ""}
-                            </p>
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {row.leadTemperature ? (
-                                <span className="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700">
-                                  {formatLeadTemperatureLabel(row.leadTemperature)}
-                                </span>
-                              ) : null}
-                              {row.responsePriority ? (
-                                <span className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
-                                  {formatPriorityLabel(row.responsePriority)}
-                                </span>
-                              ) : null}
-                              {row.conversationMode ? (
-                                <span className="inline-flex items-center rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
-                                  {formatConversationModeLabel(row.conversationMode)}
-                                </span>
-                              ) : null}
-                              {row.experiment?.variant ? (
-                                <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                  {formatTokenLabel(row.experiment.variant)}
-                                </span>
-                              ) : null}
-                              {row.guardrails?.scenario ? (
-                                <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
-                                  {formatTokenLabel(row.guardrails.scenario)}
-                                </span>
-                              ) : null}
-                            </div>
-                            {row.commercialSummary ? (
-                              <p className="mt-1 text-[11px] text-gray-600 line-clamp-2">{row.commercialSummary}</p>
-                            ) : null}
-                            {row.operationalPlaybook?.headline ? (
-                              <p className="mt-1 text-[11px] text-gray-600 line-clamp-2">
-                                {row.operationalPlaybook.headline}
-                                {row.operationalPlaybook?.pipelineStage ? ` · ${formatPipelineStageLabel(row.operationalPlaybook.pipelineStage)}` : ""}
-                              </p>
-                            ) : null}
-                            {row.propertyContext?.propertySummary ? (
-                              <p className="mt-1 text-[11px] text-gray-500 line-clamp-2">{row.propertyContext.propertySummary}</p>
-                            ) : row.propertyContext?.regionSummary ? (
-                              <p className="mt-1 text-[11px] text-gray-500 line-clamp-2">{row.propertyContext.regionSummary}</p>
-                            ) : null}
-                          </div>
-                        );
-                      })}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {(offlineSummary?.items || []).slice(0, 3).map((row) => (
+                        <OfflineLeadCard
+                          key={row.leadId}
+                          variant="compact"
+                          data={{
+                            leadId: row.leadId,
+                            contactName: row.contactName,
+                            propertyTitle: row.propertyTitle,
+                            lastActivityAt: row.lastActivityAt,
+                            responsePriority: row.responsePriority,
+                            visitRequested: row.visitRequested,
+                            handoffNeeded: row.handoffNeeded,
+                            leadTemperature: row.leadTemperature,
+                            counts: row.counts,
+                            commercialSummary: row.commercialSummary,
+                            propertyContext: row.propertyContext,
+                            operationalPlaybook: row.operationalPlaybook,
+                          }}
+                        />
+                      ))}
                     </div>
                   ) : null}
-                </button>
+                </div>
               </StatCard>
             </div>
           );
