@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AlertCircle, AlertTriangle, Calendar, Inbox, Send, Settings } from "lucide-react";
 import Toast from "@/components/Toast";
-import Input from "@/components/ui/Input";
-import Accordion from "@/components/ui/Accordion";
 import StatCard from "@/components/dashboard/StatCard";
+import AssistantAvailability from "@/components/broker/AssistantAvailability";
 import OfflineAssistantTile from "@/components/broker/OfflineAssistantTile";
 import OfflineTechDiagnostics from "@/components/broker/OfflineTechDiagnostics";
 import OfflineLeadFilters from "@/components/broker/OfflineLeadFilters";
@@ -150,16 +149,6 @@ const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
   fri: { enabled: true, start: "18:00", end: "08:00" },
   sat: { enabled: true, start: "18:00", end: "08:00" },
   sun: { enabled: true, start: "18:00", end: "08:00" },
-};
-
-const dayLabels: Record<DayKey, string> = {
-  mon: "Seg",
-  tue: "Ter",
-  wed: "Qua",
-  thu: "Qui",
-  fri: "Sex",
-  sat: "Sáb",
-  sun: "Dom",
 };
 
 function Skeleton({ className = "" }: { className?: string }) {
@@ -336,109 +325,6 @@ export default function BrokerAssistantOfflinePage() {
     }
   };
 
-  const scheduleItems = useMemo(() => {
-    return [
-      {
-        key: "schedule",
-        title: "Horários e limites",
-        content: (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Input
-                label="Timezone"
-                value={settings.timezone}
-                onChange={(e) => setSettings((s) => ({ ...s, timezone: e.target.value }))}
-                placeholder="America/Sao_Paulo"
-              />
-              <Input
-                label="Cooldown (min)"
-                type="number"
-                min={1}
-                max={60}
-                value={String(settings.cooldownMinutes)}
-                onChange={(e) => setSettings((s) => ({ ...s, cooldownMinutes: Number(e.target.value || 0) }))}
-              />
-              <Input
-                label="Máx. respostas por lead (24h)"
-                type="number"
-                min={1}
-                max={30}
-                value={String(settings.maxRepliesPerLeadPer24h)}
-                onChange={(e) => setSettings((s) => ({ ...s, maxRepliesPerLeadPer24h: Number(e.target.value || 0) }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center text-xs font-semibold text-gray-500">
-                <div />
-                <div />
-                <div>Início</div>
-                <div>Fim</div>
-                <div />
-              </div>
-              {(Object.keys(settings.weekSchedule) as DayKey[]).map((day) => {
-                const row = settings.weekSchedule[day];
-                return (
-                  <div key={day} className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
-                    <div className="text-sm font-medium text-gray-700">{dayLabels[day]}</div>
-                    <label className="flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={row.enabled}
-                        onChange={(e) =>
-                          setSettings((s) => ({
-                            ...s,
-                            weekSchedule: {
-                              ...s.weekSchedule,
-                              [day]: { ...s.weekSchedule[day], enabled: e.target.checked },
-                            },
-                          }))
-                        }
-                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                      />
-                      Ativo
-                    </label>
-                    <input
-                      type="time"
-                      value={row.start}
-                      disabled={!row.enabled}
-                      onChange={(e) =>
-                        setSettings((s) => ({
-                          ...s,
-                          weekSchedule: {
-                            ...s.weekSchedule,
-                            [day]: { ...s.weekSchedule[day], start: e.target.value },
-                          },
-                        }))
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50"
-                    />
-                    <input
-                      type="time"
-                      value={row.end}
-                      disabled={!row.enabled}
-                      onChange={(e) =>
-                        setSettings((s) => ({
-                          ...s,
-                          weekSchedule: {
-                            ...s.weekSchedule,
-                            [day]: { ...s.weekSchedule[day], end: e.target.value },
-                          },
-                        }))
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50"
-                    />
-                    <div className="text-xs text-gray-500">{row.enabled ? "" : "Fora do horário"}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ),
-      },
-    ];
-  }, [settings]);
-
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -464,7 +350,7 @@ export default function BrokerAssistantOfflinePage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-gray-900">Assistente offline</h1>
-            <p className="mt-1 text-sm text-gray-600">Horários e logs de auto-resposta.</p>
+            <p className="mt-1 text-sm text-gray-600">Defina quando o assistente responde e acompanhe a atividade.</p>
           </div>
 
           <button
@@ -491,7 +377,10 @@ export default function BrokerAssistantOfflinePage() {
             </div>
           </div>
 
-          <Accordion items={scheduleItems} defaultOpen={[]} />
+          <AssistantAvailability
+            value={settings.weekSchedule}
+            onChange={(ws) => setSettings((s) => ({ ...s, weekSchedule: ws }))}
+          />
         </div>
 
         <StatCard

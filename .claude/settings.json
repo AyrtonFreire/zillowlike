@@ -12,7 +12,8 @@
       "PowerShell(npx prisma generate 2>&1 | Select-Object -Last 10; Write-Host \"EXIT: $LASTEXITCODE\")",
       "Bash(npx eslint *)",
       "Bash(node -e \"const p=require\\('./package.json'\\); const all={...p.dependencies,...p.devDependencies}; console.log\\(Object.keys\\(all\\).filter\\(k => k.includes\\('virtual'\\) || k.includes\\('window'\\) || k.includes\\('intersection'\\)\\).join\\('\\\\n'\\)||'\\(none\\)'\\)\")",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(xargs grep -l \"lead-auto-reply\\\\|worker\")"
     ]
   }
 }
