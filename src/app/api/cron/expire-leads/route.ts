@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
+import { archiveStaleLostLeads } from "@/lib/crm/auto-archive";
 
 function authorizeCron(req: NextRequest): { ok: true } | { ok: false; response: NextResponse } {
   const authHeader = req.headers.get("authorization");
@@ -20,19 +21,22 @@ function authorizeCron(req: NextRequest): { ok: true } | { ok: false; response: 
   return { ok: true };
 }
 
+async function runCronTasks() {
+  const released = await LeadDistributionService.releaseExpiredReservations();
+  const archived = await archiveStaleLostLeads();
+  return { released, archived };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const auth = authorizeCron(req);
     if (!auth.ok) return auth.response;
 
-    const released = await LeadDistributionService.releaseExpiredReservations();
+    const result = await runCronTasks();
 
-    return NextResponse.json({
-      success: true,
-      released,
-    });
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
-    console.error("Error releasing expired reservations:", error);
+    console.error("Error in expire-leads cron:", error);
     return NextResponse.json({ error: "Erro ao expirar reservas." }, { status: 500 });
   }
 }
@@ -50,14 +54,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const released = await LeadDistributionService.releaseExpiredReservations();
+    const result = await runCronTasks();
 
-    return NextResponse.json({
-      success: true,
-      released,
-    });
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
-    console.error("Error releasing expired reservations:", error);
+    console.error("Error in expire-leads cron:", error);
     return NextResponse.json({ error: "Erro ao expirar reservas." }, { status: 500 });
   }
 }

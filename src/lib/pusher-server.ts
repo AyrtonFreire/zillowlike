@@ -26,6 +26,8 @@ export const PUSHER_EVENTS = {
   ASSISTANT_ITEMS_RECALCULATED: "assistant:items_recalculated",
   // Agency CRM events
   AGENCY_LEADS_UPDATED: "agency:leads_updated",
+  // CRM auto-advance suggestion
+  CRM_AUTO_ADVANCE_SUGGESTED: "crm:auto-advance-suggested",
   // Chat events
   NEW_CHAT_MESSAGE: "new-chat-message",
   LEAD_CHAT_STATE_CHANGED: "lead-chat-state-changed",

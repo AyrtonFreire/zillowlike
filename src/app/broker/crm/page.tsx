@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import {
@@ -21,10 +20,9 @@ import {
   Bath,
   Ruler,
   Car,
-  Flame,
-  CalendarClock,
-  TrendingUp,
-  AlertTriangle,
+  Columns3,
+  Rows3,
+  SlidersHorizontal,
 } from "lucide-react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +31,10 @@ import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import DraggableLeadCard from "@/components/crm/DraggableLeadCard";
 import DroppableStageColumn from "@/components/crm/DroppableStageColumn";
 import PipelineTransitionModal, { type PipelineTransitionPayload } from "@/components/crm/PipelineTransitionModal";
+import CrmClosedTray from "@/components/crm/CrmClosedTray";
+import CrmListView from "@/components/crm/CrmListView";
+import CrmEmptyState from "@/components/crm/CrmEmptyState";
+import CrmFilterDrawer from "@/components/crm/CrmFilterDrawer";
 import LeadSidePanel from "@/components/leads/LeadSidePanel";
 import { ptBR } from "@/lib/i18n/property";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -176,14 +178,6 @@ const VIEW_PRESETS: Array<{ key: FunnelViewPreset; label: string }> = [
 ];
 
 const PRIMARY_STAGES: PipelineLead["pipelineStage"][] = ["NEW", "CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS"];
-const OUTCOME_STAGES: PipelineLead["pipelineStage"][] = ["WON", "LOST"];
-
-const KPI_TONE_CLASSES = {
-  rose: "border-rose-200/80 bg-white text-rose-700",
-  amber: "border-amber-200/80 bg-white text-amber-700",
-  violet: "border-violet-200/80 bg-white text-violet-700",
-  teal: "border-teal-200/80 bg-white text-teal-700",
-} as const;
 
 export default function BrokerCrmPage() {
   const { data: session } = useSession();
@@ -206,6 +200,8 @@ export default function BrokerCrmPage() {
 
   const [query, setQuery] = useState("");
   const [viewPreset, setViewPreset] = useState<FunnelViewPreset>("all");
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [transitionModal, setTransitionModal] = useState<null | {
@@ -250,6 +246,7 @@ export default function BrokerCrmPage() {
   const [mobileActiveStage, setMobileActiveStage] = useState<PipelineLead["pipelineStage"]>("NEW");
 
   const pipelineEtagRef = useRef<string | null>(null);
+  const requestStageChangeRef = useRef<((leadId: string, stage: PipelineLead["pipelineStage"]) => void) | null>(null);
 
   useEffect(() => {
     try {
@@ -263,6 +260,27 @@ export default function BrokerCrmPage() {
       // ignore storage errors
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const stored = window.localStorage.getItem("zlw_crm_view_mode");
+      if (stored === "kanban" || stored === "list") {
+        setViewMode(stored);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      window.localStorage.setItem("zlw_crm_view_mode", viewMode);
+    } catch {
+      // ignore storage errors
+    }
+  }, [viewMode]);
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -314,10 +332,27 @@ export default function BrokerCrmPage() {
         fetchLeads();
       };
 
+      const autoAdvanceHandler = (payload: any) => {
+        if (cancelled || !payload?.leadId || !payload?.suggestedStage) return;
+        const stageLabel = STAGE_CONFIG[payload.suggestedStage as PipelineLead["pipelineStage"]]?.label || payload.suggestedStage;
+        const contactLabel = payload.contactName ? `${payload.contactName}` : "Este lead";
+        toast.showToast({
+          type: "info",
+          title: `Avançar para ${stageLabel}?`,
+          message: `${contactLabel} — ${payload.reason || "Sinal detectado na conversa."}`,
+          actionLabel: "Avançar",
+          duration: 12000,
+          onAction: () => {
+            requestStageChangeRef.current?.(String(payload.leadId), payload.suggestedStage);
+          },
+        });
+      };
+
       channel.bind("assistant:item_updated", handler as any);
       channel.bind("assistant:items_recalculated", handler as any);
       channel.bind("new-chat-message", handler as any);
       channel.bind("lead-chat-read-receipt", handler as any);
+      channel.bind("crm:auto-advance-suggested", autoAdvanceHandler as any);
 
       return () => {
         cancelled = true;
@@ -326,6 +361,7 @@ export default function BrokerCrmPage() {
           channel.unbind("assistant:items_recalculated", handler as any);
           channel.unbind("new-chat-message", handler as any);
           channel.unbind("lead-chat-read-receipt", handler as any);
+          channel.unbind("crm:auto-advance-suggested", autoAdvanceHandler as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore
@@ -334,7 +370,7 @@ export default function BrokerCrmPage() {
     } catch {
       return;
     }
-  }, [realtorId, fetchLeads]);
+  }, [realtorId, fetchLeads, toast]);
 
   const handleDismissCrmHelp = () => {
     try {
@@ -576,6 +612,59 @@ export default function BrokerCrmPage() {
     return searchScopedLeads.filter((lead) => leadPassesViewPreset(lead));
   }, [leadPassesViewPreset, searchScopedLeads]);
 
+  const presetFacetCounts = useMemo(() => {
+    const now = new Date(nowTimestamp);
+    const counts: Record<FunnelViewPreset, number> = {
+      all: 0, unread: 0, overdue: 0, stale: 0, visits: 0, proposals: 0, documents: 0, hot: 0,
+    };
+    for (const lead of searchScopedLeads) {
+      counts.all++;
+      if (lead.hasUnreadMessages) counts.unread++;
+      const state = getLeadNextActionState(lead, now);
+      if (state.overdue || state.today) counts.overdue++;
+      if (isLeadStale(lead, 48, now)) counts.stale++;
+      if (lead.pipelineStage === "VISIT" || !!lead.visitDate) counts.visits++;
+      if (lead.pipelineStage === "PROPOSAL") counts.proposals++;
+      if (
+        lead.pipelineStage === "DOCUMENTS" &&
+        (getLeadStageAgeDays(lead, now) >= (PIPELINE_STAGE_META.DOCUMENTS.agingWarningDays || 7) ||
+          getLeadNextActionState(lead, now).overdue)
+      ) {
+        counts.documents++;
+      }
+      if (getLeadTemperature(lead, now) === "hot") counts.hot++;
+    }
+    return counts;
+  }, [searchScopedLeads, nowTimestamp]);
+
+  const filterGroups = useMemo(() => {
+    return [
+      {
+        title: "Estado",
+        options: [
+          { key: "all" as FunnelViewPreset, label: "Todos", count: presetFacetCounts.all },
+          { key: "unread" as FunnelViewPreset, label: "Não lidas", count: presetFacetCounts.unread },
+          { key: "overdue" as FunnelViewPreset, label: "Próxima ação", count: presetFacetCounts.overdue },
+          { key: "stale" as FunnelViewPreset, label: "48h sem contato", count: presetFacetCounts.stale },
+        ],
+      },
+      {
+        title: "Eventos",
+        options: [
+          { key: "visits" as FunnelViewPreset, label: "Visitas agendadas", count: presetFacetCounts.visits },
+          { key: "proposals" as FunnelViewPreset, label: "Propostas em aberto", count: presetFacetCounts.proposals },
+          { key: "documents" as FunnelViewPreset, label: "Docs travados", count: presetFacetCounts.documents },
+        ],
+      },
+      {
+        title: "Temperatura",
+        options: [
+          { key: "hot" as FunnelViewPreset, label: "Quentes", count: presetFacetCounts.hot },
+        ],
+      },
+    ];
+  }, [presetFacetCounts]);
+
   const toggleSelectLead = useCallback((leadId: string) => {
     setSelectedLeadIds((prev) => {
       const id = String(leadId);
@@ -764,6 +853,10 @@ export default function BrokerCrmPage() {
     void moveLeadToStage(leadId, newStage, { announceUndo: true });
   }, [leads, moveLeadToStage]);
 
+  useEffect(() => {
+    requestStageChangeRef.current = requestStageChange;
+  }, [requestStageChange]);
+
   const bulkMoveSelected = useCallback(
     async (newStage: PipelineLead["pipelineStage"]) => {
       const ids = [...selectedLeadIds];
@@ -912,41 +1005,6 @@ export default function BrokerCrmPage() {
     };
   }, [filteredLeads, leadsByStage, nowTimestamp, stageInsights]);
 
-  const kpiTiles = useMemo(() => [
-    {
-      key: "hot",
-      label: "Quentes",
-      value: dashboardMetrics.hot,
-      helper: dashboardMetrics.stale > 0 ? `${dashboardMetrics.stale} sem contato` : "Exigem reação rápida",
-      icon: Flame,
-      tone: "rose" as const,
-    },
-    {
-      key: "overdue",
-      label: "Ações vencidas",
-      value: dashboardMetrics.overdue,
-      helper: "Próximas ações atrasadas",
-      icon: AlertTriangle,
-      tone: "amber" as const,
-    },
-    {
-      key: "visits",
-      label: "Visitas 7d",
-      value: dashboardMetrics.visits,
-      helper: "Agenda comercial da semana",
-      icon: CalendarClock,
-      tone: "violet" as const,
-    },
-    {
-      key: "conversion",
-      label: "Conversão",
-      value: `${progressPercent}%`,
-      helper: dashboardMetrics.bottleneck ? `Gargalo: ${STAGE_CONFIG[dashboardMetrics.bottleneck].label}` : "Sem gargalo crítico",
-      icon: TrendingUp,
-      tone: "teal" as const,
-    },
-  ], [dashboardMetrics, progressPercent]);
-
   const renderStageColumn = (stage: PipelineLead["pipelineStage"], compact?: boolean) => {
     const config = STAGE_CONFIG[stage];
     const stageLeads = leadsByStage[stage];
@@ -971,26 +1029,11 @@ export default function BrokerCrmPage() {
         key={stage}
         stageId={stage}
         label={config.label}
-        description={config.description}
         count={stageLeads.length}
         collapsed={isCollapsed}
+        healthTone={insight.health.tone}
         headerRight={
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                insight.health.tone === "critical"
-                  ? "bg-red-50 text-red-700"
-                  : insight.health.tone === "warning"
-                    ? "bg-amber-50 text-amber-700"
-                    : insight.health.tone === "healthy"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-neutral-100 text-neutral-600"
-              }`}
-            >
-              {insight.health.label}
-            </span>
-            <span className="hidden xl:inline text-[10px] text-neutral-500">{helperLabel}</span>
-          </div>
+          <span className="hidden xl:inline text-[10px] text-slate-500">{helperLabel}</span>
         }
         onToggleCollapsed={() =>
           setCollapsedByStage((prev) => ({
@@ -1001,13 +1044,16 @@ export default function BrokerCrmPage() {
         className={compact ? "min-w-0" : "min-w-[292px] xl:min-w-[316px]"}
       >
         {stageLeads.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[22px] border border-dashed border-neutral-200 bg-neutral-50/70 px-5 py-10 text-center">
-            <Icon className={`mb-3 h-8 w-8 ${config.color} opacity-35`} />
-            <p className="text-sm font-semibold text-neutral-700">Nenhum lead nesta etapa</p>
-            <p className="mt-1 max-w-[220px] text-xs leading-6 text-neutral-500">
-              Revise filtros ou mova oportunidades para cá conforme a negociação avançar.
-            </p>
-          </div>
+          <CrmEmptyState
+            stage={stage}
+            icon={Icon}
+            iconColorClass={config.color}
+            hasActiveFilters={query.trim().length > 0 || viewPreset !== "all"}
+            onClearFilters={() => {
+              setQuery("");
+              setViewPreset("all");
+            }}
+          />
         ) : (
           <>
             {visibleLeads.map((lead) => (
@@ -1076,45 +1122,94 @@ export default function BrokerCrmPage() {
     <div className="bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.10),_transparent_32%),linear-gradient(180deg,#f8fafc_0%,#f8fafc_45%,#f3f4f6_100%)] min-h-screen flex flex-col">
       <div className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col px-4 pb-6 pt-4 md:px-6 lg:px-8">
         <div className="hidden md:block">
-          <div className="rounded-[30px] border border-white/70 bg-white/90 p-5 shadow-[0_20px_70px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_10px_40px_-32px_rgba(15,23,42,0.4)]">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div className="min-w-0 flex-1">
-                <div className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700">
-                  Pipeline comercial
-                </div>
-                <h1 className="mt-3 text-[32px] font-semibold tracking-tight text-slate-950">Funil de vendas</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-                  Acompanhe o pipeline com menos ruído visual, foco nas prioridades e uma leitura mais clara por etapa.
+                <h1 className="text-[26px] font-semibold tracking-tight text-slate-950">Funil de vendas</h1>
+                <p className="mt-1 text-sm text-slate-600">
+                  Acompanhe seus leads do primeiro contato ao fechamento.
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Leads filtrados</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-950">{totalLeads}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Fechados</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-950">{wonLeads}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Gargalo</div>
-                  <div className="mt-2 truncate text-sm font-semibold text-slate-950">
-                    {dashboardMetrics.bottleneck ? STAGE_CONFIG[dashboardMetrics.bottleneck].label : "Sem alerta crítico"}
+              {/* 3 KPIs sticky */}
+              <div className="grid grid-cols-3 gap-3 xl:min-w-[460px]">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Ativos</div>
+                  <div className="mt-1 flex items-baseline gap-1">
+                    <span className="text-2xl font-semibold tabular-nums text-slate-950">{totalLeads - wonLeads - leadsByStage["LOST"].length}</span>
+                    <span className="text-[11px] text-slate-500">de {totalLeads}</span>
                   </div>
+                </div>
+                <div className={`rounded-2xl border px-4 py-3 ${dashboardMetrics.overdue > 0 ? "border-rose-200 bg-rose-50/60" : "border-slate-200 bg-slate-50/70"}`}>
+                  <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${dashboardMetrics.overdue > 0 ? "text-rose-700" : "text-slate-500"}`}>Ações vencidas</div>
+                  <div className={`mt-1 text-2xl font-semibold tabular-nums ${dashboardMetrics.overdue > 0 ? "text-rose-900" : "text-slate-950"}`}>{dashboardMetrics.overdue}</div>
+                </div>
+                <div className="rounded-2xl border border-teal-200 bg-teal-50/60 px-4 py-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-700">Conversão</div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums text-teal-900">{progressPercent}%</div>
+                  {dashboardMetrics.bottleneck ? (
+                    <div className="mt-0.5 truncate text-[10px] text-teal-700/80">Gargalo: {STAGE_CONFIG[dashboardMetrics.bottleneck].label}</div>
+                  ) : null}
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar por cliente, imóvel, bairro, cidade ou mensagem…"
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
                 />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setFilterDrawerOpen(true)}
+                className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
+                  viewPreset !== "all"
+                    ? "border-teal-500 bg-teal-50 text-teal-800"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Filtros
+                {viewPreset !== "all" ? (
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-teal-600 px-1.5 text-[10px] font-bold text-white">
+                    1
+                  </span>
+                ) : null}
+              </button>
+
+              <div className="inline-flex h-11 items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("kanban")}
+                  title="Visão Kanban"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition ${
+                    viewMode === "kanban"
+                      ? "bg-slate-900 text-white shadow-sm"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <Columns3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Kanban</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  title="Visão Lista"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition ${
+                    viewMode === "list"
+                      ? "bg-slate-900 text-white shadow-sm"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <Rows3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Lista</span>
+                </button>
               </div>
 
               <button
@@ -1123,7 +1218,7 @@ export default function BrokerCrmPage() {
                   setSelectionMode((v) => !v);
                   setSelectedLeadIds([]);
                 }}
-                className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition ${
+                className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
                   selectionMode
                     ? "border-violet-500 bg-violet-600 text-white shadow-sm"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -1149,26 +1244,6 @@ export default function BrokerCrmPage() {
                   {preset.label}
                 </button>
               ))}
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {kpiTiles.map((tile) => {
-                const Icon = tile.icon;
-                return (
-                  <div key={tile.key} className={`rounded-[24px] border px-4 py-4 ${KPI_TONE_CLASSES[tile.tone]}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em]">{tile.label}</div>
-                        <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{tile.value}</div>
-                      </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950/5">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                    </div>
-                    <div className="mt-3 text-xs leading-6 text-slate-600">{tile.helper}</div>
-                  </div>
-                );
-              })}
             </div>
 
             {selectionMode && (
@@ -1205,15 +1280,27 @@ export default function BrokerCrmPage() {
 
         {/* Stats bar mobile */}
         <div className="md:hidden space-y-3">
-          <div className="rounded-[28px] border border-white/70 bg-white/95 p-4 shadow-[0_18px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.4)]">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700">Pipeline comercial</div>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Funil de vendas</h1>
+              <div className="min-w-0">
+                <h1 className="text-xl font-semibold tracking-tight text-slate-950">Funil de vendas</h1>
+                <p className="mt-0.5 text-[11px] text-slate-600">Acompanhe seus leads do primeiro contato ao fechamento.</p>
               </div>
-              <div className="rounded-2xl border border-teal-100 bg-teal-50 px-3 py-2 text-right">
+              <div className="rounded-xl border border-teal-200 bg-teal-50/70 px-3 py-2 text-right">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-700">Conversão</div>
-                <div className="mt-1 text-lg font-semibold text-slate-950">{progressPercent}%</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums text-teal-900">{progressPercent}%</div>
+              </div>
+            </div>
+
+            {/* 2 KPIs mobile compactos */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Ativos</div>
+                <div className="mt-0.5 text-base font-semibold tabular-nums text-slate-950">{totalLeads - wonLeads - leadsByStage["LOST"].length}</div>
+              </div>
+              <div className={`rounded-xl border px-3 py-2 ${dashboardMetrics.overdue > 0 ? "border-rose-200 bg-rose-50/60" : "border-slate-200 bg-slate-50/70"}`}>
+                <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${dashboardMetrics.overdue > 0 ? "text-rose-700" : "text-slate-500"}`}>Ações vencidas</div>
+                <div className={`mt-0.5 text-base font-semibold tabular-nums ${dashboardMetrics.overdue > 0 ? "text-rose-900" : "text-slate-950"}`}>{dashboardMetrics.overdue}</div>
               </div>
             </div>
 
@@ -1259,14 +1346,6 @@ export default function BrokerCrmPage() {
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {kpiTiles.slice(0, 4).map((tile) => (
-                <div key={tile.key} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{tile.label}</div>
-                  <div className="mt-1 text-lg font-semibold text-slate-950">{tile.value}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -1353,36 +1432,81 @@ export default function BrokerCrmPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          {/* Desktop: Grid de colunas */}
+          {/* Desktop: Grid de colunas ou Lista */}
           <div className="hidden md:flex flex-1 min-h-0 w-full pt-6">
             <div className="flex w-full flex-col gap-6">
-              <section className="rounded-[30px] border border-white/70 bg-white/70 p-4 shadow-[0_18px_50px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
-                <div className="flex items-center justify-between gap-4 px-1 pb-4">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-950">Pipeline ativo</div>
-                    <div className="mt-1 text-xs text-slate-500">Etapas operacionais com foco na próxima melhor ação.</div>
+              {viewMode === "kanban" ? (
+                <section className="rounded-[30px] border border-white/70 bg-white/70 p-4 shadow-[0_18px_50px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
+                  <div className="flex items-center justify-between gap-4 px-1 pb-4">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">Pipeline ativo</div>
+                      <div className="mt-1 text-xs text-slate-500">Etapas operacionais com foco na próxima melhor ação.</div>
+                    </div>
+                    <div className="text-xs font-semibold text-slate-500">{PRIMARY_STAGES.reduce((sum, stage) => sum + leadsByStage[stage].length, 0)} leads em aberto</div>
                   </div>
-                  <div className="text-xs font-semibold text-slate-500">{PRIMARY_STAGES.reduce((sum, stage) => sum + leadsByStage[stage].length, 0)} leads em aberto</div>
-                </div>
-                <div className="overflow-x-auto pb-2">
-                  <div className="flex min-w-max gap-4">
-                    {PRIMARY_STAGES.map((stage) => renderStageColumn(stage))}
+                  <div className="overflow-x-auto pb-2">
+                    <div className="flex min-w-max gap-4">
+                      {PRIMARY_STAGES.map((stage) => renderStageColumn(stage))}
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
+              ) : (
+                <section className="rounded-[30px] border border-white/70 bg-white/70 p-4 shadow-[0_18px_50px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
+                  <div className="flex items-center justify-between gap-4 px-1 pb-4">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">Pipeline ativo</div>
+                      <div className="mt-1 text-xs text-slate-500">Visualização em lista — ordene clicando nos cabeçalhos.</div>
+                    </div>
+                    <div className="text-xs font-semibold text-slate-500">{PRIMARY_STAGES.reduce((sum, stage) => sum + leadsByStage[stage].length, 0)} leads em aberto</div>
+                  </div>
+                  <CrmListView
+                    leads={filteredLeads
+                      .filter((l) => l.pipelineStage !== "WON" && l.pipelineStage !== "LOST")
+                      .map((l) => ({
+                        id: l.id,
+                        pipelineStage: l.pipelineStage,
+                        nextActionDate: l.nextActionDate || null,
+                        nextActionNote: l.nextActionNote || null,
+                        stageEnteredAt: l.stageEnteredAt || null,
+                        visitDate: l.visitDate || null,
+                        lastContactAt: l.lastContactAt || null,
+                        lastMessageAt: l.lastMessageAt || null,
+                        lastMessagePreview: l.lastMessagePreview || null,
+                        hasUnreadMessages: l.hasUnreadMessages,
+                        contact: l.contact || null,
+                        property: {
+                          title: l.property.title,
+                          price: l.property.price,
+                          city: l.property.city,
+                          state: l.property.state,
+                        },
+                      }))}
+                    onOpenLead={(id) => openLeadPanel(id)}
+                  />
+                </section>
+              )}
 
-              <section className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
-                <div className="flex items-center justify-between gap-4 px-1 pb-4">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-950">Resultados</div>
-                    <div className="mt-1 text-xs text-slate-500">Etapas finais agrupadas para não competir com o pipeline principal.</div>
-                  </div>
-                  <div className="text-xs font-semibold text-slate-500">{OUTCOME_STAGES.reduce((sum, stage) => sum + leadsByStage[stage].length, 0)} registros</div>
-                </div>
-                <div className="grid gap-4 xl:grid-cols-2">
-                  {OUTCOME_STAGES.map((stage) => renderStageColumn(stage, true))}
-                </div>
-              </section>
+              <CrmClosedTray
+                wonLeads={leadsByStage["WON"].map((l) => ({
+                  id: l.id,
+                  pipelineStage: l.pipelineStage,
+                  contact: l.contact,
+                  property: l.property,
+                  outcomeReason: l.outcomeReason || null,
+                  completedAt: l.completedAt || null,
+                  updatedAt: (l as any).updatedAt || null,
+                }))}
+                lostLeads={leadsByStage["LOST"].map((l) => ({
+                  id: l.id,
+                  pipelineStage: l.pipelineStage,
+                  contact: l.contact,
+                  property: l.property,
+                  outcomeReason: l.outcomeReason || null,
+                  completedAt: l.completedAt || null,
+                  updatedAt: (l as any).updatedAt || null,
+                }))}
+                windowDays={30}
+              />
             </div>
           </div>
 
@@ -1423,28 +1547,16 @@ export default function BrokerCrmPage() {
 
                       {/* Lista de leads */}
                       {stageLeads.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <Icon className={`w-12 h-12 ${config.color} opacity-20 mb-3`} />
-                          <p className="text-sm font-semibold text-gray-600">Nenhum lead nesta etapa</p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Ajuste o filtro rápido, revise a lista ou mova oportunidades de outras etapas para cá.
-                          </p>
-                          <div className="mt-4 flex flex-wrap justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setViewPreset("all")}
-                              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700"
-                            >
-                              Ver todas
-                            </button>
-                            <Link
-                              href="/broker/leads"
-                              className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800"
-                            >
-                              Abrir lista
-                            </Link>
-                          </div>
-                        </div>
+                        <CrmEmptyState
+                          stage={mobileActiveStage}
+                          icon={Icon}
+                          iconColorClass={config.color}
+                          hasActiveFilters={query.trim().length > 0 || viewPreset !== "all"}
+                          onClearFilters={() => {
+                            setQuery("");
+                            setViewPreset("all");
+                          }}
+                        />
                       ) : (
                         <div className="space-y-2">
                           {stageLeads.slice(0, visibleCountByStage[mobileActiveStage] || 20).map((lead) => (
@@ -1595,6 +1707,17 @@ export default function BrokerCrmPage() {
           leadId={selectedLeadId}
           onClose={() => setIsPanelOpen(false)}
           onLeadUpdated={fetchLeads}
+        />
+
+        <CrmFilterDrawer
+          open={filterDrawerOpen}
+          onClose={() => setFilterDrawerOpen(false)}
+          active={viewPreset}
+          onChange={(k) => {
+            setViewPreset(k);
+            setFilterDrawerOpen(false);
+          }}
+          groups={filterGroups}
         />
       </div>
     </div>

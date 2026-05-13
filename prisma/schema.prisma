@@ -765,6 +765,11 @@ model Lead {
   conversationArchivedAt DateTime?
   conversationClosedAt DateTime?
 
+  // CRM: marca leads em LOST antigos (>90 dias) para sumir do funil principal.
+  // Cron mantém atualizado; UI mostra apenas se filtro "Incluir arquivados" estiver ativo.
+  archived Boolean @default(false)
+  archivedAt DateTime?
+
   candidatures LeadCandidature[]
   rating       RealtorRating?
   ownerRating  OwnerRating?
@@ -805,6 +810,7 @@ model Lead {
   @@index([teamId])
   @@index([conversationState])
   @@index([conversationState, conversationLastActivityAt])
+  @@index([archived, pipelineStage, updatedAt]) // Para cron auto-archive de LOST antigos
   @@map("leads")
 }
 

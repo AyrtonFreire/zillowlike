@@ -5,7 +5,12 @@
       "PowerShell(npx tsc --noEmit 2>&1; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/app/broker/dashboard/page.tsx src/app/broker/assistant/offline/page.tsx src/components/broker/OfflineLeadCard.tsx src/components/broker/OfflineAssistantTile.tsx src/components/broker/OfflineTechDiagnostics.tsx src/components/broker/OfflineLeadFilters.tsx src/lib/offline-assistant-presentation.ts 2>&1; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
       "PowerShell(Start-Process -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -NoNewWindow -RedirectStandardOutput \"dev-server.log\" -RedirectStandardError \"dev-server.err.log\" -PassThru)",
       "PowerShell(npx tsc --noEmit 2>&1; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/components/broker/OfflineLeadCard.tsx src/app/broker/dashboard/page.tsx src/app/broker/assistant/offline/page.tsx 2>&1; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
-      "PowerShell(npx tsc --noEmit 2>&1; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/lib/auto-reply-resolution.ts src/app/api/broker/auto-reply-lead-summaries/route.ts src/app/api/broker/auto-reply-dashboard-summary/route.ts 2>&1; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")"
+      "PowerShell(npx tsc --noEmit 2>&1; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/lib/auto-reply-resolution.ts src/app/api/broker/auto-reply-lead-summaries/route.ts src/app/api/broker/auto-reply-dashboard-summary/route.ts 2>&1; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 30; Write-Host \"TSC_EXIT: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 30; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/app/broker/crm/page.tsx 2>&1 | Select-Object -First 60; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 10; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/app/broker/crm/page.tsx src/components/crm/DraggableLeadCard.tsx src/components/crm/DroppableStageColumn.tsx 2>&1 | Select-Object -First 30; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
+      "PowerShell(npx prisma generate 2>&1 | Select-Object -Last 10; Write-Host \"EXIT: $LASTEXITCODE\")",
+      "Bash(npx eslint *)"
     ]
   }
 }

@@ -52,6 +52,35 @@ export function isLeadStale(lead: LeadOperationalLike, hours = 48, now = new Dat
   return now.getTime() - lastContactAt.getTime() >= hours * 60 * 60 * 1000;
 }
 
+export type StaleSeverity = "fresh" | "attention" | "risk" | "critical";
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Escalação de "sem contato" baseada em horas desde a última interação.
+ *  - <48h: fresh
+ *  - 48h..7d: attention (amber)
+ *  - 7d..14d: risk (orange)
+ *  - >14d: critical (red) — candidato a LOST
+ */
+export function getStaleSeverity(lead: LeadOperationalLike, now = new Date()): StaleSeverity {
+  const lastContactAt = asDate(lead.lastContactAt) || asDate(lead.lastMessageAt);
+  if (!lastContactAt) return "attention";
+  const deltaMs = now.getTime() - lastContactAt.getTime();
+  if (deltaMs >= 14 * DAY_MS) return "critical";
+  if (deltaMs >= 7 * DAY_MS) return "risk";
+  if (deltaMs >= 48 * HOUR_MS) return "attention";
+  return "fresh";
+}
+
+export function getStaleSeverityLabel(severity: StaleSeverity): string {
+  if (severity === "critical") return "+14d sem contato";
+  if (severity === "risk") return "+7d sem contato";
+  if (severity === "attention") return "48h sem contato";
+  return "Em dia";
+}
+
 export function getLeadTemperature(lead: LeadOperationalLike, now = new Date()) {
   const nextAction = getLeadNextActionState(lead, now);
   const visitAt = asDate(lead.visitDate);

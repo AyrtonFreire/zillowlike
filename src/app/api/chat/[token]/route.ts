@@ -318,6 +318,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     }
 
     try {
+      const { detectAutoAdvanceFromReply } = await import("@/lib/crm/auto-advance-suggestions");
+      void detectAutoAdvanceFromReply({
+        leadId: String(lead.id),
+        message: parsed.data.content || "",
+        source: fromClient ? "client" : "professional",
+      });
+    } catch {
+      // never block the chat path on suggestion detection
+    }
+
+    try {
       const pusher = getPusherServer();
       const recipients = new Set<string>();
       if ((lead as any)?.realtorId) recipients.add(String((lead as any).realtorId));

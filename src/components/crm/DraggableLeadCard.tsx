@@ -3,9 +3,19 @@
 import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import Image from "next/image";
-import Link from "next/link";
-import { MapPin, ChevronRight, Loader2, MessageCircle, Bell, BellOff, AlertTriangle, CalendarClock, Clock3, Flame } from "lucide-react";
-import { getLeadNextActionState, getLeadStageAgeDays, getLeadTemperature, isLeadStale } from "@/lib/lead-operational-signals";
+import {
+  AlertTriangle,
+  Bell,
+  BellOff,
+  CalendarClock,
+  Clock3,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  MoreHorizontal,
+  Phone,
+} from "lucide-react";
+import { getLeadNextActionState, getLeadStageAgeDays, getLeadTemperature, getStaleSeverity, getStaleSeverityLabel } from "@/lib/lead-operational-signals";
 
 interface DraggableLeadCardProps {
   lead: {
@@ -32,6 +42,7 @@ interface DraggableLeadCardProps {
     };
     contact?: {
       name: string;
+      phone?: string | null;
     } | null;
   };
   isUpdating?: boolean;
@@ -48,6 +59,73 @@ interface DraggableLeadCardProps {
   onOpenLead?: () => void;
   dndDisabledOverride?: boolean;
   className?: string;
+}
+
+const TEMPERATURE_AVATAR: Record<"hot" | "warm" | "cool", { bg: string; ring: string; label: string }> = {
+  hot: { bg: "bg-gradient-to-br from-rose-400 to-rose-600", ring: "ring-rose-200", label: "Quente" },
+  warm: { bg: "bg-gradient-to-br from-amber-400 to-amber-500", ring: "ring-amber-200", label: "Em jogo" },
+  cool: { bg: "bg-gradient-to-br from-slate-400 to-slate-500", ring: "ring-slate-200", label: "Frio" },
+};
+
+function getInitials(name: string | null | undefined): string {
+  const text = String(name || "").trim();
+  if (!text) return "?";
+  const parts = text.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] || "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || "" : "";
+  return (first + last).toUpperCase() || "?";
+}
+
+function buildWhatsappUrl(phone: string | null | undefined): string | null {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return null;
+  const normalized = digits.length >= 12 ? digits : `55${digits}`;
+  return `https://wa.me/${normalized}`;
+}
+
+interface IconActionProps {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick?: () => void;
+  href?: string | null;
+  external?: boolean;
+  disabled?: boolean;
+  active?: boolean;
+}
+
+function IconAction({ icon: Icon, label, onClick, href, external, disabled, active }: IconActionProps) {
+  const baseClass = `inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+    active ? "bg-teal-50 text-teal-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+  }`;
+  if (href && !disabled) {
+    return (
+      <a
+        href={href}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        title={label}
+        aria-label={label}
+        className={baseClass}
+      >
+        <Icon className="h-4 w-4" />
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      onPointerDown={(e) => e.stopPropagation()}
+      title={label}
+      aria-label={label}
+      className={baseClass}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  );
 }
 
 export default function DraggableLeadCard({
@@ -79,52 +157,62 @@ export default function DraggableLeadCard({
   });
 
   const now = new Date();
-  const nextActionAt = lead.nextActionDate ? new Date(lead.nextActionDate) : null;
-  const hasNextAction = !!lead.nextActionDate || !!lead.nextActionNote;
-  const isOverdue = nextActionAt ? !Number.isNaN(nextActionAt.getTime()) && nextActionAt.getTime() < now.getTime() : false;
   const nextActionState = getLeadNextActionState(lead, now);
   const stageAgeDays = getLeadStageAgeDays(lead, now);
   const leadTemperature = getLeadTemperature(lead, now);
-  const staleLead = isLeadStale(lead, 48, now);
+  const staleSeverity = getStaleSeverity(lead, now);
+  const staleLabel = getStaleSeverityLabel(staleSeverity);
+  const hasNextAction = !!lead.nextActionDate || !!lead.nextActionNote;
+
   const priceLabel =
     typeof lead.property.price === "number"
       ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(lead.property.price / 100)
       : null;
+
   const visitDateLabel = lead.visitDate
     ? new Date(lead.visitDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
     : null;
   const visitLabel = visitDateLabel ? `${visitDateLabel}${lead.visitTime ? ` • ${lead.visitTime}` : ""}` : null;
-  const temperatureMeta =
-    leadTemperature === "hot"
-      ? { label: "Quente", className: "border-rose-200 bg-rose-50 text-rose-700" }
-      : leadTemperature === "warm"
-        ? { label: "Em jogo", className: "border-amber-200 bg-amber-50 text-amber-700" }
-        : { label: "Frio", className: "border-slate-200 bg-slate-50 text-slate-600" };
-  const primaryLabel = lead.contact?.name || "Lead sem nome";
-  const primaryInsight = lead.nextActionNote
-    ? `Próxima ação: ${lead.nextActionNote}`
-    : lead.lastMessagePreview
-      ? `${lead.lastMessageFromClient ? "Cliente" : "Você"}: ${lead.lastMessagePreview}`
-      : lead.outcomeDescription || "Sem atualização recente";
-  const nextActionLabel = nextActionState.overdue
-    ? "Ação atrasada"
+
+  const contactName = lead.contact?.name || "Lead sem nome";
+  const initials = getInitials(contactName);
+  const tempMeta = TEMPERATURE_AVATAR[leadTemperature];
+
+  const nextActionAt = lead.nextActionDate ? new Date(lead.nextActionDate) : null;
+  const nextActionTone: "rose" | "amber" | "slate" = nextActionState.overdue
+    ? "rose"
     : nextActionState.today
-      ? "Ação hoje"
+      ? "amber"
+      : "slate";
+  const nextActionLabel = nextActionState.overdue
+    ? "Atrasada"
+    : nextActionState.today
+      ? "Hoje"
       : nextActionAt
-        ? `Ação ${nextActionAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`
+        ? nextActionAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
         : null;
+  const nextActionText = lead.nextActionNote || (visitLabel ? `Confirmar visita ${visitLabel}` : null);
+  const nextActionToneClasses: Record<typeof nextActionTone, string> = {
+    rose: "border-rose-200 bg-rose-50 text-rose-800",
+    amber: "border-amber-200 bg-amber-50 text-amber-800",
+    slate: "border-slate-200 bg-slate-50 text-slate-700",
+  };
+  const nextActionIconClass: Record<typeof nextActionTone, string> = {
+    rose: "text-rose-600",
+    amber: "text-amber-600",
+    slate: "text-slate-500",
+  };
+  const showNextActionBlock = !!nextActionText && (lead.pipelineStage !== "WON" && lead.pipelineStage !== "LOST");
+
+  const whatsappUrl = buildWhatsappUrl(lead.contact?.phone);
+  const isClosed = lead.pipelineStage === "WON" || lead.pipelineStage === "LOST";
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     opacity: isDragging ? 0 : 1,
   };
 
-  const dragProps = !dragDisabled
-    ? {
-        ...listeners,
-        ...attributes,
-      }
-    : {};
+  const dragProps = !dragDisabled ? { ...listeners, ...attributes } : {};
 
   const setRefs = (node: HTMLDivElement | null) => {
     cardRef.current = node;
@@ -152,12 +240,13 @@ export default function DraggableLeadCard({
       }}
     >
       <div
-        className={`flex flex-col gap-3 overflow-hidden rounded-[24px] border bg-white/95 p-3.5 text-slate-900 transition-all duration-150 will-change-transform md:p-4 ${
+        className={`flex flex-col gap-3 overflow-hidden rounded-[20px] border bg-white p-3.5 text-slate-900 transition-all duration-150 will-change-transform md:p-4 ${
           isDragging
             ? "border-teal-400 shadow-xl"
-            : "border-slate-200 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.4)] hover:-translate-y-[1px] hover:border-slate-300 hover:shadow-[0_18px_40px_-28px_rgba(15,23,42,0.28)]"
+            : "border-slate-200 shadow-[0_10px_28px_-22px_rgba(15,23,42,0.35)] hover:-translate-y-[1px] hover:border-slate-300 hover:shadow-[0_12px_32px_-22px_rgba(15,23,42,0.28)]"
         }`}
       >
+        {/* Header: avatar + nome + temperatura */}
         <div className="flex items-start gap-3">
           {selectionMode && (
             <button
@@ -173,109 +262,147 @@ export default function DraggableLeadCard({
             </button>
           )}
 
-          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100 md:h-16 md:w-16">
-            <Image
-              src={lead.property.images[0]?.url || "/placeholder.jpg"}
-              alt={lead.property.title}
-              fill
-              className="object-cover"
-            />
+          <div className="relative shrink-0">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${tempMeta.bg} text-sm font-semibold text-white shadow-sm ring-2 ${tempMeta.ring} md:h-11 md:w-11`}
+              aria-label={`Avatar ${contactName} (${tempMeta.label})`}
+            >
+              {initials}
+            </div>
+            {lead.hasUnreadMessages ? (
+              <span
+                className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-blue-500"
+                aria-label="Mensagens não lidas"
+              />
+            ) : null}
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-semibold text-slate-950 md:text-[15px] md:tracking-tight">{primaryLabel}</p>
-                <p className="mt-0.5 line-clamp-2 text-[12px] text-slate-600 md:truncate md:text-[13px]">{lead.property.title}</p>
-              </div>
-              {showAdvanceButton && (
+            <div className="flex items-start justify-between gap-2">
+              <p className="truncate text-[14px] font-semibold leading-tight text-slate-950 md:text-[15px]">{contactName}</p>
+              {showAdvanceButton && !isClosed && (
                 <button
                   type="button"
                   onClick={onAdvance}
                   disabled={isUpdating || selectionMode}
                   onPointerDown={(e) => e.stopPropagation()}
-                  className="inline-flex h-8 shrink-0 items-center rounded-xl bg-emerald-600 px-2.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 md:h-9 md:px-3 md:text-[12px]"
+                  className="inline-flex h-7 shrink-0 items-center rounded-lg bg-emerald-600 px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Avançar para próxima etapa"
                 >
                   {isUpdating ? (
                     <>
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin md:h-4 md:w-4" />
-                      Movendo...
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Movendo
                     </>
                   ) : (
-                    "Avançar"
+                    "Avançar →"
                   )}
                 </button>
               )}
             </div>
 
-            {priceLabel ? <p className="mt-1 text-[12px] font-semibold text-teal-700 md:text-[13px]">{priceLabel}</p> : null}
-
-            <p className="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
-              <MapPin className="h-3 w-3 md:h-3.5 md:w-3.5" />
-              <span className="truncate">
-                {lead.property.neighborhood && `${lead.property.neighborhood}, `}
-                {lead.property.city} - {lead.property.state}
-              </span>
-            </p>
-
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${temperatureMeta.className}`}>
-                <Flame className="h-3 w-3" />
-                {temperatureMeta.label}
-              </span>
-              {lead.hasUnreadMessages ? <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700">Não lida</span> : null}
-              {nextActionLabel ? <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${isOverdue ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}><AlertTriangle className="h-3 w-3" />{nextActionLabel}</span> : null}
-              {visitLabel ? <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-[10px] font-semibold text-purple-700"><CalendarClock className="h-3 w-3" />{visitLabel}</span> : null}
-            </div>
-
-            <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-slate-600">{primaryInsight}</p>
-
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500 md:mt-3">
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">
-                <Clock3 className="h-3 w-3" />
-                {stageAgeDays}d na etapa
-              </span>
-              {staleLead ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">48h sem contato</span> : null}
-              {lead.outcomeReason ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">{lead.outcomeReason}</span> : null}
+            {/* Imóvel: thumbnail + título + preço */}
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-md bg-slate-100">
+                <Image src={lead.property.images[0]?.url || "/placeholder.jpg"} alt="" fill className="object-cover" sizes="28px" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12px] text-slate-700">{lead.property.title}</p>
+                <p className="flex items-center gap-1 text-[11px] text-slate-500">
+                  {priceLabel ? <span className="font-semibold text-teal-700">{priceLabel}</span> : null}
+                  {priceLabel ? <span className="text-slate-300">·</span> : null}
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">
+                    {lead.property.neighborhood ? `${lead.property.neighborhood}, ` : ""}
+                    {lead.property.city}
+                  </span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href={`/broker/leads/${lead.id}`}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="inline-flex items-center text-[11px] font-medium text-blue-600 hover:text-blue-700 md:text-[12px]"
-            >
-              Ver detalhes
-              <ChevronRight className="ml-0.5 h-3 w-3 md:h-3.5 md:w-3.5" />
-            </Link>
-            {onOpenChat && !selectionMode && (
-              <button
-                type="button"
-                onClick={onOpenChat}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 md:text-[12px]"
-              >
-                <MessageCircle className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                Chat
-              </button>
+        {/* Próxima ação destacada */}
+        {showNextActionBlock ? (
+          <div className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 ${nextActionToneClasses[nextActionTone]}`}>
+            {nextActionTone === "rose" ? (
+              <AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${nextActionIconClass[nextActionTone]}`} />
+            ) : visitLabel ? (
+              <CalendarClock className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${nextActionIconClass[nextActionTone]}`} />
+            ) : (
+              <Clock3 className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${nextActionIconClass[nextActionTone]}`} />
             )}
-            {onToggleReminder && !selectionMode && (
-              <button
-                type="button"
-                onClick={onToggleReminder}
-                disabled={isReminderUpdating}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 disabled:opacity-50 md:text-[12px]"
-              >
-                {hasNextAction ? <BellOff className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <Bell className="h-3.5 w-3.5 md:h-4 md:w-4" />}
-                {isReminderUpdating ? "Salvando..." : "Lembrete"}
-              </button>
-            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                Próxima ação{nextActionLabel ? ` · ${nextActionLabel}` : ""}
+              </p>
+              <p className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug">{nextActionText}</p>
+            </div>
           </div>
-        </div>
+        ) : null}
+
+        {/* Última mensagem */}
+        {lead.lastMessagePreview ? (
+          <p className="line-clamp-1 text-[12px] leading-5 text-slate-600">
+            <span className="text-slate-400">{lead.lastMessageFromClient ? "Cliente:" : "Você:"}</span>{" "}
+            {lead.lastMessagePreview}
+          </p>
+        ) : isClosed && lead.outcomeReason ? (
+          <p className="line-clamp-2 text-[12px] leading-5 text-slate-600">
+            <span className="font-semibold text-slate-700">
+              {lead.pipelineStage === "WON" ? "Ganho" : "Perdido"}:
+            </span>{" "}
+            {lead.outcomeReason}
+            {lead.outcomeDescription ? ` — ${lead.outcomeDescription}` : ""}
+          </p>
+        ) : null}
+
+        {/* Footer: quick actions + metadata */}
+        {!selectionMode ? (
+          <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+            <div className="flex items-center gap-0.5">
+              {onOpenChat ? (
+                <IconAction icon={MessageCircle} label="Abrir chat" onClick={onOpenChat} active={lead.hasUnreadMessages} />
+              ) : null}
+              <IconAction
+                icon={Phone}
+                label={whatsappUrl ? "WhatsApp" : "Sem telefone cadastrado"}
+                href={whatsappUrl}
+                external
+                disabled={!whatsappUrl}
+              />
+              {onToggleReminder ? (
+                <IconAction
+                  icon={hasNextAction ? BellOff : Bell}
+                  label={hasNextAction ? "Remover lembrete" : "Adicionar lembrete"}
+                  onClick={onToggleReminder}
+                  disabled={isReminderUpdating}
+                  active={hasNextAction}
+                />
+              ) : null}
+              {onOpenLead ? (
+                <IconAction icon={MoreHorizontal} label="Ver detalhes" onClick={onOpenLead} />
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <Clock3 className="h-3 w-3" />
+              <span className="tabular-nums">{stageAgeDays}d</span>
+              {staleSeverity !== "fresh" && !isClosed ? (
+                <span
+                  className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                    staleSeverity === "critical"
+                      ? "bg-rose-50 text-rose-700"
+                      : staleSeverity === "risk"
+                        ? "bg-orange-50 text-orange-700"
+                        : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {staleLabel}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

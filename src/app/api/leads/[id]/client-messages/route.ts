@@ -339,6 +339,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       // ignore
     }
 
+    try {
+      const { detectAutoAdvanceFromReply } = await import("@/lib/crm/auto-advance-suggestions");
+      void detectAutoAdvanceFromReply({
+        leadId: String(id),
+        message: parsed.data.content || "",
+        source: "professional",
+      });
+    } catch {
+      // never block reply path on suggestion detection
+    }
+
     if (lead.realtorId) {
       try {
         await RealtorAssistantService.recalculateForRealtor(lead.realtorId);

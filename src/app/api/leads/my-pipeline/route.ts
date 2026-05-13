@@ -85,9 +85,13 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: "Você não tem permissão para ver este funil." }, { status: 403 });
     }
 
-    const ETAG_VERSION = 1;
+    // Filtro opt-in para incluir leads arquivados (LOST > 90d). Default: false.
+    const includeArchived = String(_request.nextUrl.searchParams.get("includeArchived") || "").toLowerCase() === "true";
+
+    const ETAG_VERSION = 2;
     const leadScope: any = {
       realtorId: String(userId),
+      ...(includeArchived ? {} : { archived: false }),
     };
 
     let receiptAgg: any = { _max: { updatedAt: null } };
@@ -150,6 +154,7 @@ export async function GET(_request: NextRequest) {
     const leads = await (prisma as any).lead.findMany({
       where: {
         realtorId: userId,
+        ...(includeArchived ? {} : { archived: false }),
       },
       select: pipelineLeadSelect,
       orderBy: { createdAt: "desc" },
