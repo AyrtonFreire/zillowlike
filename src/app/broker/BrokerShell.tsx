@@ -8,17 +8,19 @@ import { useSession } from "next-auth/react";
 import {
   Kanban,
   LayoutDashboard,
-  Clock,
   MessageCircle,
   MessageSquare,
   Sparkles,
   Home,
-  UserRound,
   ClipboardList,
 } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
 import CollapsibleSidebarNav, { type SidebarNavItem } from "@/components/workspace/CollapsibleSidebarNav";
+import BrokerIdentityBadge from "@/components/broker/BrokerIdentityBadge";
+import ConnectionStatus from "@/components/broker/ConnectionStatus";
+import NotificationBell from "@/components/broker/NotificationBell";
+import BrokerFAB from "@/components/broker/BrokerFAB";
 import { getPusherClient } from "@/lib/pusher-client";
 
 type NavItem = SidebarNavItem & {
@@ -37,9 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/broker/chats", label: "Conversas", icon: MessageSquare, badgeKey: "unreadChats" },
   { href: "/broker/crm", label: "Funil", icon: Kanban },
   { href: "/broker/assistant", label: "Assistente", icon: Sparkles, badgeKey: "assistantOpen" },
-  { href: "/broker/assistant/offline", label: "Assistente offline", icon: Clock },
   { href: "/broker/teams", label: "Chat do time", icon: MessageCircle },
-  { href: "/profile?onboarding=broker", label: "Perfil profissional", icon: UserRound },
 ];
 
 function normalizePath(pathname: string) {
@@ -136,14 +136,6 @@ function sectionFromPath(pathname: string) {
       title: "Perfil profissional",
       description: "Esta rota agora encaminha você para a área central de perfil.",
       crumb: "Perfil",
-    };
-  }
-
-  if (p.startsWith("/broker/messages")) {
-    return {
-      title: "Mensagens internas",
-      description: "Comunicações internas vinculadas a leads.",
-      crumb: "Mensagens",
     };
   }
 
@@ -276,14 +268,17 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
 
           <div className="relative p-4 sm:p-6">
             <div className="flex flex-col md:flex-row gap-5">
-              <CollapsibleSidebarNav
-                items={NAV_ITEMS}
-                pathname={pathname}
-                storageKey="oggahub_sidebar_collapsed_broker"
-                workspaceLabel="Corretor"
-                isItemActive={(currentPath, item) => isActiveHref(currentPath, item.href)}
-                renderBadge={(item) => renderBadge(item)}
-              />
+              <div className="md:flex-shrink-0">
+                <BrokerIdentityBadge />
+                <CollapsibleSidebarNav
+                  items={NAV_ITEMS}
+                  pathname={pathname}
+                  storageKey="oggahub_sidebar_collapsed_broker"
+                  workspaceLabel="Corretor"
+                  isItemActive={(currentPath, item) => isActiveHref(currentPath, item.href)}
+                  renderBadge={(item) => renderBadge(item)}
+                />
+              </div>
 
               <div className="flex-1 min-w-0">
                 <div className="pb-5 border-b border-gray-200/70">
@@ -306,17 +301,26 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
 
                     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                       <div>
-                        <h1 className="text-2xl sm:text-3xl font-semibold gradient-text">{section.title}</h1>
+                        <div className="mb-1 flex items-center gap-2">
+                          <ConnectionStatus />
+                        </div>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">{section.title}</h1>
                         {section.description ? <p className="mt-1 text-sm text-gray-600">{section.description}</p> : null}
                       </div>
-                      {headerAction ? (
-                        <Link
-                          href={headerAction.href}
-                          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                        >
-                          {headerAction.label}
-                        </Link>
-                      ) : null}
+                      <div className="flex items-center gap-2">
+                        {headerAction ? (
+                          <Link
+                            href={headerAction.href}
+                            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          >
+                            {headerAction.label}
+                          </Link>
+                        ) : null}
+                        <NotificationBell
+                          unreadChats={metrics?.unreadChats || 0}
+                          assistantOpen={metrics?.assistantOpen || 0}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -327,6 +331,7 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </div>
+      <BrokerFAB />
     </div>
   );
 }

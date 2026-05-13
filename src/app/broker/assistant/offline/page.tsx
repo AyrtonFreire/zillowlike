@@ -7,6 +7,7 @@ import { AlertCircle, AlertTriangle, Calendar, Inbox, Send, Settings } from "luc
 import Toast from "@/components/Toast";
 import StatCard from "@/components/dashboard/StatCard";
 import AssistantAvailability from "@/components/broker/AssistantAvailability";
+import AssistantTabs from "@/components/broker/AssistantTabs";
 import OfflineAssistantTile from "@/components/broker/OfflineAssistantTile";
 import OfflineTechDiagnostics from "@/components/broker/OfflineTechDiagnostics";
 import OfflineLeadFilters from "@/components/broker/OfflineLeadFilters";
@@ -347,9 +348,10 @@ export default function BrokerAssistantOfflinePage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="max-w-5xl mx-auto space-y-6">
+        <AssistantTabs />
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-gray-900">Assistente offline</h1>
+            <h1 className="text-xl font-bold text-gray-900">Auto-resposta</h1>
             <p className="mt-1 text-sm text-gray-600">Defina quando o assistente responde e acompanhe a atividade.</p>
           </div>
 

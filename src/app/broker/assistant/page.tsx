@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { Bell, CalendarClock, ClipboardList, MoreHorizontal, Users } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import RealtorAssistantFeed from "@/components/crm/RealtorAssistantFeed";
+import AssistantTabs from "@/components/broker/AssistantTabs";
 import { getPusherClient } from "@/lib/pusher-client";
 
 type CategoryKey = "ALL" | "Leads" | "Visitas" | "Lembretes" | "Outros";
@@ -122,6 +123,7 @@ export default function BrokerAssistantPage() {
 
   return (
     <div className="w-full">
+      <AssistantTabs />
       {status === "loading" && <CenteredSpinner />}
 
       {status !== "loading" && (!realtorId || !canAccess) && (

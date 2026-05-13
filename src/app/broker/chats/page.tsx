@@ -104,6 +104,21 @@ export default function BrokerChatsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const handler = () => {
+      window.setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      }, 80);
+    };
+    vv.addEventListener("resize", handler);
+    return () => {
+      vv.removeEventListener("resize", handler);
+    };
+  }, []);
+
   const applyConversationState = useCallback((leadId: string, conversation?: ConversationSnapshot | null) => {
     if (!leadId || !conversation) return;
 
@@ -763,7 +778,10 @@ export default function BrokerChatsPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 border-t border-gray-200 bg-white">
+            <div
+              className="sticky bottom-0 border-t border-gray-200 bg-white px-4 py-3"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
+            >
               <form
                 onSubmit={(e) => {
                   e.preventDefault();

@@ -29,7 +29,7 @@ export default function MetricCard({
 }: MetricCardProps) {
   return (
     <div
-      className={`bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}
+      className={`bg-gradient-to-br from-white to-slate-50/40 rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -42,7 +42,7 @@ export default function MetricCard({
             <div className="flex items-center gap-1 mt-2">
               <span
                 className={`text-xs font-semibold ${
-                  trend.isPositive ? "text-green-600" : "text-red-600"
+                  trend.isPositive ? "text-emerald-700" : "text-rose-700"
                 }`}
               >
                 {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%

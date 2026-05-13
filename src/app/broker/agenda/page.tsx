@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, MapPin, Phone } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import BrokerEmptyState from "@/components/broker/BrokerEmptyState";
 
 interface VisitLead {
   id: string;
@@ -105,12 +106,13 @@ export default function BrokerAgendaPage() {
       )}
 
       {leads.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-600">
-          <p>
-            No momento, você não tem visitas marcadas com data e horário definidos. Assim que marcar visitas nos seus leads,
-            elas aparecem aqui.
-          </p>
-        </div>
+        <BrokerEmptyState
+          icon={Calendar}
+          title="Sem visitas marcadas"
+          description="Quando você marcar uma visita com data e horário em um lead, ela aparece aqui. Confirme visitas no chat com o cliente."
+          ctaLabel="Ver meus leads"
+          ctaHref="/broker/leads"
+        />
       ) : (
         <div className="space-y-4">
           {leads.map((lead) => (

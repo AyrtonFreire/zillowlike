@@ -18,6 +18,7 @@ import {
   Calendar,
   CheckCircle2,
 } from "lucide-react";
+import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyListItem from "@/components/dashboard/PropertyListItem";
@@ -425,14 +426,7 @@ export default function BrokerDashboard() {
   const draftPropertiesCount = draftProperties.length;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dashboard...</p>
-        </div>
-      </div>
-    );
+    return <CenteredSpinner message="Carregando dashboard..." />;
   }
 
   return (
@@ -636,8 +630,8 @@ export default function BrokerDashboard() {
             value={metrics?.activeProperties || 0}
             icon={Home}
             subtitle={`${metrics?.totalProperties || 0} no total`}
-            iconColor="text-blue-600"
-            iconBgColor="bg-blue-50"
+            iconColor="text-teal-700"
+            iconBgColor="bg-teal-50"
           />
           <MetricCard
             title="Leads Recebidos"
@@ -645,23 +639,23 @@ export default function BrokerDashboard() {
             icon={Users}
             trend={metrics?.leadTrend}
             subtitle="Últimos 7 dias"
-            iconColor="text-green-600"
-            iconBgColor="bg-green-50"
+            iconColor="text-emerald-700"
+            iconBgColor="bg-emerald-50"
           />
           <MetricCard
             title="Leads em atendimento"
             value={metrics?.activeLeads || 0}
             icon={Activity}
             subtitle="Reservados/atendendo"
-            iconColor="text-purple-600"
-            iconBgColor="bg-purple-50"
+            iconColor="text-slate-700"
+            iconBgColor="bg-slate-100"
           />
         </div>
 
         <div className="mb-8 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm shadow-black/5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Prioridades operacionais</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal-700">Prioridades operacionais</div>
               <h2 className="mt-2 text-lg font-semibold text-gray-900">Organize o dia do corretor por urgência e contexto.</h2>
               <p className="mt-1 text-sm text-gray-600">Atalhos para o que pede ação imediata no funil, nas conversas e nos imóveis anunciados.</p>
             </div>
