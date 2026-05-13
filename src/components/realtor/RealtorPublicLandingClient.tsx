@@ -10,7 +10,8 @@ import { buildPropertyPath } from "@/lib/slug";
 import { track } from "@/lib/analytics";
 import AgencyPublicProfileSections from "@/components/realtor/AgencyPublicProfileSections";
 import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
-import SeloAtividade from "@/components/realtor/SeloAtividade";
+import PublicProfileHero from "@/components/realtor/public/PublicProfileHero";
+import PublicProfileSharePanel from "@/components/realtor/public/PublicProfileSharePanel";
 import RatingStars from "@/components/queue/RatingStars";
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import Drawer from "@/components/ui/Drawer";
@@ -19,7 +20,6 @@ import {
   ArrowUpRight,
   BadgeDollarSign,
   BedDouble,
-  Building2,
   Check,
   Copy,
   Globe,
@@ -34,7 +34,6 @@ import {
   Search,
   Sparkles,
   TrendingUp,
-  Users,
   X,
 } from "lucide-react";
 
@@ -342,6 +341,7 @@ export default function RealtorPublicLandingClient({
   const [mapBounds, setMapBounds] = useState<{ minLat: number; maxLat: number; minLng: number; maxLng: number } | null>(null);
 
   const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const reviewsHistoryPushedRef = useRef(false);
   const closingFromPopstateRef = useRef(false);
 
@@ -380,8 +380,6 @@ export default function RealtorPublicLandingClient({
   const baseIntroMessage = useMemo(() => {
     return `Oi, vim do seu perfil no OggaHub. Quero receber opções de imóveis em ${defaultRegionLabel}. Pode me ajudar?`;
   }, [defaultRegionLabel]);
-
-  const teamLabel = realtor.team?.name ? realtor.team.name : null;
 
   const telHref = useMemo(() => {
     if (!realtor.publicPhoneOptIn || !realtor.phoneVerified) return null;
@@ -424,10 +422,6 @@ export default function RealtorPublicLandingClient({
   }, [properties.length, realtor.experience, realtor.rentedCount, realtor.soldCount]);
 
   const roleLabel = realtor.role === "AGENCY" ? "Imobiliária" : "Corretor";
-
-  const heroImage = useMemo(() => {
-    return properties.find((item) => item.images?.[0]?.url)?.images?.[0]?.url || realtor.image || null;
-  }, [properties, realtor.image]);
 
   const websiteHref = useMemo(() => normalizeExternalUrl(agencyProfile?.website || null), [agencyProfile?.website]);
 
@@ -485,79 +479,6 @@ export default function RealtorPublicLandingClient({
 
   const hasKeyInfo = keyInfoEntries.length > 0;
 
-  const topFacts = useMemo(() => {
-    const items: Array<{ label: string; value: string; helper: string }> = [
-      {
-        label: "Portfólio",
-        value: String(properties.length),
-        helper: realtor.role === "AGENCY" ? "Imóveis ativos da agência" : "Imóveis ativos no perfil",
-      },
-    ];
-
-    if (realtor.role === "AGENCY") {
-      items.push({
-        label: "Corretores",
-        value: String(agencyProfile?.teamMembers.length || 0),
-        helper: "Perfis públicos vinculados",
-      });
-    } else if (realtor.experience != null && realtor.experience > 0) {
-      items.push({
-        label: "Experiência",
-        value: `${realtor.experience} ano${realtor.experience === 1 ? "" : "s"}`,
-        helper: "Tempo declarado de atuação",
-      });
-    }
-
-    if (locationLabel) {
-      items.push({
-        label: "Base",
-        value: locationLabel,
-        helper: "Cidade e estado públicos",
-      });
-    }
-
-    if (realtor.totalRatings > 0) {
-      items.push({
-        label: "Avaliações",
-        value: ratingValueLabel,
-        helper: `${realtor.totalRatings} review${realtor.totalRatings === 1 ? "" : "s"} pública${realtor.totalRatings === 1 ? "" : "s"}`,
-      });
-    } else if (realtor.avgResponseTime != null) {
-      items.push({
-        label: "Resposta média",
-        value: `${realtor.avgResponseTime} min`,
-        helper: "Tempo médio de resposta",
-      });
-    }
-
-    if (websiteHref) {
-      items.push({
-        label: "Website",
-        value: formatCompactUrl(websiteHref) || "Site",
-        helper: "Canal institucional",
-      });
-    } else if (teamLabel) {
-      items.push({
-        label: "Equipe",
-        value: teamLabel,
-        helper: "Time associado ao perfil",
-      });
-    }
-
-    if (serviceAreaChips.length > 0) {
-      items.push({
-        label: "Regiões",
-        value: String(serviceAreaChips.length),
-        helper: serviceAreaChips.slice(0, 2).join(" • "),
-      });
-    }
-
-    return items.slice(0, 4);
-  }, [agencyProfile?.teamMembers.length, locationLabel, properties.length, ratingValueLabel, realtor.avgResponseTime, realtor.experience, realtor.role, realtor.totalRatings, serviceAreaChips, teamLabel, websiteHref]);
-
-  const teamPreview = useMemo(() => {
-    return (agencyProfile?.teamMembers || []).slice(0, 3);
-  }, [agencyProfile?.teamMembers]);
 
   const isFeatured = (p: PublicProperty) => Array.isArray(p.conditionTags) && p.conditionTags.includes("Destaque");
   const isPetsOk = (p: PublicProperty) => Boolean(p.petFriendly) || Boolean(p.petsSmall) || Boolean(p.petsLarge);
@@ -1016,212 +937,32 @@ export default function RealtorPublicLandingClient({
       </div>
 
       <main className="pb-32 md:pb-12">
-        <section className="relative overflow-hidden border-b border-slate-200 bg-slate-950">
-          <div className="absolute inset-0">
-            {heroImage ? (
-              <Image
-                src={heroImage}
-                alt={realtor.name}
-                fill
-                priority
-                sizes="100vw"
-                className="object-cover opacity-30"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.28),_transparent_35%),linear-gradient(135deg,_#0f172a,_#111827_48%,_#042f2e)]" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-teal-950/70" />
-          </div>
+        <PublicProfileHero
+          slug={realtor.publicSlug || realtor.id}
+          name={realtor.name}
+          image={realtor.image}
+          roleLabel={roleLabel}
+          locationLabel={locationLabel}
+          creciLabel={realtor.creci && realtor.creciState ? `CRECI ${realtor.creci}/${realtor.creciState}` : null}
+          bio={realtor.publicHeadline || (realtor.publicBio ? realtor.publicBio.split("\n")[0]?.slice(0, 220) : null)}
+          stats={[
+            ...(realtor.avgRating > 0
+              ? [{ label: realtor.totalRatings === 1 ? "avaliação" : "avaliações", value: `${realtor.avgRating.toFixed(1)} (${realtor.totalRatings})` }]
+              : []),
+            ...(properties.length > 0
+              ? [{ label: properties.length === 1 ? "imóvel ativo" : "imóveis ativos", value: String(properties.length) }]
+              : []),
+            ...(realtor.avgResponseTime != null
+              ? [{ label: "resposta média", value: `~${realtor.avgResponseTime}min` }]
+              : []),
+          ]}
+          whatsappAction={whatsappDigits ? () => handleWhatsApp(baseIntroMessage, "hero_primary") : undefined}
+          telHref={telHref}
+          reviewsAction={() => openReviews("hero_reviews_cta")}
+          shareAction={() => setShareOpen(true)}
+        />
 
-          <div className="relative mx-auto max-w-[1400px] px-4 py-12 sm:px-6 sm:py-16 lg:px-10 lg:py-20">
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur-sm">
-                    {realtor.role === "AGENCY" ? <Building2 className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
-                    {roleLabel} no OggaHub
-                  </span>
-                  {realtor.creci && realtor.creciState ? (
-                    <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-white/85 backdrop-blur-sm">
-                      CRECI {realtor.creci}/{realtor.creciState}
-                    </span>
-                  ) : null}
-                  {teamLabel ? (
-                    <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-white/85 backdrop-blur-sm">
-                      {teamLabel}
-                    </span>
-                  ) : null}
-                  {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
-                </div>
-
-                <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-5">
-                  <div className="shrink-0 rounded-[28px] border border-white/15 bg-white/10 p-1.5 shadow-lg backdrop-blur-sm">
-                    {realtor.image ? (
-                      <Image
-                        src={realtor.image}
-                        alt={realtor.name}
-                        width={112}
-                        height={112}
-                        className="h-20 w-20 rounded-[22px] object-cover sm:h-24 sm:w-24"
-                        priority
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-white/10 text-3xl font-semibold text-white sm:h-24 sm:w-24">
-                        {(realtor.name || "?").charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <h1 className="font-serif text-3xl leading-tight text-white sm:text-5xl lg:text-6xl">{realtor.name}</h1>
-                    <p className="mt-4 max-w-3xl text-sm leading-6 text-white/78 sm:text-base sm:leading-7">{realtor.publicHeadline || profileNarrative}</p>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-white/62 sm:text-[15px] sm:leading-7">
-                      {whatsappDigits
-                        ? "Use o WhatsApp para pedir opções, agendar visita ou iniciar uma conversa consultiva sem sair desta página."
-                        : telHref
-                          ? "Use este perfil para conhecer o portfólio, validar credenciais e iniciar contato direto com atendimento humano."
-                          : "Este perfil reúne portfólio, prova social e contexto local para ajudar você a decidir com mais segurança."}
-                    </p>
-
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {locationLabel ? (
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/85 backdrop-blur-sm">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {locationLabel}
-                        </span>
-                      ) : null}
-                      {serviceAreaChips.slice(0, 4).map((area) => (
-                        <span key={area} className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/85 backdrop-blur-sm">
-                          {area}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
-                      {whatsappDigits ? (
-                        <button
-                          type="button"
-                          onClick={() => handleWhatsApp(baseIntroMessage, "hero_primary")}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 sm:w-auto"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          Pedir atendimento no WhatsApp
-                        </button>
-                      ) : null}
-
-                      {telHref ? (
-                        <a
-                          href={`tel:${telHref}`}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15 sm:w-auto"
-                          onClick={() => {
-                            try {
-                              track({ name: "public_profile_call", payload: { source: "hero" } } as any);
-                            } catch {}
-                          }}
-                        >
-                          <Phone className="h-4 w-4" />
-                          Solicitar ligação
-                        </a>
-                      ) : null}
-
-                      <a
-                        href="#grid"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15 sm:w-auto"
-                      >
-                        <Grid3X3 className="h-4 w-4" />
-                        Ver imóveis disponíveis
-                      </a>
-
-                      <button
-                        type="button"
-                        onClick={() => openReviews("hero_reviews_cta")}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-transparent px-5 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 sm:w-auto"
-                      >
-                        Conferir avaliações
-                      </button>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/72">
-                      {realtor.avgResponseTime != null ? (
-                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                          Resposta média em {realtor.avgResponseTime} min
-                        </span>
-                      ) : null}
-                      {serviceAreaChips.length > 0 ? (
-                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                          Atendimento em {serviceAreaChips.slice(0, 2).join(" e ")}
-                        </span>
-                      ) : null}
-                      {properties.length > 0 ? (
-                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                          {properties.length} {properties.length === 1 ? "imóvel publicado" : "imóveis publicados"}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-[32px] border border-white/15 bg-white/10 p-5 text-white shadow-[0_24px_80px_rgba(15,23,42,0.3)] backdrop-blur-md sm:p-6">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Confiança pública</div>
-                <div className="mt-4 flex items-end justify-between gap-4">
-                  <div>
-                    <div className="font-serif text-4xl leading-none text-white sm:text-5xl">{ratingValueLabel}</div>
-                    <div className="mt-2">
-                      <RatingStars readonly rating={Math.round(realtor.avgRating)} size="sm" />
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-white/80 sm:text-sm">
-                    <div>{realtor.totalRatings} avaliação{realtor.totalRatings === 1 ? "" : "s"}</div>
-                    {realtor.avgResponseTime != null ? <div className="mt-1">{realtor.avgResponseTime} min de resposta média</div> : null}
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[24px] border border-white/10 bg-black/10 p-4 text-sm leading-7 text-white/75">
-                  Perfil público pensado para transformar interesse em conversa: credenciais, tempo de resposta, regiões atendidas e imóveis ativos em um único lugar.
-                </div>
-
-                {teamPreview.length > 0 ? (
-                  <div className="mt-5 rounded-[24px] border border-white/10 bg-white/5 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Equipe publicada</div>
-                    <div className="mt-3 flex items-center gap-3">
-                      <div className="flex -space-x-3">
-                        {teamPreview.map((member) => (
-                          <div key={member.id} className="h-10 w-10 overflow-hidden rounded-full border-2 border-slate-900 bg-white/20">
-                            {member.image ? (
-                              <Image src={member.image} alt={member.name} width={40} height={40} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
-                                {(member.name || "?").charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="text-sm text-white/80">
-                        <div className="font-medium text-white">{agencyProfile?.teamMembers.length} profissionais em destaque</div>
-                        <div className="text-xs text-white/60">Atendimento conectado ao perfil institucional</div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
-          <div className="relative -mt-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.08)] sm:-mt-10">
-            <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
-              {topFacts.map((item) => (
-                <div key={item.label} className="bg-white px-6 py-5">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</div>
-                  <div className="mt-2 text-lg font-semibold text-slate-950">{item.value}</div>
-                  <div className="mt-1 text-sm text-slate-600">{item.helper}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pt-8">
 
           <div className="border-b border-slate-200 py-5">
             <nav className="flex items-center gap-x-6 gap-y-3 overflow-x-auto whitespace-nowrap pb-1 text-sm text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1244,8 +985,7 @@ export default function RealtorPublicLandingClient({
               <section id="about" className="scroll-mt-28 border-b border-slate-200 pb-10">
                 <div className={`grid gap-8 ${hasKeyInfo ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""}`}>
                   <div className="max-w-4xl">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Apresentação</div>
-                    <h2 className="mt-3 font-serif text-2xl text-slate-950 sm:text-4xl">Conheça o perfil, o atendimento e a curadoria deste profissional.</h2>
+                    <h2 className="font-serif text-2xl text-slate-950 sm:text-3xl">Sobre {realtor.name.split(" ")[0]}</h2>
                     <div className="mt-5 whitespace-pre-line text-[15px] leading-8 text-slate-700">
                       {profileNarrative}
                     </div>
@@ -1270,10 +1010,7 @@ export default function RealtorPublicLandingClient({
               {testimonialsPreview.length > 0 ? (
                 <section className="border-b border-slate-200 py-10">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Prova social</div>
-                      <h2 className="mt-2 font-serif text-2xl text-slate-950 sm:text-3xl">Avaliações em destaque</h2>
-                    </div>
+                    <h2 className="font-serif text-2xl text-slate-950 sm:text-3xl">Avaliações</h2>
                     <button type="button" onClick={() => openReviews("featured_reviews")} className="text-left text-sm font-medium text-slate-700 underline-offset-4 hover:text-slate-950 hover:underline">
                       Ver todas
                     </button>
@@ -1317,14 +1054,13 @@ export default function RealtorPublicLandingClient({
               ) : null}
 
               <section id="grid" className="scroll-mt-28 pt-10">
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Portfólio público</div>
-                    <h2 className="mt-2 font-serif text-3xl text-slate-950 sm:text-4xl">Explore a vitrine deste perfil</h2>
-                    <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-                      Quando a carteira cresce, a busca, os filtros e o mapa ajudam o visitante a encontrar o imóvel certo sem perder o contexto do perfil.
+                <div className="flex flex-col gap-2">
+                  <h2 className="font-serif text-2xl text-slate-950 sm:text-3xl">Carteira de imóveis</h2>
+                  {properties.length > 0 ? (
+                    <p className="text-sm text-slate-500">
+                      {properties.length} {properties.length === 1 ? "imóvel publicado" : "imóveis publicados"}
                     </p>
-                  </div>
+                  ) : null}
                 </div>
 
                 {properties.length > 0 ? (
@@ -1648,6 +1384,14 @@ export default function RealtorPublicLandingClient({
           </div>
         </section>
       </main>
+
+      <PublicProfileSharePanel
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        pageUrl={pageUrl}
+        realtorName={realtor.name}
+        realtorWhatsappDigits={whatsappDigits}
+      />
 
       {reviewsOpen ? (
         <div className="fixed inset-0 z-[60000]">
