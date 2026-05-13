@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -13,6 +13,7 @@ import {
   Flame,
   MessageCircle,
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   getLeadNextActionState,
   getLeadStageAgeDays,
@@ -65,6 +66,18 @@ const TEMPERATURE_TONE: Record<"hot" | "warm" | "cool", string> = {
   cool: "text-slate-400",
 };
 
+const COLS: Array<{ key: string; width: string; align?: "left" | "right" }> = [
+  { key: "name", width: "20%" },
+  { key: "property", width: "26%" },
+  { key: "stage", width: "10%" },
+  { key: "next", width: "16%" },
+  { key: "stageAge", width: "9%", align: "right" },
+  { key: "temperature", width: "10%" },
+  { key: "actions", width: "9%", align: "right" },
+];
+
+const ROW_HEIGHT = 56;
+
 function formatPrice(price: number | null | undefined): string {
   if (typeof price !== "number") return "—";
   return new Intl.NumberFormat("pt-BR", {
@@ -81,6 +94,7 @@ function SortableHeader({
   direction,
   onSort,
   align = "left",
+  width,
 }: {
   label: string;
   sortKey: SortKey;
@@ -88,10 +102,12 @@ function SortableHeader({
   direction: SortDirection;
   onSort: (k: SortKey) => void;
   align?: "left" | "right";
+  width: string;
 }) {
   const active = currentSort === sortKey;
   return (
     <th
+      style={{ width }}
       className={`sticky top-0 z-10 cursor-pointer select-none border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-100 ${
         align === "right" ? "text-right" : "text-left"
       }`}
@@ -116,6 +132,7 @@ function SortableHeader({
 export default function CrmListView({ leads, onOpenLead }: CrmListViewProps) {
   const [sortKey, setSortKey] = useState<SortKey | null>("next");
   const [direction, setDirection] = useState<SortDirection>("asc");
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -167,6 +184,13 @@ export default function CrmListView({ leads, onOpenLead }: CrmListViewProps) {
     return arr;
   }, [leads, sortKey, direction]);
 
+  const rowVirtualizer = useVirtualizer({
+    count: sortedLeads.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 8,
+  });
+
   const now = new Date();
 
   if (leads.length === 0) {
@@ -178,27 +202,47 @@ export default function CrmListView({ leads, onOpenLead }: CrmListViewProps) {
     );
   }
 
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="max-h-[70vh] overflow-auto">
-        <table className="w-full border-collapse text-sm">
+      <div ref={parentRef} className="max-h-[70vh] overflow-auto">
+        <table
+          className="w-full border-collapse text-sm"
+          style={{ tableLayout: "fixed" }}
+          role="table"
+          aria-rowcount={sortedLeads.length}
+        >
+          <colgroup>
+            {COLS.map((c) => (
+              <col key={c.key} style={{ width: c.width }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              <SortableHeader label="Cliente" sortKey="name" currentSort={sortKey} direction={direction} onSort={handleSort} />
-              <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <SortableHeader label="Cliente" sortKey="name" currentSort={sortKey} direction={direction} onSort={handleSort} width={COLS[0].width} />
+              <th
+                style={{ width: COLS[1].width }}
+                className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
+              >
                 Imóvel
               </th>
-              <SortableHeader label="Etapa" sortKey="stage" currentSort={sortKey} direction={direction} onSort={handleSort} />
-              <SortableHeader label="Próx. ação" sortKey="next" currentSort={sortKey} direction={direction} onSort={handleSort} />
-              <SortableHeader label="Dias na etapa" sortKey="stageAge" currentSort={sortKey} direction={direction} onSort={handleSort} align="right" />
-              <SortableHeader label="Temperatura" sortKey="temperature" currentSort={sortKey} direction={direction} onSort={handleSort} />
-              <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <SortableHeader label="Etapa" sortKey="stage" currentSort={sortKey} direction={direction} onSort={handleSort} width={COLS[2].width} />
+              <SortableHeader label="Próx. ação" sortKey="next" currentSort={sortKey} direction={direction} onSort={handleSort} width={COLS[3].width} />
+              <SortableHeader label="Dias na etapa" sortKey="stageAge" currentSort={sortKey} direction={direction} onSort={handleSort} align="right" width={COLS[4].width} />
+              <SortableHeader label="Temperatura" sortKey="temperature" currentSort={sortKey} direction={direction} onSort={handleSort} width={COLS[5].width} />
+              <th
+                style={{ width: COLS[6].width }}
+                className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
+              >
                 Ações
               </th>
             </tr>
           </thead>
-          <tbody>
-            {sortedLeads.map((lead) => {
+          <tbody style={{ display: "block", position: "relative", height: totalSize }}>
+            {virtualItems.map((vRow) => {
+              const lead = sortedLeads[vRow.index];
               const stage = (lead.pipelineStage || "NEW") as CanonicalPipelineStage;
               const meta = PIPELINE_STAGE_META[stage];
               const nextActionState = getLeadNextActionState(lead, now);
@@ -218,7 +262,20 @@ export default function CrmListView({ leads, onOpenLead }: CrmListViewProps) {
               return (
                 <tr
                   key={lead.id}
-                  className={`border-b border-slate-100 last:border-b-0 transition-colors hover:bg-slate-50 ${
+                  role="row"
+                  aria-rowindex={vRow.index + 1}
+                  data-index={vRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${vRow.start}px)`,
+                    display: "table",
+                    tableLayout: "fixed",
+                  }}
+                  className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${
                     lead.hasUnreadMessages ? "bg-blue-50/30" : ""
                   } ${onOpenLead ? "cursor-pointer" : ""}`}
                   onClick={(e) => {
@@ -227,45 +284,45 @@ export default function CrmListView({ leads, onOpenLead }: CrmListViewProps) {
                     onOpenLead?.(lead.id);
                   }}
                 >
-                  <td className="px-3 py-3">
+                  <td style={{ width: COLS[0].width }} className="px-3 py-3 align-middle">
                     <div className="flex items-center gap-2">
                       {lead.hasUnreadMessages ? (
                         <span className="inline-block h-2 w-2 rounded-full bg-blue-500" aria-label="Mensagens não lidas" />
                       ) : null}
-                      <p className="truncate text-sm font-semibold text-slate-900 max-w-[180px]">
+                      <p className="truncate text-sm font-semibold text-slate-900">
                         {lead.contact?.name || "Sem contato"}
                       </p>
                     </div>
                   </td>
-                  <td className="px-3 py-3">
-                    <p className="truncate text-xs text-slate-700 max-w-[220px]">{lead.property.title}</p>
+                  <td style={{ width: COLS[1].width }} className="px-3 py-3 align-middle">
+                    <p className="truncate text-xs text-slate-700">{lead.property.title}</p>
                     <p className="text-[11px] text-slate-500">{formatPrice(lead.property.price)}</p>
                   </td>
-                  <td className="px-3 py-3">
+                  <td style={{ width: COLS[2].width }} className="px-3 py-3 align-middle">
                     <span
                       className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${STAGE_BADGE_TONE[stage]}`}
                     >
                       {meta.shortLabel}
                     </span>
                   </td>
-                  <td className="px-3 py-3">
+                  <td style={{ width: COLS[3].width }} className="px-3 py-3 align-middle">
                     <div className="flex items-center gap-1.5">
                       {nextActionState.overdue ? (
-                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
                       ) : lead.visitDate ? (
-                        <Calendar className="h-3.5 w-3.5 text-purple-500" />
+                        <Calendar className="h-3.5 w-3.5 text-purple-500 shrink-0" />
                       ) : (
-                        <Clock3 className="h-3.5 w-3.5 text-slate-400" />
+                        <Clock3 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                       )}
                       <span className={`text-xs ${nextActionState.overdue ? "font-semibold text-rose-700" : "text-slate-700"}`}>
                         {nextActionLabel}
                       </span>
                       {lead.nextActionNote ? (
-                        <span className="truncate text-[11px] text-slate-500 max-w-[160px]">· {lead.nextActionNote}</span>
+                        <span className="truncate text-[11px] text-slate-500">· {lead.nextActionNote}</span>
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-right">
+                  <td style={{ width: COLS[4].width }} className="px-3 py-3 align-middle text-right">
                     <div className="inline-flex items-center gap-1">
                       <span className="text-xs tabular-nums text-slate-700">{stageAge}d</span>
                       {staleSeverity !== "fresh" && !isClosed ? (
@@ -282,13 +339,13 @@ export default function CrmListView({ leads, onOpenLead }: CrmListViewProps) {
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-3 py-3">
+                  <td style={{ width: COLS[5].width }} className="px-3 py-3 align-middle">
                     <span className={`inline-flex items-center gap-1 text-xs ${TEMPERATURE_TONE[temperature]}`}>
                       <Flame className="h-3.5 w-3.5" />
                       {temperature === "hot" ? "Quente" : temperature === "warm" ? "Em jogo" : "Frio"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right">
+                  <td style={{ width: COLS[6].width }} className="px-3 py-3 align-middle text-right">
                     <div className="inline-flex items-center gap-1">
                       <Link
                         href={`/broker/chats?lead=${lead.id}`}

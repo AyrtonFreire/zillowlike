@@ -10,7 +10,9 @@
       "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 30; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/app/broker/crm/page.tsx 2>&1 | Select-Object -First 60; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
       "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 10; Write-Host \"TSC_EXIT: $LASTEXITCODE\"; npx eslint src/app/broker/crm/page.tsx src/components/crm/DraggableLeadCard.tsx src/components/crm/DroppableStageColumn.tsx 2>&1 | Select-Object -First 30; Write-Host \"ESLINT_EXIT: $LASTEXITCODE\")",
       "PowerShell(npx prisma generate 2>&1 | Select-Object -Last 10; Write-Host \"EXIT: $LASTEXITCODE\")",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); const all={...p.dependencies,...p.devDependencies}; console.log\\(Object.keys\\(all\\).filter\\(k => k.includes\\('virtual'\\) || k.includes\\('window'\\) || k.includes\\('intersection'\\)\\).join\\('\\\\n'\\)||'\\(none\\)'\\)\")",
+      "Bash(npm install *)"
     ]
   }
 }
