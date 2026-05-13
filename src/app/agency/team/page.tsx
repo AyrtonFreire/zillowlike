@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import StatCard from "@/components/dashboard/StatCard";
 import Tabs from "@/components/ui/Tabs";
+import { formatErrorMessage } from "@/lib/format-error-message";
 import { BellRing, Building2, ClipboardList, KeyRound, MessageSquare, Settings, Trash2, Users, X } from "lucide-react";
 
 type TeamMember = {
@@ -419,7 +420,7 @@ export default function AgencyTeamPage() {
           }
         }
       } catch (e: any) {
-        setError(e?.message || "Não conseguimos carregar os dados do time agora.");
+        setError(formatErrorMessage(e, "Não conseguimos carregar os dados do time agora."));
       } finally {
         setLoading(false);
       }
@@ -442,7 +443,7 @@ export default function AgencyTeamPage() {
         setInsights(j);
       } catch (e: any) {
         setInsights(null);
-        setInsightsError(e?.message || "Não conseguimos carregar os insights agora.");
+        setInsightsError(formatErrorMessage(e, "Não conseguimos carregar os insights agora."));
       }
     };
 
@@ -966,15 +967,15 @@ export default function AgencyTeamPage() {
     : 0;
 
   const distributionLabel = (mode: TeamLeadDistributionMode) => {
-    if (mode === "CAPTURER_FIRST") return "Prioridade do captador";
-    if (mode === "MANUAL") return "Manual";
-    return "Round-robin";
+    if (mode === "CAPTURER_FIRST") return "Quem captou tem prioridade";
+    if (mode === "MANUAL") return "Atribuição manual";
+    return "Rodízio entre corretores";
   };
 
   const distributionHint = (mode: TeamLeadDistributionMode) => {
-    if (mode === "MANUAL") return "Leads entram sem responsável. O time atribui nos leads do time.";
-    if (mode === "CAPTURER_FIRST") return "Quando existe captador/parceiro, ele recebe prioridade.";
-    return "Distribui entre corretores de forma equilibrada.";
+    if (mode === "MANUAL") return "Você escolhe quem recebe cada lead. Leads chegam sem responsável.";
+    if (mode === "CAPTURER_FIRST") return "Se o lead veio de um imóvel, o corretor que o cadastrou recebe primeiro.";
+    return "Cada novo lead vai para o próximo corretor da fila, de forma equilibrada.";
   };
 
   const rolePill = (roleValue: string) => {
@@ -1577,7 +1578,7 @@ export default function AgencyTeamPage() {
                         <div className="text-xs text-gray-500">Base para intenções sem regra específica</div>
                       </div>
                       <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Workspace</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Seu papel</div>
                         <div className="mt-1 text-sm font-semibold text-gray-900">{workspaceRoleLabel || "OWNER"}</div>
                         <div className="text-xs text-gray-500">Gestão liberada: {canManageTeam ? "sim" : "não"}</div>
                       </div>

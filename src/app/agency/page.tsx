@@ -6,6 +6,9 @@ import { useSession } from "next-auth/react";
 import { Activity, AlertTriangle, Home, MessageCircle, Settings, Users, X } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
+import { formatErrorMessage } from "@/lib/format-error-message";
+import AgencyEmptyState from "@/components/agency/AgencyEmptyState";
+import AgencyTeamSnapshot from "@/components/agency/AgencyTeamSnapshot";
 
 type Team = {
   id: string;
@@ -72,6 +75,8 @@ type AgencyInsightsResponse = {
     activeLeads: number;
     pendingReply: number;
     stalledLeads: number;
+    wonLeads?: number;
+    lostLeads?: number;
     activeClients?: number;
     clientPendingReply?: number;
     clientNoFirstContact?: number;
@@ -132,12 +137,6 @@ function formatDateTime(value: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-}
-
-function workloadBadgeClass(status: "balanced" | "attention" | "overloaded") {
-  if (status === "overloaded") return "border-rose-200 bg-rose-50 text-rose-700";
-  if (status === "attention") return "border-amber-200 bg-amber-50 text-amber-700";
-  return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
 export default function AgencyDashboardPage() {
@@ -231,7 +230,7 @@ export default function AgencyDashboardPage() {
         : [];
       setSelectedRealtorId(agents[0]?.userId ? String(agents[0].userId) : "");
     } catch (e: any) {
-      setNoticeError(e?.message || "Não conseguimos carregar os dados do time agora.");
+      setNoticeError(formatErrorMessage(e, "Não conseguimos carregar os dados do time agora."));
       setPipelineMembers([]);
       setPipelineLeads([]);
       setSelectedRealtorId("");
@@ -298,7 +297,7 @@ export default function AgencyDashboardPage() {
       setNoticeSuccess("Aviso enviado.");
       setSelectedLeadIds([]);
     } catch (e: any) {
-      setNoticeError(e?.message || "Não conseguimos enviar o aviso agora.");
+      setNoticeError(formatErrorMessage(e, "Não conseguimos enviar o aviso agora."));
     } finally {
       setSendingNotice(false);
     }
@@ -367,24 +366,6 @@ export default function AgencyDashboardPage() {
     };
   };
 
-  const teamLoadMembers = useMemo(() => {
-    return (Array.isArray(insights?.members) ? insights.members : [])
-      .slice()
-      .sort((a, b) => {
-        const aPending = Number(a.pendingReply || 0) + Number(a.clientPendingReply || 0);
-        const bPending = Number(b.pendingReply || 0) + Number(b.clientPendingReply || 0);
-        if (bPending !== aPending) return bPending - aPending;
-        const aStalled = Number(a.stalledLeads || 0);
-        const bStalled = Number(b.stalledLeads || 0);
-        if (bStalled !== aStalled) return bStalled - aStalled;
-        return Number(b.activeLeads || 0) - Number(a.activeLeads || 0);
-      })
-      .slice(0, 5);
-  }, [insights?.members]);
-
-  const teamMembersTotal = Array.isArray(insights?.members) ? insights.members.length : 0;
-  const hiddenTeamMembers = Math.max(0, teamMembersTotal - teamLoadMembers.length);
-
   const leadAttentionList = useMemo(() => {
     return Array.isArray(insights?.sla?.pendingReplyLeads) ? insights.sla.pendingReplyLeads.slice(0, 6) : [];
   }, [insights?.sla?.pendingReplyLeads]);
@@ -406,7 +387,7 @@ export default function AgencyDashboardPage() {
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-500">Workspace</p>
+            <p className="text-xs font-semibold text-gray-500">Imobiliária</p>
             <p className="mt-1 text-xl font-semibold text-gray-900 truncate">{team?.name || "Agência"}</p>
             <p className="mt-1 text-sm text-gray-600">
               {team?.id
@@ -464,10 +445,10 @@ export default function AgencyDashboardPage() {
               iconBgColor="bg-amber-50"
             />
             <MetricCard
-              title="Leads pendentes (SLA)"
+              title="Aguardando resposta"
               value={insights.sla.pendingReplyTotal}
               icon={AlertTriangle}
-              subtitle="Resposta pendente no funil"
+              subtitle="Clientes esperando o corretor responder"
               iconColor="text-rose-700"
               iconBgColor="bg-rose-50"
             />
@@ -495,8 +476,11 @@ export default function AgencyDashboardPage() {
                   <div className="divide-y divide-gray-100">
                     {leadAttentionList.map((lead) => (
                       <div key={lead.leadId} className="py-3 flex items-start gap-3">
-                        <span className="mt-0.5 inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
-                          SLA
+                        <span
+                          className="mt-0.5 inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700"
+                          title="Cliente aguardando resposta do corretor"
+                        >
+                          Aguardando
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-900 line-clamp-1">{lead.contactName || lead.propertyTitle || `Lead ${lead.leadId}`}</p>
@@ -518,81 +502,14 @@ export default function AgencyDashboardPage() {
               </StatCard>
             </div>
 
-            <div className="lg:col-span-1">
-              <StatCard
-                title="Carga do time"
-                action={
-                  <Link href="/agency/team" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    Ver todos
-                  </Link>
-                }
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3 text-xs text-gray-500">
-                    <div>
-                      <p className="font-semibold text-gray-700">Ordenado por pendências e carga</p>
-                      <p className="mt-1">
-                        Mostrando {teamLoadMembers.length} de {teamMembersTotal} corretores
-                        {hiddenTeamMembers > 0 ? ` · ${hiddenTeamMembers} fora deste resumo` : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  {teamLoadMembers.length > 0 ? (
-                    <div className="space-y-3">
-                      {teamLoadMembers.map((member) => {
-                        const totalPending = Number(member.pendingReply || 0) + Number(member.clientPendingReply || 0);
-                        const attentionPoints = Number(member.stalledLeads || 0) + Number(member.clientNoFirstContact || 0);
-                        const workloadStatus = member.workloadStatus || "balanced";
-                        return (
-                          <Link
-                            key={member.userId}
-                            href={`/agency/teams/${dashboardTeamId}/crm?realtorId=${encodeURIComponent(member.userId)}`}
-                            className="block rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 hover:border-gray-300 hover:bg-white transition-colors"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{member.name || member.email || "Corretor"}</p>
-                                <p className="mt-1 text-xs text-gray-500">
-                                  {member.activeLeads} lead(s) ativos · {Number(member.activeClients || 0)} cliente(s) ativos
-                                </p>
-                                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
-                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
-                                    {totalPending} pendência(s)
-                                  </span>
-                                  {member.stalledLeads ? (
-                                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
-                                      {member.stalledLeads} parado(s)
-                                    </span>
-                                  ) : null}
-                                  {member.clientNoFirstContact ? (
-                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-700">
-                                      {member.clientNoFirstContact} sem 1º contato
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end gap-2 text-right">
-                                <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${workloadBadgeClass(workloadStatus)}`}>
-                                  {workloadStatus === "overloaded" ? "Sobrecarregado" : workloadStatus === "attention" ? "Atenção" : "Equilibrado"}
-                                </span>
-                                <span className="text-[11px] font-medium text-gray-500">
-                                  Score {typeof member.executionScore === "number" ? member.executionScore : "-"}
-                                  {typeof member.avgFirstResponseMinutes === "number" ? ` · ${member.avgFirstResponseMinutes} min` : ""}
-                                  {attentionPoints > 0 ? ` · ${attentionPoints} ponto(s) de atenção` : ""}
-                                </span>
-                              </div>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-600">Assim que o time começar a operar, a carga dos corretores aparece aqui.</div>
-                  )}
-                </div>
-              </StatCard>
+            <div className="lg:col-span-3">
+              {dashboardTeamId && Array.isArray(insights?.members) && insights.members.length > 0 ? (
+                <AgencyTeamSnapshot teamId={dashboardTeamId} members={insights.members} />
+              ) : (
+                <StatCard title="Sua equipe">
+                  <p className="text-sm text-gray-600">Assim que o time começar a operar, a saúde dos corretores aparece aqui.</p>
+                </StatCard>
+              )}
             </div>
 
             <div className="lg:col-span-3">
@@ -849,15 +766,13 @@ export default function AgencyDashboardPage() {
           )}
         </>
       ) : (
-        <StatCard title="Comece por aqui">
-          <div className="text-sm text-gray-600">
-            Não encontramos um time associado a esta agência ainda. Vá em{" "}
-            <Link href="/agency/team" className="text-blue-600 hover:text-blue-700 font-semibold">
-              Meu time
-            </Link>{" "}
-            para configurar membros, convites e preferências.
-          </div>
-        </StatCard>
+        <AgencyEmptyState
+          icon={Users}
+          title="Sua imobiliária está pronta"
+          description="Cadastre seu primeiro corretor para começar a receber leads e acompanhar o funil do time."
+          ctaLabel="Adicionar primeiro corretor"
+          ctaHref="/agency/team#invites"
+        />
       )}
     </div>
   );

@@ -6,8 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import AgencyEmptyState from "@/components/agency/AgencyEmptyState";
 import PropertyCardV2 from "@/components/dashboard/PropertyCardV2";
-import { X } from "lucide-react";
+import { Home, X } from "lucide-react";
 import AgencyPropertiesOnboarding, { resetAgencyPropertiesOnboarding } from "@/components/onboarding/AgencyPropertiesOnboarding";
 
 type PropertyStatus = "ACTIVE" | "PAUSED" | "DRAFT";
@@ -209,17 +210,12 @@ export default function AgencyPropertiesPage() {
         }}
       />
         {properties.length === 0 ? (
-          <EmptyState
-            title="Nenhum imóvel no time"
-            description="Quando o time cadastrar imóveis, eles aparecerão aqui."
-            action={
-              <Link
-                href="/start"
-                className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
-              >
-                Cadastrar imóvel
-              </Link>
-            }
+          <AgencyEmptyState
+            icon={Home}
+            title="Nenhum imóvel cadastrado ainda"
+            description="Quando seus corretores publicarem imóveis, eles aparecem aqui. Você pode acompanhar visualizações, leads gerados e desempenho de cada anúncio."
+            ctaLabel="Cadastrar imóvel"
+            ctaHref="/start"
           />
         ) : (
           <div className="space-y-6">

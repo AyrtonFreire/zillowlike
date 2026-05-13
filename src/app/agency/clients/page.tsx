@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import AgencyEmptyState from "@/components/agency/AgencyEmptyState";
 import Drawer from "@/components/ui/Drawer";
 import { X, Flag, Plus, Sparkles, UserRound, Phone, Mail, MapPin, Trash2 } from "lucide-react";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
@@ -1208,10 +1209,10 @@ export default function AgencyClientsPage() {
 
         <div className="mt-6" data-onboarding="agency-clients-list">
           {clients.length === 0 ? (
-            <EmptyState
-              icon={<UserRound className="w-10 h-10 text-gray-400" />}
-              title="Nenhum cliente encontrado"
-              description="Crie seu primeiro cliente acima ou ajuste os filtros."
+            <AgencyEmptyState
+              icon={UserRound}
+              title="Nenhum cliente por aqui ainda"
+              description="Seus clientes aparecem aqui automaticamente quando algum corretor conversa com um lead. Você também pode cadastrar manualmente usando o formulário acima."
             />
           ) : (
             <div className="space-y-3">

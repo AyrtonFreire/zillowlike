@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, ClipboardList, Flag, MessageCircle, RefreshCw } from "lucide-react";
 import AgencyLeadSidePanel from "../../../../../components/leads/AgencyLeadSidePanel";
+import AgencyCrmOnboarding from "@/components/onboarding/AgencyCrmOnboarding";
 import { getPusherClient } from "@/lib/pusher-client";
 import {
   buildAgencyLeadRecommendedMessage,
@@ -457,6 +458,7 @@ export default function AgencyTeamCrmPage() {
 
   return (
     <div className="py-2 space-y-4">
+      <AgencyCrmOnboarding />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs text-gray-500">Time</div>
@@ -582,7 +584,7 @@ export default function AgencyTeamCrmPage() {
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm lg:rounded-b-2xl lg:rounded-t-none lg:border-t-0">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr className="text-left text-[11px] font-semibold text-gray-600">
@@ -824,6 +826,52 @@ export default function AgencyTeamCrmPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden divide-y divide-gray-100">
+          {loading ? (
+            <div className="px-4 py-6 text-sm text-gray-600">Carregando...</div>
+          ) : leads.length === 0 ? (
+            <div className="px-4 py-8 text-sm text-gray-600">Nenhum lead encontrado com os filtros atuais.</div>
+          ) : (
+            leads.map((l) => {
+              const leadId = String(l.id);
+              const pending = pendingMap.get(leadId) || null;
+              const slaAge = formatSlaAge(pending?.lastClientAt || null);
+              const assignedId = l.realtor?.id ? String(l.realtor.id) : "";
+              const isPending = !!pending;
+              const member = assignedId ? realtorOptions.find((m) => String(m.userId) === assignedId) || null : null;
+              const assignedName = member?.name || member?.email || l.realtor?.name || "Sem responsável";
+              return (
+                <button
+                  key={leadId}
+                  type="button"
+                  onClick={() => openLeadPanel(leadId, "ATIVIDADES")}
+                  className="block w-full text-left px-4 py-3 hover:bg-gray-50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900">{l.contact?.name || `Lead ${leadId}`}</p>
+                      <p className="mt-0.5 truncate text-xs text-gray-600">{l.property?.title || "—"}</p>
+                    </div>
+                    <span className="shrink-0 inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+                      {stageLabels[l.pipelineStage || ""] ?? l.pipelineStage}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="text-gray-500">Responsável:</span>
+                    <span className="font-medium text-gray-800 truncate max-w-[180px]">{assignedName}</span>
+                  </div>
+                  {isPending ? (
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                      <AlertTriangle className="w-3 h-3" />
+                      {slaAge ? `Aguardando há ${slaAge}` : "Aguardando"}
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 

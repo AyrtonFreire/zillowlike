@@ -2,11 +2,12 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import CollapsibleSidebarNav, { type SidebarNavItem } from "@/components/workspace/CollapsibleSidebarNav";
+import AgencyIdentityBadge from "@/components/agency/AgencyIdentityBadge";
 
 const NAV_ITEMS: SidebarNavItem[] = [
   { href: "/agency", label: "Painel", icon: LayoutDashboard },
@@ -100,9 +101,45 @@ function sectionFromPath(pathname: string) {
   };
 }
 
+const AGENCY_NAME_CACHE_KEY = "oggahub_agency_identity_v1";
+
 export default function AgencyShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const section = useMemo(() => sectionFromPath(pathname), [pathname]);
+  const [agencyName, setAgencyName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const cached = sessionStorage.getItem(AGENCY_NAME_CACHE_KEY);
+      if (cached) setAgencyName(cached);
+    } catch {
+      // ignore
+    }
+    (async () => {
+      try {
+        const res = await fetch("/api/teams", { cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) return;
+        const teams: Array<{ name?: string }> = Array.isArray(data.teams) ? data.teams : [];
+        const name = teams[0]?.name?.trim();
+        if (!cancelled && name) {
+          setAgencyName(name);
+          try {
+            sessionStorage.setItem(AGENCY_NAME_CACHE_KEY, name);
+          } catch {
+            // ignore
+          }
+        }
+      } catch {
+        // silent
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-gray-50">
       <ModernNavbar />
@@ -113,13 +150,16 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
 
           <div className="relative p-4 sm:p-6">
             <div className="flex flex-col md:flex-row gap-5">
-              <CollapsibleSidebarNav
-                items={NAV_ITEMS}
-                pathname={pathname}
-                storageKey="oggahub_sidebar_collapsed_agency"
-                workspaceLabel="Agência"
-                isItemActive={(currentPath, item) => isActiveHref(currentPath, item.href)}
-              />
+              <div className="md:flex-shrink-0">
+                {agencyName ? <AgencyIdentityBadge /> : null}
+                <CollapsibleSidebarNav
+                  items={NAV_ITEMS}
+                  pathname={pathname}
+                  storageKey="oggahub_sidebar_collapsed_agency"
+                  workspaceLabel={agencyName || "Imobiliária"}
+                  isItemActive={(currentPath, item) => isActiveHref(currentPath, item.href)}
+                />
+              </div>
 
               <div className="flex-1 min-w-0">
                 <div className="pb-5 border-b border-gray-200/70">
