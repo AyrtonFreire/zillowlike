@@ -1377,10 +1377,10 @@ export default function AgencyTeamPage() {
           },
           {
             key: "invites",
-            label: "Acessos",
+            label: "Corretores do time",
             content: (
               <div id="invites" className="space-y-6">
-                <StatCard title="Criar acesso de corretor">
+                <StatCard title="Adicionar novo corretor">
                   <form onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                     <div className="md:col-span-2">
                       <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>

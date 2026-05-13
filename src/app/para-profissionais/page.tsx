@@ -31,24 +31,6 @@ const paths = [
     accent: "indigo",
   },
   {
-    id: "vinculado",
-    eyebrow: "Corretor vinculado",
-    title: "Trabalha em uma imobiliária, mas precisa operar como corretor.",
-    description:
-      "Use o mesmo fluxo de ativação do corretor e selecione que você atua vinculado a uma imobiliária. Isso mantém seu perfil como pessoa corretora, não como a empresa.",
-    bullets: [
-      "Seu papel continua sendo de corretor",
-      "Bom para atuação individual dentro de um time",
-      "Se a empresa precisa de workspace próprio, use o fluxo de imobiliária",
-    ],
-    primaryHref: "/realtor/register",
-    primaryLabel: "Ativar perfil de corretor vinculado",
-    secondaryHref: "/auth/register?flow=professional",
-    secondaryLabel: "Criar conta antes de ativar",
-    icon: BriefcaseBusiness,
-    accent: "teal",
-  },
-  {
     id: "imobiliaria",
     eyebrow: "Imobiliária",
     title: "Abra um workspace da empresa para gestão do time.",

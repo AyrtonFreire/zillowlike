@@ -19,7 +19,6 @@ export default function RealtorRegisterPage() {
 
   const [creci, setCreci] = useState("");
   const [creciState, setCreciState] = useState("");
-  const [realtorType, setRealtorType] = useState<"AUTONOMO" | "IMOBILIARIA" | "">("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,8 +49,8 @@ export default function RealtorRegisterPage() {
     setError(null);
     setSuccess(null);
 
-    if (!creci.trim() || !creciState.trim() || !realtorType) {
-      setError("Preencha CRECI, estado do CRECI e o tipo de atuação.");
+    if (!creci.trim() || !creciState.trim()) {
+      setError("Preencha CRECI e estado do CRECI.");
       return;
     }
 
@@ -70,7 +69,7 @@ export default function RealtorRegisterPage() {
           role: "REALTOR",
           creci: creci.trim(),
           creciState: creciState.trim().toUpperCase(),
-          realtorType,
+          realtorType: "AUTONOMO",
         }),
       });
 
@@ -109,8 +108,8 @@ export default function RealtorRegisterPage() {
             </div>
           </div>
 
-          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
-            Este fluxo é para <span className="font-semibold">corretor(a)</span>, inclusive quando você atua vinculado a uma imobiliária. Se a conta precisa representar a <span className="font-semibold">empresa</span> e abrir um workspace do time, use o cadastro de <a href="/agency/register" className="underline font-semibold">imobiliária</a>.
+          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+            Este fluxo é para <span className="font-semibold">corretor(a) autônomo(a)</span>. Se você trabalha em uma imobiliária, peça ao administrador para criar seu acesso. Se quer cadastrar a empresa, use o fluxo de <a href="/agency/register" className="underline font-semibold">imobiliária</a>.
           </div>
 
           {error && (
@@ -138,35 +137,20 @@ export default function RealtorRegisterPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado do CRECI (UF)</label>
-                <select
-                  value={creciState}
-                  onChange={(e) => setCreciState(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                >
-                  <option value="">Selecione</option>
-                  {BRAZILIAN_STATES.map((uf) => (
-                    <option key={uf} value={uf}>
-                      {uf}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de atuação</label>
-                <select
-                  value={realtorType}
-                  onChange={(e) => setRealtorType(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                >
-                  <option value="">Selecione</option>
-                  <option value="AUTONOMO">Corretor(a) autônomo(a)</option>
-                  <option value="IMOBILIARIA">Corretor(a) vinculado(a) a uma imobiliária</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Estado do CRECI (UF)</label>
+              <select
+                value={creciState}
+                onChange={(e) => setCreciState(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              >
+                <option value="">Selecione</option>
+                {BRAZILIAN_STATES.map((uf) => (
+                  <option key={uf} value={uf}>
+                    {uf}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {creci && (

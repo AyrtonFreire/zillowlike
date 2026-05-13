@@ -23,10 +23,15 @@
       "Bash(grep -r \"Carregando\\\\|Loading\\\\|Salvando\\\\|Saving\" \"C:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\" --include=\"*.tsx\" --include=\"*.ts\" 2>nul | head -20)",
       "Bash(grep -r \"min-h-\\\\[44\\\\|min-h-\\\\[48\\\\|touch.*target\" \"C:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\\\\components\\\\ui\" --include=\"*.tsx\" 2>nul | head -10)",
       "Bash(rm -rf .next/types/app/become-realtor)",
-      "Bash(rm -f .next/types/validator.ts)"
+      "Bash(rm -f .next/types/validator.ts)",
+      "Bash(find \"c:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\\\\app\\\\api\\\\agency\" -type f -name \"*.ts\" 2>nul | head -20)",
+      "Bash(xargs grep -l \"TeamInvite\\\\|inviteEmail\\\\|email.*team\\\\|convidar.*corretor\")",
+      "Bash(grep -n \"invites\\\\|email.*invite\\\\|convidar.*email\" \"c:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\\\\app\\\\agency\\\\team\\\\page.tsx\" 2>nul | head -20)",
+      "Bash(cd \"c:/Users/Ayrton Freire/zillowlike\" && rm -rf src/app/api/teams/\\\\[id\\\\]/invites && echo \"OK\")"
     ],
     "additionalDirectories": [
-      "c:\\Users\\Ayrton Freire\\zillowlike"
+      "c:\\Users\\Ayrton Freire\\zillowlike",
+      "c:\\Users\\Ayrton Freire\\zillowlike\\src\\app\\api\\teams\\[id]\\invites"
     ]
   }
 }
