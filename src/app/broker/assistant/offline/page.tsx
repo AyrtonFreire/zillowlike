@@ -347,42 +347,11 @@ export default function BrokerAssistantOfflinePage() {
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         <AssistantTabs />
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-gray-900">Auto-resposta</h1>
-            <p className="mt-1 text-sm text-gray-600">Defina quando o assistente responde e acompanhe a atividade.</p>
-          </div>
-
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50"
-          >
-            <Settings className="w-4 h-4" />
-            {saving ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={settings.enabled}
-              onChange={(e) => setSettings((s) => ({ ...s, enabled: e.target.checked }))}
-              className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-            />
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-900">Ativar assistente offline</div>
-              <div className="text-sm text-gray-600">Responde quando você estiver offline e dentro do horário configurado.</div>
-            </div>
-          </div>
-
-          <AssistantAvailability
-            value={settings.weekSchedule}
-            onChange={(ws) => setSettings((s) => ({ ...s, weekSchedule: ws }))}
-          />
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-gray-900">Auto-resposta</h1>
+          <p className="mt-1 text-sm text-gray-600">Acompanhe o que o assistente fez enquanto você esteve fora.</p>
         </div>
 
         <StatCard
@@ -529,6 +498,37 @@ export default function BrokerAssistantOfflinePage() {
             </div>
           )}
         </StatCard>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={settings.enabled}
+              onChange={(e) => setSettings((s) => ({ ...s, enabled: e.target.checked }))}
+              className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+            />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-900">Ativar assistente offline</div>
+              <div className="text-sm text-gray-600">Responde quando você estiver offline e dentro do horário configurado.</div>
+            </div>
+          </div>
+
+          <AssistantAvailability
+            value={settings.weekSchedule}
+            onChange={(ws) => setSettings((s) => ({ ...s, weekSchedule: ws }))}
+          />
+
+          <div className="flex justify-end border-t border-gray-100 pt-4">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50"
+            >
+              <Settings className="w-4 h-4" />
+              {saving ? "Salvando..." : "Salvar configurações"}
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );
