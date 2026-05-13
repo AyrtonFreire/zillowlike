@@ -32,7 +32,7 @@ export default function Select({ label, error, className = "", children, ...prop
           </svg>
         </span>
       </span>
-      {error && <span className="mt-1 block text-xs text-danger">{error}</span>}
+      {error && <span className="mt-1 block text-sm font-medium text-red-700">{error}</span>}
     </label>
   );
 }

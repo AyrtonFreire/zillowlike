@@ -4,7 +4,7 @@ import Button from "@/components/ui/Button";
 import { useState } from "react";
 import Input from "@/components/ui/Input";
 import BrandLogo from "@/components/BrandLogo";
-import { ArrowUpRight, BookOpen, Mail } from "lucide-react";
+import { ArrowUpRight, BookOpen, Briefcase, Mail } from "lucide-react";
 import { EMAIL_INTEREST_LABELS, type EmailInterest } from "@/lib/communication-preferences";
 
 const FOOTER_INTERESTS: EmailInterest[] = ["BUY", "RENT"];
@@ -76,6 +76,25 @@ export default function SiteFooter() {
   return (
     <footer className="bg-neutral-900 text-neutral-300">
       <div className="mx-auto max-w-7xl px-4 py-12">
+        <Link
+          href="/para-profissionais"
+          prefetch={false}
+          className="group mb-10 flex flex-col items-start justify-between gap-3 rounded-3xl border border-teal-500/30 bg-gradient-to-r from-teal-900/40 via-teal-800/30 to-teal-900/20 p-6 transition hover:border-teal-400/60 sm:flex-row sm:items-center"
+        >
+          <div className="flex items-center gap-4">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500/20 text-teal-200">
+              <Briefcase className="h-6 w-6" />
+            </span>
+            <div>
+              <div className="text-base font-semibold text-white">Sou corretor(a) ou imobiliária</div>
+              <div className="text-sm text-neutral-300">Conheça o painel profissional e comece a publicar seus imóveis hoje.</div>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-teal-400">
+            Conhecer o painel
+            <ArrowUpRight className="h-4 w-4" />
+          </span>
+        </Link>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
           <div className="md:col-span-2">
             <BrandLogo tone="light" size={42} className="mb-4" wordmarkClassName="text-2xl font-semibold tracking-tight" />

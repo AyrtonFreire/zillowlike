@@ -3348,23 +3348,28 @@ export default function NewPropertyPage() {
                 Etapa {currentStep} de {steps.length}
               </span>
             </div>
-            <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
-                  <p>
-                    Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Agora você pode ajustar isso sem sair desta tela.
-                  </p>
+            {!hasAnyVerifiedContact ? (
+              <div className="mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-4 text-sm text-amber-900 shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-200 text-amber-900">⚠️</span>
+                    <div>
+                      <p className="text-base font-semibold mb-1">Antes de publicar, verifique seu contato</p>
+                      <p className="text-sm">
+                        Você precisa confirmar pelo menos um canal — telefone <span className="font-medium">ou</span> e-mail. Leva uns 30 segundos e dá pra fazer agora mesmo sem sair desta tela.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openContactManager}
+                    className="shrink-0 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+                  >
+                    Verificar agora
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={openContactManager}
-                  className="shrink-0 rounded-xl bg-teal-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
-                >
-                  Gerenciar contatos
-                </button>
               </div>
-            </div>
+            ) : null}
 
             <div className="space-y-6">
                 <div
@@ -3464,24 +3469,6 @@ export default function NewPropertyPage() {
                       Conte o essencial do seu imóvel.
                     </p>
                   </div>
-
-                  {!hasAnyVerifiedContact && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="font-semibold">Para publicar, você precisa verificar telefone ou e-mail. Leva ~30s.</p>
-                          <p className="text-xs mt-1 text-amber-800">Você pode fazer isso agora e continuar preenchendo normalmente.</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={openContactManager}
-                          className="shrink-0 px-3 py-2 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700"
-                        >
-                          Gerenciar contatos
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
                   {userRole === "AGENCY" && (
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -3948,103 +3935,113 @@ export default function NewPropertyPage() {
                     </div>
 
                     <div className="lg:col-span-5 space-y-4">
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                      <details className="group rounded-xl border border-gray-200 bg-white shadow-sm" open={Boolean(metaTitle || metaDescription || videoUrl)}>
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
                           <div>
-                            <Input
-                              id="metaTitle"
-                              type="text"
-                              label="Meta Title"
-                              value={metaTitle}
-                              onChange={(e) => {
-                                setMetaTitle(e.target.value);
-                                clearFieldError("metaTitle");
-                              }}
-                              placeholder="Título otimizado para Google (até 65 caracteres)"
-                              maxLength={65}
-                              error={fieldErrors.metaTitle}
-                            />
-                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                              <span />
-                              <span>{metaTitle.length}/65</span>
+                            <h3 className="text-sm font-semibold text-gray-900">Configurações avançadas (opcional)</h3>
+                            <p className="text-xs text-gray-600 mt-0.5">Vídeo do imóvel e como ele aparece no Google. Você não precisa preencher.</p>
+                          </div>
+                          <span className="shrink-0 text-xs font-semibold text-teal-700 group-open:hidden">Mostrar</span>
+                          <span className="shrink-0 text-xs font-semibold text-gray-500 hidden group-open:inline">Ocultar</span>
+                        </summary>
+                        <div className="space-y-4 border-t border-gray-100 px-4 py-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                            <div>
+                              <Input
+                                id="metaTitle"
+                                type="text"
+                                label="Título no Google"
+                                value={metaTitle}
+                                onChange={(e) => {
+                                  setMetaTitle(e.target.value);
+                                  clearFieldError("metaTitle");
+                                }}
+                                placeholder="Ex: Casa 3 quartos no Centro de Petrolina"
+                                maxLength={65}
+                                error={fieldErrors.metaTitle}
+                              />
+                              <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                <span>Texto que aparece nos resultados do Google.</span>
+                                <span>{metaTitle.length}/65</span>
+                              </div>
+                            </div>
+                            <div>
+                              <Input
+                                id="metaDescription"
+                                type="text"
+                                label="Descrição no Google"
+                                value={metaDescription}
+                                onChange={(e) => {
+                                  setMetaDescription(e.target.value);
+                                  clearFieldError("metaDescription");
+                                }}
+                                placeholder="Ex: 3 quartos, garagem coberta, condomínio fechado..."
+                                maxLength={155}
+                                error={fieldErrors.metaDescription}
+                              />
+                              <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                <span>Frase curta que aparece abaixo do título no Google.</span>
+                                <span>{metaDescription.length}/155</span>
+                              </div>
                             </div>
                           </div>
-                          <div>
-                            <Input
-                              id="metaDescription"
-                              type="text"
-                              label="Meta Description"
-                              value={metaDescription}
-                              onChange={(e) => {
-                                setMetaDescription(e.target.value);
-                                clearFieldError("metaDescription");
-                              }}
-                              placeholder="Descrição curta para Google (até 155 caracteres)"
-                              maxLength={155}
-                              error={fieldErrors.metaDescription}
-                            />
-                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                              <span />
-                              <span>{metaDescription.length}/155</span>
+
+                          <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-900">Vídeo do imóvel</h4>
+                                <p className="text-xs text-gray-600 mt-1">Cole o link do YouTube ou Vimeo do tour do imóvel.</p>
+                              </div>
+                              {videoUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setVideoUrl("");
+                                    clearFieldError("videoUrl");
+                                  }}
+                                  className="text-xs font-semibold text-gray-600 hover:text-gray-800"
+                                >
+                                  Remover
+                                </button>
+                              )}
                             </div>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="border border-gray-200 rounded-xl p-4 bg-white">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <h3 className="text-sm font-semibold text-gray-900">Vídeo do imóvel (YouTube/Vimeo)</h3>
-                            <p className="text-xs text-gray-600 mt-1">Cole o link do vídeo.</p>
-                          </div>
-                          {videoUrl && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setVideoUrl("");
-                                clearFieldError("videoUrl");
-                              }}
-                              className="text-xs font-semibold text-gray-600 hover:text-gray-800"
-                            >
-                              Remover
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="mt-3">
-                          <Input
-                            id="videoUrl"
-                            label="Link do vídeo"
-                            value={videoUrl}
-                            error={fieldErrors.videoUrl}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setVideoUrl(v);
-                              if (!v.trim()) {
-                                clearFieldError("videoUrl");
-                              }
-                            }}
-                            placeholder="https://youtu.be/... ou https://vimeo.com/..."
-                            optional
-                          />
-                        </div>
-
-                        {videoUrl && parseVideoUrl(videoUrl) && (
-                          <div className="mt-3">
-                            <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black aspect-video">
-                              <iframe
-                                src={parseVideoUrl(videoUrl)?.embedUrl}
-                                title="Vídeo do imóvel"
-                                className="absolute inset-0 w-full h-full"
-                                loading="lazy"
-                                referrerPolicy="strict-origin-when-cross-origin"
-                                allow="autoplay; encrypted-media; picture-in-picture"
-                                sandbox="allow-scripts allow-same-origin allow-presentation"
+                            <div className="mt-3">
+                              <Input
+                                id="videoUrl"
+                                label="Link do vídeo"
+                                value={videoUrl}
+                                error={fieldErrors.videoUrl}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setVideoUrl(v);
+                                  if (!v.trim()) {
+                                    clearFieldError("videoUrl");
+                                  }
+                                }}
+                                placeholder="https://youtu.be/... ou https://vimeo.com/..."
+                                optional
                               />
                             </div>
+
+                            {videoUrl && parseVideoUrl(videoUrl) && (
+                              <div className="mt-3">
+                                <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black aspect-video">
+                                  <iframe
+                                    src={parseVideoUrl(videoUrl)?.embedUrl}
+                                    title="Vídeo do imóvel"
+                                    className="absolute inset-0 w-full h-full"
+                                    loading="lazy"
+                                    referrerPolicy="strict-origin-when-cross-origin"
+                                    allow="autoplay; encrypted-media; picture-in-picture"
+                                    sandbox="allow-scripts allow-same-origin allow-presentation"
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      </details>
                     </div>
                   </div>
                 </div>

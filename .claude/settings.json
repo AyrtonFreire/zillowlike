@@ -13,7 +13,20 @@
       "Bash(npx eslint *)",
       "Bash(node -e \"const p=require\\('./package.json'\\); const all={...p.dependencies,...p.devDependencies}; console.log\\(Object.keys\\(all\\).filter\\(k => k.includes\\('virtual'\\) || k.includes\\('window'\\) || k.includes\\('intersection'\\)\\).join\\('\\\\n'\\)||'\\(none\\)'\\)\")",
       "Bash(npm install *)",
-      "Bash(xargs grep -l \"lead-auto-reply\\\\|worker\")"
+      "Bash(xargs grep -l \"lead-auto-reply\\\\|worker\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Ayrton Freire\\\\zillowlike\" -Directory)",
+      "Bash(Select-Object -First 20)",
+      "Bash(find \"C:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\\\\app\" -type d -name \"*contato*\" -o -type d -name \"*contact*\" -o -type d -name \"*suporte*\" -o -type d -name \"*support*\" -o -type d -name \"*help*\" 2>nul)",
+      "Bash(^d.*contact)",
+      "Bash(^d.*support)",
+      "Bash(^d.*help\")",
+      "Bash(grep -r \"Carregando\\\\|Loading\\\\|Salvando\\\\|Saving\" \"C:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\" --include=\"*.tsx\" --include=\"*.ts\" 2>nul | head -20)",
+      "Bash(grep -r \"min-h-\\\\[44\\\\|min-h-\\\\[48\\\\|touch.*target\" \"C:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\\\\components\\\\ui\" --include=\"*.tsx\" 2>nul | head -10)",
+      "Bash(rm -rf .next/types/app/become-realtor)",
+      "Bash(rm -f .next/types/validator.ts)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Ayrton Freire\\zillowlike"
     ]
   }
 }

@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ClientProviders from "./ClientProviders";
 import LinkToOverlayInterceptor from "@/components/LinkToOverlayInterceptor";
+import SupportFloatingButton from "@/components/SupportFloatingButton";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -83,6 +84,7 @@ export default async function RootLayout({
         <ClientProviders session={session}>
           <LinkToOverlayInterceptor />
           <main id="content" role="main">{children}</main>
+          <SupportFloatingButton />
         </ClientProviders>
         <Analytics />
         <SpeedInsights />
