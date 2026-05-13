@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import BrokerMetricTile from "@/components/broker/BrokerMetricTile";
 import PipelineTransitionModal, { type PipelineTransitionPayload } from "@/components/crm/PipelineTransitionModal";
 import { CANONICAL_PIPELINE_STAGES, PIPELINE_STAGE_META, canonicalToBoardGroup, transitionRequiresReason, type CanonicalPipelineStage } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -1026,8 +1027,7 @@ export default function MyLeadsPage() {
         key: "new",
         label: "Primeiro contato",
         value: counts.NEW,
-        helper: "Leads no topo do funil para responder primeiro.",
-        className: "border-blue-200 bg-blue-50 text-blue-800",
+        accent: "teal" as const,
         icon: Users,
         onClick: () => setPipelineFilter("NEW"),
       },
@@ -1035,8 +1035,7 @@ export default function MyLeadsPage() {
         key: "awaiting",
         label: "Aguardando retorno",
         value: smartCounters.awaitingResponse,
-        helper: "Clientes com mensagens não lidas ou esperando resposta.",
-        className: "border-rose-200 bg-rose-50 text-rose-800",
+        accent: "rose" as const,
         icon: Bell,
         onClick: () => router.push("/broker/chats"),
       },
@@ -1044,8 +1043,7 @@ export default function MyLeadsPage() {
         key: "today",
         label: "Tarefas de hoje",
         value: smartCounters.taskToday,
-        helper: "Lembretes e próximas ações que vencem hoje.",
-        className: "border-amber-200 bg-amber-50 text-amber-800",
+        accent: "amber" as const,
         icon: CalendarClock,
         onClick: () => {
           setDateFilter("today");
@@ -1056,8 +1054,7 @@ export default function MyLeadsPage() {
         key: "stale",
         label: "Sem contato há 48h",
         value: smartCounters.noContact48h,
-        helper: "Leads que precisam reativação no CRM.",
-        className: "border-gray-200 bg-gray-100 text-gray-700",
+        accent: "rose" as const,
         icon: PhoneOff,
         onClick: () => router.push("/broker/crm"),
       },
@@ -1202,13 +1199,12 @@ export default function MyLeadsPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white via-white to-slate-50 p-4 shadow-sm">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Resumo operacional</div>
-            <h2 className="mt-2 text-lg font-semibold text-gray-900">Priorize o que pede ação agora.</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              {filteredLeads.length} {filteredLeads.length === 1 ? "lead visível" : "leads visíveis"} de {counts.all} ativos no workspace.
+            <h2 className="text-lg font-semibold text-gray-950">Visão da operação</h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {filteredLeads.length} {filteredLeads.length === 1 ? "lead visível" : "leads visíveis"} de {counts.all} ativos.
             </p>
           </div>
 
@@ -1231,26 +1227,16 @@ export default function MyLeadsPage() {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {operationalHighlights.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={item.onClick}
-                className={`rounded-2xl border px-4 py-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${item.className}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <span className="text-2xl font-semibold tabular-nums">{item.value}</span>
-                </div>
-                <div className="mt-3 text-sm font-semibold">{item.label}</div>
-                <p className="mt-1 text-xs leading-5 opacity-90">{item.helper}</p>
-              </button>
-            );
-          })}
+          {operationalHighlights.map((item) => (
+            <BrokerMetricTile
+              key={item.key}
+              icon={item.icon}
+              label={item.label}
+              value={item.value}
+              accent={item.accent}
+              onClick={item.onClick}
+            />
+          ))}
         </div>
 
         {activeFilterChips.length > 0 ? (

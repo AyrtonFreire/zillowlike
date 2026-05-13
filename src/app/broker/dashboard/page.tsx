@@ -19,6 +19,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import BrokerMetricTile from "@/components/broker/BrokerMetricTile";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyListItem from "@/components/dashboard/PropertyListItem";
@@ -655,9 +656,8 @@ export default function BrokerDashboard() {
         <div className="mb-8 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm shadow-black/5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal-700">Prioridades operacionais</div>
-              <h2 className="mt-2 text-lg font-semibold text-gray-900">Organize o dia do corretor por urgência e contexto.</h2>
-              <p className="mt-1 text-sm text-gray-600">Atalhos para o que pede ação imediata no funil, nas conversas e nos imóveis anunciados.</p>
+              <h2 className="text-lg font-semibold text-gray-950">Prioridades de hoje</h2>
+              <p className="mt-0.5 text-xs text-gray-500">Atalhos para o que pede ação imediata.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/profile?onboarding=broker" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
@@ -670,63 +670,34 @@ export default function BrokerDashboard() {
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <button
-              type="button"
+            <BrokerMetricTile
+              icon={Sparkles}
+              label="Novos para 1º contato"
+              value={newLeads.length}
+              accent="teal"
               onClick={() => setLeadFilter("NEW")}
-              className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-blue-700">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <span className="text-2xl font-semibold tabular-nums text-blue-900">{newLeads.length}</span>
-              </div>
-              <div className="mt-3 text-sm font-semibold text-blue-900">Novos para primeiro contato</div>
-              <p className="mt-1 text-xs leading-5 text-blue-800">Leads recém-chegados no topo do funil para responder primeiro.</p>
-            </button>
-
-            <button
-              type="button"
+            />
+            <BrokerMetricTile
+              icon={Activity}
+              label="Em acompanhamento"
+              value={inServiceLeads.length}
+              accent="none"
               onClick={() => setLeadFilter("IN_SERVICE")}
-              className="rounded-2xl border border-purple-200 bg-purple-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-purple-700">
-                  <Activity className="h-5 w-5" />
-                </div>
-                <span className="text-2xl font-semibold tabular-nums text-purple-900">{inServiceLeads.length}</span>
-              </div>
-              <div className="mt-3 text-sm font-semibold text-purple-900">Em acompanhamento</div>
-              <p className="mt-1 text-xs leading-5 text-purple-800">Oportunidades já em contato, visita, proposta ou documentação.</p>
-            </button>
-
-            <Link
+            />
+            <BrokerMetricTile
+              icon={MessageSquare}
+              label="Mensagens não lidas"
+              value={unreadMessages}
+              accent="rose"
               href="/broker/chats"
-              className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-rose-700">
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <span className="text-2xl font-semibold tabular-nums text-rose-900">{unreadMessages}</span>
-              </div>
-              <div className="mt-3 text-sm font-semibold text-rose-900">Mensagens não lidas</div>
-              <p className="mt-1 text-xs leading-5 text-rose-800">Converse com clientes que aguardam retorno para não perder timing comercial.</p>
-            </Link>
-
-            <Link
+            />
+            <BrokerMetricTile
+              icon={Clock}
+              label="Próximas ações"
+              value={metrics?.leadsWithReminders || 0}
+              accent="amber"
               href="/broker/crm"
-              className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-amber-700">
-                  <Clock className="h-5 w-5" />
-                </div>
-                <span className="text-2xl font-semibold tabular-nums text-amber-900">{metrics?.leadsWithReminders || 0}</span>
-              </div>
-              <div className="mt-3 text-sm font-semibold text-amber-900">Próximas ações</div>
-              <p className="mt-1 text-xs leading-5 text-amber-800">Lembretes ativos e pendências que precisam ser movidas no CRM.</p>
-            </Link>
+            />
           </div>
         </div>
 
