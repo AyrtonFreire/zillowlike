@@ -460,15 +460,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               )}
             </div>
             <Link
-              href="/para-profissionais"
-              className={`rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
-                forceLight ? 'text-gray-700 hover:bg-gray-100 hover:text-gray-900' : 'text-white/90 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              Para profissionais
-            </Link>
-            <Link 
-              href="/favorites" 
+              href="/favorites"
               className={`rounded-xl p-2.5 transition-colors ${
                 forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
               }`}
