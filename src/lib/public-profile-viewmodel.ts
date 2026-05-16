@@ -331,17 +331,19 @@ export function computeBadges(input: BadgeComputeInput): TrustBadgeVM[] {
 // ---------------------------------------------------------------------------
 
 function formatBRL(cents: number): string {
-  const value = Math.round(cents);
-  if (value >= 1_000_000) {
-    const millions = value / 1_000_000;
+  // Input is stored in centavos (same convention as PortfolioPropertyTile),
+  // so divide by 100 to get reais before bucketing.
+  const reais = Math.round(cents / 100);
+  if (reais >= 1_000_000) {
+    const millions = reais / 1_000_000;
     const trimmed = millions >= 10 ? millions.toFixed(0) : millions.toFixed(1);
     return `R$ ${trimmed.replace(".", ",")}M`;
   }
-  if (value >= 1_000) {
-    const thousands = Math.round(value / 1_000);
+  if (reais >= 1_000) {
+    const thousands = Math.round(reais / 1_000);
     return `R$ ${thousands.toLocaleString("pt-BR")} mil`;
   }
-  return `R$ ${value.toLocaleString("pt-BR")}`;
+  return `R$ ${reais.toLocaleString("pt-BR")}`;
 }
 
 export function computePriceRange(

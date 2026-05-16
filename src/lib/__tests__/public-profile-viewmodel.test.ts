@@ -193,6 +193,18 @@ describe("computePriceRange", () => {
     expect(result?.maxCents).toBe(1_200_000);
     expect(result?.label).toContain("–");
   });
+
+  it("treats input as centavos and formats reais correctly", () => {
+    // R$ 657.567,00 stored as 65_756_700 cents → '658 mil'
+    const result = computePriceRange([65_756_700]);
+    expect(result?.label).toBe("R$ 658 mil");
+  });
+
+  it("formats large prices as millions (R$ X,YM)", () => {
+    // R$ 1.500.000,00 stored as 150_000_000 cents
+    const result = computePriceRange([150_000_000]);
+    expect(result?.label).toBe("R$ 1,5M");
+  });
 });
 
 describe("computePropertyMix", () => {
