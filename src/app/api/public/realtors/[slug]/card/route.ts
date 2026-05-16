@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { BADGE_THRESHOLDS } from "@/lib/public-profile-viewmodel";
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -64,8 +65,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     const avgResponseTimeRaw = (realtor as any)?.stats?.avgResponseTime;
     const avgResponseTime = avgResponseTimeRaw == null ? null : Number(avgResponseTimeRaw);
 
-    const isFastResponder = avgResponseTime != null && avgResponseTime <= 30;
-    const isTopProducer = Number(completedDeals || 0) >= 50;
+    const isFastResponder =
+      avgResponseTime != null && avgResponseTime <= BADGE_THRESHOLDS.fastResponderMaxMinutes;
+    const isTopProducer = Number(completedDeals || 0) >= BADGE_THRESHOLDS.topProducerMinDeals;
 
     const res = NextResponse.json({
       id: realtor.id,

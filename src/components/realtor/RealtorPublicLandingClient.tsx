@@ -11,7 +11,9 @@ import { track } from "@/lib/analytics";
 import AgencyPublicProfileSections from "@/components/realtor/AgencyPublicProfileSections";
 import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
 import PublicProfileHero from "@/components/realtor/public/PublicProfileHero";
+import ProfileV2Layout from "@/components/realtor/public/ProfileV2Layout";
 import PublicProfileSharePanel from "@/components/realtor/public/PublicProfileSharePanel";
+import type { PublicProfileAggregates } from "@/lib/public-professional-profile";
 import RatingStars from "@/components/queue/RatingStars";
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import Drawer from "@/components/ui/Drawer";
@@ -125,6 +127,9 @@ type RealtorPublicLandingClientProps = {
     team: { id: string; name: string } | null;
     creci: string | null;
     creciState: string | null;
+    creciExpiry?: string | null;
+    creciValid?: boolean;
+    lastActivityDays?: number | null;
   };
   properties: PublicProperty[];
   initialRatingsPreview: Array<{
@@ -168,6 +173,8 @@ type RealtorPublicLandingClientProps = {
       helper: string;
     }>;
   } | null;
+  aggregates?: PublicProfileAggregates;
+  useV2Hero?: boolean;
 };
 
 const DEFAULT_PAGE_SIZE = 36;
@@ -320,6 +327,8 @@ export default function RealtorPublicLandingClient({
   properties,
   initialRatingsPreview,
   agencyProfile,
+  aggregates,
+  useV2Hero = false,
 }: RealtorPublicLandingClientProps) {
   void siteUrl;
   const { data: session } = useSession();
@@ -937,31 +946,52 @@ export default function RealtorPublicLandingClient({
       </div>
 
       <main className="pb-32 md:pb-12">
-        <PublicProfileHero
-          slug={realtor.publicSlug || realtor.id}
-          name={realtor.name}
-          image={realtor.image}
-          roleLabel={roleLabel}
-          locationLabel={locationLabel}
-          creciLabel={realtor.creci && realtor.creciState ? `CRECI ${realtor.creci}/${realtor.creciState}` : null}
-          bio={realtor.publicHeadline || (realtor.publicBio ? realtor.publicBio.split("\n")[0]?.slice(0, 220) : null)}
-          stats={[
-            ...(realtor.avgRating > 0
-              ? [{ label: realtor.totalRatings === 1 ? "avaliação" : "avaliações", value: `${realtor.avgRating.toFixed(1)} (${realtor.totalRatings})` }]
-              : []),
-            ...(properties.length > 0
-              ? [{ label: properties.length === 1 ? "imóvel ativo" : "imóveis ativos", value: String(properties.length) }]
-              : []),
-            ...(realtor.avgResponseTime != null
-              ? [{ label: "resposta média", value: `~${realtor.avgResponseTime}min` }]
-              : []),
-          ]}
-          whatsappAction={whatsappDigits ? () => handleWhatsApp(baseIntroMessage, "hero_primary") : undefined}
-          telHref={telHref}
-          reviewsAction={() => openReviews("hero_reviews_cta")}
-          shareAction={() => setShareOpen(true)}
-        />
+        {useV2Hero && aggregates ? (
+          <ProfileV2Layout
+            pageUrl={pageUrl}
+            realtor={realtor}
+            properties={properties}
+            aggregates={aggregates}
+            initialRatingsPreview={initialRatingsPreview}
+            agencyProfile={agencyProfile ?? null}
+            isOwner={Boolean(isOwner)}
+            whatsappAction={whatsappDigits ? () => handleWhatsApp(baseIntroMessage, "hero_primary") : undefined}
+            whatsappHrefBuilder={
+              whatsappDigits ? (message) => buildWhatsAppUrl(whatsappDigits, message) : null
+            }
+            telHref={telHref}
+            onOpenReviews={openReviews}
+            onOpenShare={() => setShareOpen(true)}
+            onOpenOverlay={(id, source) => openOverlay(id, source)}
+          />
+        ) : (
+          <PublicProfileHero
+            slug={realtor.publicSlug || realtor.id}
+            name={realtor.name}
+            image={realtor.image}
+            roleLabel={roleLabel}
+            locationLabel={locationLabel}
+            creciLabel={realtor.creci && realtor.creciState ? `CRECI ${realtor.creci}/${realtor.creciState}` : null}
+            bio={realtor.publicHeadline || (realtor.publicBio ? realtor.publicBio.split("\n")[0]?.slice(0, 220) : null)}
+            stats={[
+              ...(realtor.avgRating > 0
+                ? [{ label: realtor.totalRatings === 1 ? "avaliação" : "avaliações", value: `${realtor.avgRating.toFixed(1)} (${realtor.totalRatings})` }]
+                : []),
+              ...(properties.length > 0
+                ? [{ label: properties.length === 1 ? "imóvel ativo" : "imóveis ativos", value: String(properties.length) }]
+                : []),
+              ...(realtor.avgResponseTime != null
+                ? [{ label: "resposta média", value: `~${realtor.avgResponseTime}min` }]
+                : []),
+            ]}
+            whatsappAction={whatsappDigits ? () => handleWhatsApp(baseIntroMessage, "hero_primary") : undefined}
+            telHref={telHref}
+            reviewsAction={() => openReviews("hero_reviews_cta")}
+            shareAction={() => setShareOpen(true)}
+          />
+        )}
 
+        {useV2Hero && aggregates ? null : (
         <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pt-8">
 
           <div className="border-b border-slate-200 py-5">
@@ -1383,6 +1413,7 @@ export default function RealtorPublicLandingClient({
             </aside>
           </div>
         </section>
+        )}
       </main>
 
       <PublicProfileSharePanel

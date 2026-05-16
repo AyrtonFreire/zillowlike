@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import RealtorPublicLandingClient from "@/components/realtor/RealtorPublicLandingClient";
 import { getPublicProfessionalPageData } from "@/lib/public-professional-profile";
+import { isPublicProfileV2Enabled } from "@/lib/public-profile-flags";
 
 type PublicProfessionalPageContentProps = {
   slug: string;
@@ -28,6 +29,7 @@ export default async function PublicProfessionalPageContent({
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001").replace(/\/$/, "");
   const pageUrl = `${siteUrl}${data.metadata.canonicalPath}`;
+  const useV2Hero = await isPublicProfileV2Enabled();
 
   const jsonLdAgent = {
     "@context": "https://schema.org",
@@ -82,6 +84,8 @@ export default async function PublicProfessionalPageContent({
         properties={data.landing.properties}
         initialRatingsPreview={data.landing.initialRatingsPreview}
         agencyProfile={data.landing.agencyProfile}
+        aggregates={data.landing.aggregates}
+        useV2Hero={useV2Hero}
       />
     </>
   );

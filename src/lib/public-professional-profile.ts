@@ -6,6 +6,22 @@ import {
 } from "@/lib/agency-profile";
 import { getPublicProfilePathByRole } from "@/lib/public-profile";
 import { normalizePhoneE164 } from "@/lib/sms";
+import {
+  computeBadges,
+  computeExperienceBucket,
+  computeLastActivityDays,
+  computePriceRange,
+  computeReviewReplyRate,
+  computeSignatureStats,
+  type ExperienceBucket,
+  type NeighborhoodEntry,
+  type PriceRangeVM,
+  type PropertyMixEntry,
+  type PurposeMixVM,
+  type RatingDistribution,
+  type SignatureStatVM,
+  type TrustBadgeVM,
+} from "@/lib/public-profile-viewmodel";
 
 type PublicProperty = {
   id: string;
@@ -90,6 +106,23 @@ type LandingRealtor = {
   team: { id: string; name: string } | null;
   creci: string | null;
   creciState: string | null;
+  creciExpiry: string | null;
+  creciValid: boolean;
+  lastActivityDays: number | null;
+  experienceBucket: ExperienceBucket | null;
+};
+
+export type PublicProfileAggregates = {
+  totalActiveProperties: number;
+  priceRange: PriceRangeVM | null;
+  propertyMix: PropertyMixEntry[];
+  purposeMix: PurposeMixVM;
+  topNeighborhoods: NeighborhoodEntry[];
+  ratingDistribution: RatingDistribution;
+  reviewReplyRate: number | null;
+  badges: TrustBadgeVM[];
+  signatureStats: SignatureStatVM[];
+  agencyTeamSize: number | null;
 };
 
 type AgencyLandingExtras = {
@@ -157,8 +190,11 @@ type PublicProfessionalPageData = {
       authorImage: string | null;
     }>;
     agencyProfile: AgencyLandingExtras | null;
+    aggregates: PublicProfileAggregates;
   };
 };
+
+export type { LandingRealtor, AgencyLandingExtras };
 
 function normalizePhoneDigits(value: string | null | undefined) {
   const raw = String(value || "").trim();
@@ -192,6 +228,11 @@ export async function getPublicProfessionalPageData(slug: string): Promise<Publi
     },
     include: {
       stats: true,
+      queue: {
+        select: {
+          totalAccepted: true,
+        },
+      },
       ratings: {
         orderBy: { createdAt: "desc" },
         take: 10,
@@ -286,7 +327,7 @@ export async function getPublicProfessionalPageData(slug: string): Promise<Publi
     inventory = await (prisma as any).property.findMany({
       where: inventoryWhere as any,
       orderBy: { createdAt: "desc" },
-      take: 2000,
+      take: 200,
       select: {
         id: true,
         title: true,
@@ -359,7 +400,7 @@ export async function getPublicProfessionalPageData(slug: string): Promise<Publi
     inventory = await (prisma as any).property.findMany({
       where: inventoryWhere as any,
       orderBy: { createdAt: "desc" },
-      take: 2000,
+      take: 200,
       select: {
         id: true,
         title: true,
@@ -513,6 +554,119 @@ export async function getPublicProfessionalPageData(slug: string): Promise<Publi
     authorImage: r?.lead?.user?.image != null ? String(r.lead.user.image) : null,
   }));
 
+  // Aggregates over FULL inventory (not capped by `take: 200`) and rating
+  // sampling for reply rate / distribution.
+  const [
+    inventoryAggregate,
+    propertyMixGroups,
+    purposeMixGroups,
+    topNeighborhoodGroups,
+    ratingDistributionGroups,
+    replySample,
+  ] = await Promise.all([
+    (prisma as any).property.aggregate({
+      where: inventoryWhere,
+      _min: { price: true },
+      _max: { price: true },
+      _count: { _all: true },
+    }),
+    (prisma as any).property.groupBy({
+      by: ["type"],
+      where: inventoryWhere,
+      _count: { _all: true },
+    }),
+    (prisma as any).property.groupBy({
+      by: ["purpose"],
+      where: inventoryWhere,
+      _count: { _all: true },
+    }),
+    (prisma as any).property.groupBy({
+      by: ["neighborhood"],
+      where: { ...(inventoryWhere as any), neighborhood: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { neighborhood: "desc" } },
+      take: 8,
+    }),
+    (prisma as any).realtorRating.groupBy({
+      by: ["rating"],
+      where: { realtorId: realtor.id },
+      _count: { _all: true },
+    }),
+    (prisma as any).realtorRating.findMany({
+      where: { realtorId: realtor.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { replyText: true },
+    }),
+  ]);
+
+  const totalActiveProperties = Number((inventoryAggregate as any)?._count?._all || 0);
+
+  const priceMin = (inventoryAggregate as any)?._min?.price;
+  const priceMax = (inventoryAggregate as any)?._max?.price;
+  const priceRange = computePriceRange([
+    priceMin != null ? Number(priceMin) : null,
+    priceMax != null ? Number(priceMax) : null,
+  ]);
+
+  const propertyMix: PropertyMixEntry[] = (propertyMixGroups as any[])
+    .map((g) => ({
+      type: String(g?.type ?? "").trim().toUpperCase(),
+      count: Number(g?._count?._all || 0),
+    }))
+    .filter((entry) => entry.type.length > 0 && entry.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  const purposeMix: PurposeMixVM = { buy: 0, rent: 0, other: 0 };
+  for (const g of purposeMixGroups as any[]) {
+    const value = String(g?.purpose ?? "").trim().toUpperCase();
+    const count = Number(g?._count?._all || 0);
+    if (!value || count <= 0) continue;
+    if (value === "SALE" || value === "BUY" || value === "VENDA") purposeMix.buy += count;
+    else if (value === "RENT" || value === "ALUGUEL") purposeMix.rent += count;
+    else purposeMix.other += count;
+  }
+
+  const topNeighborhoods: NeighborhoodEntry[] = (topNeighborhoodGroups as any[])
+    .map((g) => ({
+      name: String(g?.neighborhood ?? "").trim(),
+      count: Number(g?._count?._all || 0),
+    }))
+    .filter((entry) => entry.name.length > 0 && entry.count > 0)
+    .slice(0, 5);
+
+  const ratingDistribution: RatingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const g of ratingDistributionGroups as any[]) {
+    const value = Math.round(Number(g?.rating || 0));
+    if (value >= 1 && value <= 5) {
+      ratingDistribution[value as 1 | 2 | 3 | 4 | 5] += Number(g?._count?._all || 0);
+    }
+  }
+
+  const replyTexts = (replySample as Array<{ replyText: string | null }>).map((r) => ({
+    replyText: r?.replyText ?? null,
+  }));
+  const reviewReplyRate = computeReviewReplyRate(replyTexts);
+
+  const lastActivityDays = computeLastActivityDays(lastActivityDate ?? null);
+  const experienceBucket = computeExperienceBucket(app?.experience ?? null);
+
+  const creciExpiryRaw = (app as any)?.creciExpiry as Date | string | null | undefined;
+  const creciExpiry = creciExpiryRaw ? new Date(creciExpiryRaw) : null;
+  const creciValid = creciExpiry ? creciExpiry.getTime() > Date.now() : false;
+
+  const queueTotalAccepted = (realtor as any)?.queue?.totalAccepted != null
+    ? Number((realtor as any).queue.totalAccepted)
+    : null;
+
+  const publicServiceAreasCount = Array.isArray(realtor.publicServiceAreas)
+    ? realtor.publicServiceAreas.filter((value) => String(value || "").trim().length > 0).length
+    : 0;
+
+  const recentRatingsWithReply = replyTexts.filter(
+    (r) => (r.replyText ?? "").toString().trim().length > 0
+  ).length;
+
   let agencyProfile: AgencyLandingExtras | null = null;
   if (isAgency && resolvedTeamId) {
     const [{ profileConfig, leadConfig }, teamMembers] = await Promise.all([
@@ -635,7 +789,7 @@ export async function getPublicProfessionalPageData(slug: string): Promise<Publi
       operationMetrics: [
         {
           label: "Carteira pública",
-          value: String(properties.length),
+          value: String(totalActiveProperties),
           helper: "Imóveis ativos publicados pela agência na plataforma.",
         },
         {
@@ -651,6 +805,56 @@ export async function getPublicProfessionalPageData(slug: string): Promise<Publi
       ],
     };
   }
+
+  const agencyTeamSize = agencyProfile?.teamMembers?.length ?? null;
+
+  const badges: TrustBadgeVM[] = computeBadges({
+    isAgency,
+    creci: app?.creci || null,
+    creciState: app?.creciState || null,
+    creciExpiry,
+    phoneVerified: Boolean(realtor.phoneVerifiedAt),
+    publicPhoneOptIn: Boolean(realtor.publicPhoneOptIn),
+    avgResponseTime,
+    leadsAccepted: Number((stats as any)?.leadsAccepted || 0),
+    soldCount: Number(soldCount || 0),
+    rentedCount: Number(rentedCount || 0),
+    queueTotalAccepted,
+    experience: app?.experience != null ? Number(app.experience) : null,
+    propertiesCount: totalActiveProperties,
+    serviceAreasCount: publicServiceAreasCount,
+    totalRatings: Number(totalRatings || 0),
+    avgRating: Number(avgRating || 0),
+    lastActivity: lastActivityDate ?? null,
+    recentRatingsWithReply,
+    recentRatingsTotal: replyTexts.length,
+    agencyTeamSize,
+  });
+
+  const signatureStats: SignatureStatVM[] = computeSignatureStats({
+    isAgency,
+    avgRating: Number(avgRating || 0),
+    totalRatings: Number(totalRatings || 0),
+    activeListings: totalActiveProperties,
+    avgResponseTime,
+    experience: app?.experience != null ? Number(app.experience) : null,
+    yearsInBusiness: agencyProfile?.yearsInBusiness ?? null,
+    soldCount: Number(soldCount || 0),
+    rentedCount: Number(rentedCount || 0),
+  });
+
+  const aggregates: PublicProfileAggregates = {
+    totalActiveProperties,
+    priceRange,
+    propertyMix,
+    purposeMix,
+    topNeighborhoods,
+    ratingDistribution,
+    reviewReplyRate,
+    badges,
+    signatureStats,
+    agencyTeamSize,
+  };
 
   const canonicalPath =
     getPublicProfilePathByRole({
@@ -719,10 +923,15 @@ export async function getPublicProfessionalPageData(slug: string): Promise<Publi
           : null,
         creci: app?.creci || null,
         creciState: app?.creciState || null,
+        creciExpiry: creciExpiry ? creciExpiry.toISOString() : null,
+        creciValid,
+        lastActivityDays,
+        experienceBucket,
       },
       properties,
       initialRatingsPreview,
       agencyProfile,
+      aggregates,
     },
   };
 }

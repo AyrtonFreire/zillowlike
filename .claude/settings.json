@@ -27,7 +27,12 @@
       "Bash(find \"c:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\\\\app\\\\api\\\\agency\" -type f -name \"*.ts\" 2>nul | head -20)",
       "Bash(xargs grep -l \"TeamInvite\\\\|inviteEmail\\\\|email.*team\\\\|convidar.*corretor\")",
       "Bash(grep -n \"invites\\\\|email.*invite\\\\|convidar.*email\" \"c:\\\\Users\\\\Ayrton Freire\\\\zillowlike\\\\src\\\\app\\\\agency\\\\team\\\\page.tsx\" 2>nul | head -20)",
-      "Bash(cd \"c:/Users/Ayrton Freire/zillowlike\" && rm -rf src/app/api/teams/\\\\[id\\\\]/invites && echo \"OK\")"
+      "Bash(cd \"c:/Users/Ayrton Freire/zillowlike\" && rm -rf src/app/api/teams/\\\\[id\\\\]/invites && echo \"OK\")",
+      "Bash(xargs grep -l \"publicSlug\\\\|public-code\\\\|generateSlug\")",
+      "Bash(grep -E \"\\\\.tsx?$\")",
+      "Bash(ls \"c:/Users/Ayrton Freire/.claude/plans/\" 2>&1 | head -20)",
+      "Read(//c/Users/Ayrton Freire/.claude/plans/**)",
+      "Bash(npx vitest *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ayrton Freire\\zillowlike",
