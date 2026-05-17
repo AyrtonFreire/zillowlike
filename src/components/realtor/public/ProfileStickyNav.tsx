@@ -49,10 +49,10 @@ export default function ProfileStickyNav({
 
   return (
     <div
-      className="sticky z-20 -mx-4 mb-4 border-b border-slate-200 bg-white/85 px-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      className="sticky z-20 mb-4 border-b border-slate-200 bg-white/85 backdrop-blur-md"
       style={{ top: topOffset }}
     >
-      <nav className="mx-auto flex max-w-5xl items-center gap-x-6 gap-y-3 overflow-x-auto whitespace-nowrap py-3 text-sm text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="mx-auto flex max-w-6xl items-center gap-x-6 gap-y-3 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-slate-600 sm:px-6 lg:px-8 xl:px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item, index) => {
           if (item.kind === "link") {
             const isActive = active === item.id;

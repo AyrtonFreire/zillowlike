@@ -1,9 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Camera,
+  Check,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
+import { track } from "@/lib/analytics";
 import {
   scoreBio,
   validateBio,
@@ -28,7 +37,24 @@ export type WizardInitialProfile = {
   role: "REALTOR" | "AGENCY";
 };
 
+export type WizardInitialAgencyExtras = {
+  yearsInBusiness: number | null;
+  website: string | null;
+  specialties: string[];
+};
+
+type StepKey =
+  | "identity"
+  | "headline"
+  | "bio"
+  | "location"
+  | "contact"
+  | "agency_details"
+  | "review";
+
 type WizardState = {
+  name: string;
+  image: string | null;
   publicHeadline: string;
   publicBio: string;
   publicCity: string;
@@ -38,29 +64,93 @@ type WizardState = {
   publicPhoneOptIn: boolean;
   publicInstagram: string;
   publicLinkedIn: string;
+  yearsInBusiness: string;
+  website: string;
+  specialties: string[];
 };
 
 type StepDefinition = {
-  key: "headline" | "bio" | "location" | "contact" | "review";
+  key: StepKey;
   label: string;
   helper: string;
 };
 
-const STEPS_REALTOR: StepDefinition[] = [
-  { key: "headline", label: "Posicionamento", helper: "Uma frase clara sobre o seu foco." },
-  { key: "bio", label: "Bio narrativa", helper: "Conte quem você é e como atende." },
-  { key: "location", label: "Localização", helper: "Cidade, UF e áreas atendidas." },
-  { key: "contact", label: "Contato", helper: "WhatsApp e redes sociais." },
-  { key: "review", label: "Revisão", helper: "Confira antes de publicar." },
-];
+function stepsFor(role: "REALTOR" | "AGENCY"): StepDefinition[] {
+  const common: StepDefinition[] = [
+    { key: "identity", label: "Identidade", helper: "Sua foto e nome no perfil público." },
+    {
+      key: "headline",
+      label: "Posicionamento",
+      helper:
+        role === "AGENCY"
+          ? "Uma frase clara sobre a agência."
+          : "Uma frase clara sobre o seu foco.",
+    },
+    {
+      key: "bio",
+      label: role === "AGENCY" ? "Apresentação" : "Bio narrativa",
+      helper:
+        role === "AGENCY"
+          ? "Conte a história e o foco da agência."
+          : "Conte quem você é e como atende.",
+    },
+    {
+      key: "location",
+      label: "Localização",
+      helper: role === "AGENCY" ? "Cidade, UF e regiões cobertas." : "Cidade, UF e áreas atendidas.",
+    },
+    { key: "contact", label: "Contato", helper: "WhatsApp e redes sociais." },
+  ];
+  if (role === "AGENCY") {
+    common.push({
+      key: "agency_details",
+      label: "Detalhes da agência",
+      helper: "Anos de mercado, site institucional e especialidades.",
+    });
+  }
+  common.push({ key: "review", label: "Revisão", helper: "Confira antes de publicar." });
+  return common;
+}
 
-const STEPS_AGENCY: StepDefinition[] = [
-  { key: "headline", label: "Posicionamento", helper: "Uma frase clara sobre a agência." },
-  { key: "bio", label: "Apresentação", helper: "Conte a história e o foco da agência." },
-  { key: "location", label: "Localização", helper: "Cidade, UF e regiões cobertas." },
-  { key: "contact", label: "Contato", helper: "WhatsApp e redes sociais." },
-  { key: "review", label: "Revisão", helper: "Confira antes de publicar." },
-];
+function trackEvent(name: string, payload: Record<string, unknown>) {
+  try {
+    track({ name, payload } as never);
+  } catch {
+    // analytics is best-effort
+  }
+}
+
+const AVATAR_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const AVATAR_MAX_SIZE_BYTES = 10 * 1024 * 1024;
+
+async function uploadAvatarToCloudinary(file: File): Promise<string> {
+  const signatureResponse = await fetch("/api/upload/cloudinary-sign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder: "zillowlike/avatars" }),
+  });
+  const signaturePayload = await signatureResponse.json().catch(() => null);
+  if (!signatureResponse.ok || !signaturePayload?.signature) {
+    throw new Error(signaturePayload?.error || "Não foi possível iniciar o upload.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("api_key", String(signaturePayload.apiKey));
+  formData.append("timestamp", String(signaturePayload.timestamp));
+  formData.append("signature", String(signaturePayload.signature));
+  formData.append("folder", String(signaturePayload.folder));
+
+  const uploadResponse = await fetch(
+    `https://api.cloudinary.com/v1_1/${signaturePayload.cloudName}/image/upload`,
+    { method: "POST", body: formData }
+  );
+  const uploadPayload = await uploadResponse.json().catch(() => null);
+  if (!uploadResponse.ok || !uploadPayload?.secure_url) {
+    throw new Error(uploadPayload?.error?.message || "Falha ao enviar imagem.");
+  }
+  return String(uploadPayload.secure_url);
+}
 
 function ValidationFeedback({ result }: { result: ValidationResult }) {
   if (!result.message) return null;
@@ -86,19 +176,27 @@ function ValidationFeedback({ result }: { result: ValidationResult }) {
 
 export default function ProfilePublicWizardClient({
   initial,
+  agencyExtras,
 }: {
   initial: WizardInitialProfile;
+  agencyExtras?: WizardInitialAgencyExtras | null;
 }) {
   const router = useRouter();
   const isAgency = initial.role === "AGENCY";
-  const STEPS = isAgency ? STEPS_AGENCY : STEPS_REALTOR;
+  const STEPS = useMemo(() => stepsFor(initial.role), [initial.role]);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedOk, setSavedOk] = useState(false);
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [state, setState] = useState<WizardState>({
+    name: initial.name ?? "",
+    image: initial.image,
     publicHeadline: initial.publicHeadline ?? "",
     publicBio: initial.publicBio ?? "",
     publicCity: initial.publicCity ?? "",
@@ -108,17 +206,29 @@ export default function ProfilePublicWizardClient({
     publicPhoneOptIn: initial.publicPhoneOptIn ?? false,
     publicInstagram: initial.publicInstagram ?? "",
     publicLinkedIn: initial.publicLinkedIn ?? "",
+    yearsInBusiness:
+      agencyExtras?.yearsInBusiness != null ? String(agencyExtras.yearsInBusiness) : "",
+    website: agencyExtras?.website ?? "",
+    specialties: agencyExtras?.specialties ?? [],
   });
 
   const [areaDraft, setAreaDraft] = useState("");
+  const [specialtyDraft, setSpecialtyDraft] = useState("");
 
   const headlineResult = useMemo(() => validateHeadline(state.publicHeadline), [state.publicHeadline]);
   const bioResult = useMemo(() => validateBio(state.publicBio), [state.publicBio]);
   const bioScore = useMemo(() => scoreBio(state.publicBio), [state.publicBio]);
 
+  const stepStartedAtRef = useRef(performance.now());
+  useEffect(() => {
+    stepStartedAtRef.current = performance.now();
+  }, [stepIndex]);
+
   const canAdvance = useMemo(() => {
     const step = STEPS[stepIndex];
     switch (step.key) {
+      case "identity":
+        return state.name.trim().length >= 2;
       case "headline":
         return headlineResult.level !== "block";
       case "bio":
@@ -127,6 +237,8 @@ export default function ProfilePublicWizardClient({
         return state.publicCity.trim().length > 0 && state.publicState.trim().length === 2;
       case "contact":
         return state.publicWhatsApp.replace(/\D/g, "").length >= 10;
+      case "agency_details":
+        return true;
       case "review":
         return true;
     }
@@ -134,6 +246,7 @@ export default function ProfilePublicWizardClient({
     STEPS,
     bioResult.level,
     headlineResult.level,
+    state.name,
     state.publicCity,
     state.publicState,
     state.publicWhatsApp,
@@ -165,11 +278,82 @@ export default function ProfilePublicWizardClient({
     );
   };
 
+  const addSpecialty = () => {
+    const v = specialtyDraft.trim();
+    if (!v) return;
+    if (state.specialties.includes(v)) {
+      setSpecialtyDraft("");
+      return;
+    }
+    if (state.specialties.length >= 10) return;
+    updateField("specialties", [...state.specialties, v]);
+    setSpecialtyDraft("");
+  };
+
+  const removeSpecialty = (s: string) => {
+    updateField(
+      "specialties",
+      state.specialties.filter((item) => item !== s)
+    );
+  };
+
+  const handleAvatarPick = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!AVATAR_ALLOWED_TYPES.includes(file.type)) {
+      setAvatarError("Use JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size > AVATAR_MAX_SIZE_BYTES) {
+      setAvatarError("Imagem grande demais (máx 10MB).");
+      return;
+    }
+    setAvatarUploading(true);
+    setAvatarError(null);
+    try {
+      const url = await uploadAvatarToCloudinary(file);
+      updateField("image", url);
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Falha no upload.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const goNext = () => {
+    const step = STEPS[stepIndex];
+    if (!canAdvance) {
+      const reasonMap: Record<StepKey, string> = {
+        identity: "name_too_short",
+        headline: "headline_blocked",
+        bio: "bio_invalid",
+        location: "missing_city_or_state",
+        contact: "whatsapp_too_short",
+        agency_details: "ok",
+        review: "ok",
+      };
+      trackEvent("wizard_blocked", { step: step.key, reason: reasonMap[step.key] });
+      return;
+    }
+    trackEvent("wizard_step_complete", {
+      step: step.key,
+      durationMs: Math.round(performance.now() - stepStartedAtRef.current),
+    });
+    setStepIndex((idx) => Math.min(STEPS.length - 1, idx + 1));
+  };
+
+  const goBack = () => {
+    setStepIndex((idx) => Math.max(0, idx - 1));
+  };
+
   const submit = async () => {
     setSaving(true);
     setSaveError(null);
     try {
-      const payload = {
+      const userPayload: Record<string, unknown> = {
+        name: state.name.trim() || undefined,
+        image: state.image ?? null,
         publicHeadline: state.publicHeadline.trim() || null,
         publicBio: state.publicBio.trim() || null,
         publicCity: state.publicCity.trim() || null,
@@ -180,15 +364,41 @@ export default function ProfilePublicWizardClient({
         publicInstagram: state.publicInstagram.trim() || null,
         publicLinkedIn: state.publicLinkedIn.trim() || null,
       };
-      const response = await fetch("/api/user/profile", {
+
+      const userResponse = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(userPayload),
       });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error || "Não foi possível salvar agora.");
+      if (!userResponse.ok) {
+        const body = await userResponse.json().catch(() => null);
+        throw new Error(body?.error || "Não foi possível salvar o perfil.");
       }
+
+      if (isAgency) {
+        const years = state.yearsInBusiness.trim() ? Number(state.yearsInBusiness.trim()) : null;
+        const agencyPayload: Record<string, unknown> = {
+          yearsInBusiness: years !== null && Number.isFinite(years) && years >= 0 ? years : null,
+          website: state.website.trim() || null,
+          specialties: state.specialties,
+        };
+        const agencyResponse = await fetch("/api/agency/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(agencyPayload),
+        });
+        if (!agencyResponse.ok) {
+          const body = await agencyResponse.json().catch(() => null);
+          // user profile already saved; surface non-blocking warning
+          setSaveError(body?.error || "Perfil salvo, mas detalhes da agência falharam.");
+          return;
+        }
+      }
+
+      trackEvent("wizard_step_complete", {
+        step: "review",
+        durationMs: Math.round(performance.now() - stepStartedAtRef.current),
+      });
       setSavedOk(true);
       router.push("/profile?from=wizard");
     } catch (err) {
@@ -248,6 +458,87 @@ export default function ProfilePublicWizardClient({
           </p>
           <h2 className="mt-2 font-serif text-2xl text-slate-950 sm:text-3xl">{step.label}</h2>
           <p className="mt-2 text-sm text-slate-600">{step.helper}</p>
+
+          {step.key === "identity" ? (
+            <div className="mt-6 space-y-5">
+              <div className="flex items-center gap-5">
+                <span className="relative inline-flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
+                  {state.image ? (
+                    <Image
+                      src={state.image}
+                      alt={state.name || "Avatar"}
+                      width={96}
+                      height={96}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Camera className="h-7 w-7 text-slate-400" aria-hidden="true" />
+                  )}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">Foto profissional</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Use foto recente com rosto enquadrado e fundo neutro. JPG, PNG ou WebP até 10MB.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleAvatarPick}
+                    className="hidden"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={avatarUploading}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {avatarUploading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Enviando…
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="h-3.5 w-3.5" />
+                          {state.image ? "Trocar foto" : "Enviar foto"}
+                        </>
+                      )}
+                    </button>
+                    {state.image ? (
+                      <button
+                        type="button"
+                        onClick={() => updateField("image", null)}
+                        className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Remover
+                      </button>
+                    ) : null}
+                  </div>
+                  {avatarError ? (
+                    <p className="mt-2 text-xs text-rose-700">{avatarError}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700" htmlFor="wizardName">
+                  Nome público
+                </label>
+                <input
+                  id="wizardName"
+                  type="text"
+                  maxLength={120}
+                  value={state.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  placeholder="Como você quer aparecer no perfil"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+                />
+                <p className="mt-1 text-xs text-slate-500">Mínimo 2 caracteres.</p>
+              </div>
+            </div>
+          ) : null}
 
           {step.key === "headline" ? (
             <div className="mt-6">
@@ -338,9 +629,7 @@ export default function ProfilePublicWizardClient({
               </div>
 
               <div>
-                <p className="text-xs font-medium text-slate-700">
-                  Áreas atendidas (até 12)
-                </p>
+                <p className="text-xs font-medium text-slate-700">Áreas atendidas (até 12)</p>
                 <div className="mt-2 flex gap-2">
                   <input
                     type="text"
@@ -452,8 +741,97 @@ export default function ProfilePublicWizardClient({
             </div>
           ) : null}
 
+          {step.key === "agency_details" ? (
+            <div className="mt-6 space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-medium text-slate-700" htmlFor="wizardYears">
+                    Anos de mercado
+                  </label>
+                  <input
+                    id="wizardYears"
+                    type="number"
+                    min={0}
+                    value={state.yearsInBusiness}
+                    onChange={(e) => updateField("yearsInBusiness", e.target.value)}
+                    placeholder="Ex: 12"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700" htmlFor="wizardWebsite">
+                    Site institucional
+                  </label>
+                  <input
+                    id="wizardWebsite"
+                    type="text"
+                    value={state.website}
+                    onChange={(e) => updateField("website", e.target.value)}
+                    placeholder="https://suaagencia.com.br"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-slate-700">Especialidades (até 10)</p>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={specialtyDraft}
+                    onChange={(e) => setSpecialtyDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSpecialty();
+                      }
+                    }}
+                    placeholder="Ex: Lançamentos, Comercial, Loteamentos"
+                    className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm outline-none transition focus:border-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={addSpecialty}
+                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {state.specialties.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => removeSpecialty(s)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-700"
+                    >
+                      {s} <span aria-hidden="true">×</span>
+                    </button>
+                  ))}
+                  {state.specialties.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      Nenhuma especialidade adicionada. As especialidades aparecem como chips no
+                      perfil público.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {step.key === "review" ? (
             <div className="mt-6 space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Identidade
+                </p>
+                <p className="mt-1 text-sm text-slate-900">{state.name || "—"}</p>
+                {state.image ? (
+                  <p className="mt-1 text-xs text-emerald-700">Foto carregada</p>
+                ) : (
+                  <p className="mt-1 text-xs text-amber-700">Sem foto profissional</p>
+                )}
+              </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Headline
@@ -498,6 +876,24 @@ export default function ProfilePublicWizardClient({
                   </p>
                 </div>
               </div>
+              {isAgency ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Detalhes da agência
+                  </p>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {state.yearsInBusiness
+                      ? `${state.yearsInBusiness} anos de mercado`
+                      : "Sem anos informados"}
+                    {state.website ? ` · ${state.website}` : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {state.specialties.length === 0
+                      ? "Sem especialidades"
+                      : state.specialties.join(", ")}
+                  </p>
+                </div>
+              ) : null}
               {saveError ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
                   {saveError}
@@ -516,7 +912,7 @@ export default function ProfilePublicWizardClient({
         <nav className="mt-6 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setStepIndex((idx) => Math.max(0, idx - 1))}
+            onClick={goBack}
             disabled={stepIndex === 0 || saving}
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -546,8 +942,7 @@ export default function ProfilePublicWizardClient({
           ) : (
             <button
               type="button"
-              disabled={!canAdvance}
-              onClick={() => setStepIndex((idx) => Math.min(STEPS.length - 1, idx + 1))}
+              onClick={goNext}
               className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               Próximo

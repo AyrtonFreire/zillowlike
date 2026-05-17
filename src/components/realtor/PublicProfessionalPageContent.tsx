@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import RealtorPublicLandingClient from "@/components/realtor/RealtorPublicLandingClient";
 import { getPublicProfessionalPageData } from "@/lib/public-professional-profile";
-import { isPublicProfileV2Enabled } from "@/lib/public-profile-flags";
 
 type PublicProfessionalPageContentProps = {
   slug: string;
@@ -29,9 +28,19 @@ export default async function PublicProfessionalPageContent({
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001").replace(/\/$/, "");
   const pageUrl = `${siteUrl}${data.metadata.canonicalPath}`;
-  const useV2Hero = await isPublicProfileV2Enabled();
 
-  const jsonLdAgent = {
+  const aggregates = data.landing.aggregates;
+  const priceRangeLabel = aggregates.priceRange?.label || undefined;
+  const awards = aggregates.badges
+    .filter((badge) =>
+      badge.key === "topProducer" ||
+      badge.key === "wellReviewed" ||
+      badge.key === "creciVerified" ||
+      badge.key === "yearsActive"
+    )
+    .map((badge) => badge.label);
+
+  const jsonLdAgent: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "RealEstateAgent",
     name: data.jsonLdBase.name,
@@ -68,6 +77,12 @@ export default async function PublicProfessionalPageContent({
         }
       : undefined,
     description: data.jsonLdBase.description,
+    priceRange: priceRangeLabel,
+    numberOfEmployees:
+      isAgency && aggregates.agencyTeamSize && aggregates.agencyTeamSize > 0
+        ? aggregates.agencyTeamSize
+        : undefined,
+    award: awards.length > 0 ? awards : undefined,
   };
 
   return (
@@ -85,7 +100,6 @@ export default async function PublicProfessionalPageContent({
         initialRatingsPreview={data.landing.initialRatingsPreview}
         agencyProfile={data.landing.agencyProfile}
         aggregates={data.landing.aggregates}
-        useV2Hero={useV2Hero}
       />
     </>
   );

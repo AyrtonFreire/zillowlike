@@ -19,7 +19,7 @@ export default function ProfileOwnerToolbar({
 
   return (
     <div className="border-b border-slate-200 bg-amber-50/70">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3 text-sm sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 text-sm sm:px-6 lg:px-8 xl:px-10">
         <Sparkles className="h-4 w-4 text-amber-600" aria-hidden="true" />
         <span className="font-medium text-slate-900">
           Você está vendo seu próprio perfil público

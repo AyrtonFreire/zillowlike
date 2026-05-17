@@ -27,6 +27,7 @@ import LeadListItem from "@/components/dashboard/LeadListItem";
 import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding/BrokerOnboarding";
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
 import OfflineLeadCard from "@/components/broker/OfflineLeadCard";
+import HeadlineQualityBanner from "@/components/broker/HeadlineQualityBanner";
 import { motion } from "framer-motion";
 import {
   Cell,
@@ -433,6 +434,10 @@ export default function BrokerDashboard() {
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <HeadlineQualityBanner />
+        </div>
+
         {dashboardError && (
           <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
             {dashboardError}

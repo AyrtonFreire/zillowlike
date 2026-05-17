@@ -17,7 +17,7 @@ export default function ProfileTrustRibbon({
   return (
     <section
       aria-label="Selos de confiança"
-      className={`mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 ${className}`}
+      className={`mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 xl:px-10 ${className}`}
     >
       <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-x-visible">
         {visible.map((badge) => (

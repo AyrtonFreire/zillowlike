@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import AgencyPublicProfileSections from "@/components/realtor/AgencyPublicProfileSections";
+import { track } from "@/lib/analytics";
 import type { PublicProfileAggregates } from "@/lib/public-professional-profile";
 import ProfileAboutSection from "./ProfileAboutSection";
 import ProfileFinalCta from "./ProfileFinalCta";
@@ -9,8 +10,10 @@ import ProfileHeroV2 from "./ProfileHeroV2";
 import ProfileOwnerToolbar from "./ProfileOwnerToolbar";
 import ProfilePortfolioSection from "./ProfilePortfolioSection";
 import type { PortfolioProperty } from "./PortfolioPropertyTile";
+import ProfileQuickContactCard from "./ProfileQuickContactCard";
 import ProfileReviewsPreview from "./ProfileReviewsPreview";
 import ProfileShareSection from "./ProfileShareSection";
+import ProfileSignatureCard from "./ProfileSignatureCard";
 import ProfileSpecialtiesStrip from "./ProfileSpecialtiesStrip";
 import ProfileStickyNav, { type StickyNavItem } from "./ProfileStickyNav";
 import ProfileTrustRibbon from "./ProfileTrustRibbon";
@@ -154,9 +157,7 @@ function buildFactSheet(
     });
   }
 
-  const specialties = isAgency
-    ? agencyProfile?.specialties ?? []
-    : []; // realtor specialties live in realtorApplication — surfaced via SpecialtiesStrip when present
+  const specialties = isAgency ? agencyProfile?.specialties ?? [] : [];
 
   const serviceAreas = realtor.publicServiceAreas.filter((value) => value && value.trim());
 
@@ -193,7 +194,7 @@ export default function ProfileV2Layout({
 
   const specialties = useMemo(() => {
     if (isAgency) return agencyProfile?.specialties ?? [];
-    return []; // Realtor specialty chips come from RealtorApplication; not yet on the public payload.
+    return [];
   }, [agencyProfile?.specialties, isAgency]);
 
   const navItems = useMemo<StickyNavItem[]>(() => {
@@ -212,7 +213,7 @@ export default function ProfileV2Layout({
     }
     items.push({
       kind: "action",
-      label: "Avaliações",
+      label: "Ver avaliações",
       onClick: () => onOpenReviews("sticky_nav"),
     });
     return items;
@@ -228,6 +229,65 @@ export default function ProfileV2Layout({
 
   const isSparse = aggregates.totalActiveProperties <= 2;
 
+  const trackedViewRef = useRef(false);
+  useEffect(() => {
+    if (trackedViewRef.current) return;
+    trackedViewRef.current = true;
+    try {
+      track({
+        name: "public_profile_v2_view",
+        payload: {
+          variant: isAgency ? "agency" : "realtor",
+          badges_count: aggregates.badges.length,
+          properties_count: aggregates.totalActiveProperties,
+        },
+      } as never);
+    } catch {
+      // analytics is best-effort
+    }
+  }, [aggregates.badges.length, aggregates.totalActiveProperties, isAgency]);
+
+  const trackCtaClick = (section: string, intent: string) => {
+    try {
+      track({
+        name: "public_profile_v2_cta_click",
+        payload: { section, intent },
+      } as never);
+    } catch {
+      // best-effort
+    }
+  };
+
+  const wrapAction = (
+    section: string,
+    intent: string,
+    action: (() => void) | undefined
+  ): (() => void) | undefined => {
+    if (!action) return undefined;
+    return () => {
+      trackCtaClick(section, intent);
+      action();
+    };
+  };
+
+  const signatureCard = (
+    <ProfileSignatureCard
+      priceRange={aggregates.priceRange}
+      stats={aggregates.signatureStats}
+      totalRatings={realtor.totalRatings}
+      reviewsAction={
+        realtor.totalRatings > 0
+          ? () => {
+              trackCtaClick("signature_card", "reviews");
+              onOpenReviews("signature_card");
+            }
+          : undefined
+      }
+    />
+  );
+
+  const containerClass = "mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 xl:px-10";
+
   return (
     <>
       {isOwner ? (
@@ -237,84 +297,127 @@ export default function ProfileV2Layout({
         />
       ) : null}
 
-      <ProfileHeroV2
-        name={realtor.name}
-        image={realtor.image}
-        roleLabel={roleLabel}
-        locationLabel={locationLabel}
-        creci={realtor.creci}
-        creciState={realtor.creciState}
-        creciValid={Boolean(realtor.creciValid)}
-        tagline={tagline}
-        lastActivityDays={realtor.lastActivityDays ?? null}
-        priceRange={aggregates.priceRange}
-        signatureStats={aggregates.signatureStats}
-        totalRatings={realtor.totalRatings}
-        whatsappAction={whatsappAction}
-        telHref={telHref}
-        reviewsAction={
-          realtor.totalRatings > 0 ? () => onOpenReviews("hero_reviews_cta") : undefined
-        }
-        shareAction={onOpenShare}
-      />
+      <div className={containerClass}>
+        <ProfileHeroV2
+          name={realtor.name}
+          image={realtor.image}
+          roleLabel={roleLabel}
+          locationLabel={locationLabel}
+          creci={realtor.creci}
+          creciState={realtor.creciState}
+          creciValid={Boolean(realtor.creciValid)}
+          tagline={tagline}
+          lastActivityDays={realtor.lastActivityDays ?? null}
+          totalRatings={realtor.totalRatings}
+          whatsappAction={wrapAction("hero", "whatsapp", whatsappAction)}
+          telHref={telHref}
+          reviewsAction={
+            realtor.totalRatings > 0
+              ? () => {
+                  trackCtaClick("hero", "reviews");
+                  onOpenReviews("hero_reviews_cta");
+                }
+              : undefined
+          }
+          shareAction={() => {
+            trackCtaClick("hero", "share");
+            onOpenShare();
+          }}
+        />
+      </div>
 
       {aggregates.badges.length > 0 ? (
-        <ProfileTrustRibbon badges={aggregates.badges} className="-mt-2 pb-6" />
+        <ProfileTrustRibbon badges={aggregates.badges} className="pb-6" />
       ) : null}
 
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <ProfileStickyNav items={navItems} />
+      {/* SignatureCard inline (mobile/tablet/lg, abaixo de xl) */}
+      <div className={`${containerClass} mb-6 xl:hidden`}>{signatureCard}</div>
 
-        <ProfileAboutSection name={realtor.name} bio={realtor.publicBio} factSheet={factSheet} />
+      <ProfileStickyNav items={navItems} />
 
-        <ProfileSpecialtiesStrip
-          specialties={specialties}
-          topNeighborhoods={aggregates.topNeighborhoods}
-        />
+      <div className={containerClass}>
+        <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-10">
+          <div className="min-w-0">
+            <ProfileAboutSection
+              name={realtor.name}
+              bio={realtor.publicBio}
+              factSheet={factSheet}
+            />
 
-        <ProfilePortfolioSection
-          realtorName={realtor.name}
-          properties={properties}
-          totalActiveProperties={aggregates.totalActiveProperties}
-          onOpenOverlay={(id) => onOpenOverlay(id, "profile_v2_portfolio")}
-          whatsappHref={whatsappHrefBuilder}
-        />
+            <ProfileSpecialtiesStrip
+              specialties={specialties}
+              topNeighborhoods={aggregates.topNeighborhoods}
+            />
 
-        <ProfileReviewsPreview
-          ratings={initialRatingsPreview}
-          totalRatings={realtor.totalRatings}
-          avgRating={realtor.avgRating}
-          distribution={aggregates.ratingDistribution}
-          reviewReplyRate={aggregates.reviewReplyRate}
-          onOpenReviews={() => onOpenReviews("preview")}
-        />
+            <ProfilePortfolioSection
+              realtorName={realtor.name}
+              properties={properties}
+              totalActiveProperties={aggregates.totalActiveProperties}
+              onOpenOverlay={(id) => {
+                trackCtaClick("portfolio", "open_overlay");
+                onOpenOverlay(id, "profile_v2_portfolio");
+              }}
+              whatsappHref={whatsappHrefBuilder}
+            />
 
-        {isAgency && agencyProfile ? (
-          <AgencyPublicProfileSections
-            agencySlug={realtor.publicSlug}
-            agencyName={realtor.name}
-            website={agencyProfile.website}
-            specialties={agencyProfile.specialties}
-            yearsInBusiness={agencyProfile.yearsInBusiness}
-            serviceAreas={agencyProfile.serviceAreas}
-            completion={agencyProfile.completion}
-            teamMembers={agencyProfile.teamMembers}
-            ctaCards={agencyProfile.ctaCards}
-            operationMetrics={agencyProfile.operationMetrics}
-          />
-        ) : null}
+            <ProfileReviewsPreview
+              ratings={initialRatingsPreview}
+              totalRatings={realtor.totalRatings}
+              avgRating={realtor.avgRating}
+              distribution={aggregates.ratingDistribution}
+              reviewReplyRate={aggregates.reviewReplyRate}
+              onOpenReviews={() => {
+                trackCtaClick("reviews_preview", "open_reviews");
+                onOpenReviews("preview");
+              }}
+            />
 
-        <ProfileFinalCta
-          realtorName={realtor.name}
-          realtorImage={realtor.image}
-          whatsappAction={whatsappAction}
-          telHref={telHref}
-          variant={isSparse ? "sparse" : "default"}
-        />
+            {isAgency && agencyProfile ? (
+              <AgencyPublicProfileSections
+                agencySlug={realtor.publicSlug}
+                agencyName={realtor.name}
+                website={agencyProfile.website}
+                specialties={agencyProfile.specialties}
+                yearsInBusiness={agencyProfile.yearsInBusiness}
+                serviceAreas={agencyProfile.serviceAreas}
+                completion={agencyProfile.completion}
+                teamMembers={agencyProfile.teamMembers}
+                ctaCards={agencyProfile.ctaCards}
+                operationMetrics={agencyProfile.operationMetrics}
+              />
+            ) : null}
 
-        {isOwner ? (
-          <ProfileShareSection pageUrl={pageUrl} onOpenSharePanel={onOpenShare} />
-        ) : null}
+            <ProfileFinalCta
+              realtorName={realtor.name}
+              realtorImage={realtor.image}
+              whatsappAction={wrapAction("final_cta", "whatsapp", whatsappAction)}
+              telHref={telHref}
+              variant={isSparse ? "sparse" : "default"}
+            />
+
+            {isOwner ? (
+              <ProfileShareSection
+                pageUrl={pageUrl}
+                onOpenSharePanel={() => {
+                  trackCtaClick("share_section", "open_share");
+                  onOpenShare();
+                }}
+              />
+            ) : null}
+          </div>
+
+          {/* Sidebar sticky em xl+ */}
+          <aside className="hidden xl:block">
+            <div className="sticky top-24 space-y-4">
+              {signatureCard}
+              <ProfileQuickContactCard
+                realtorName={realtor.name}
+                whatsappAction={wrapAction("sidebar_quick_contact", "whatsapp", whatsappAction)}
+                telHref={telHref}
+              />
+            </div>
+          </aside>
+        </div>
       </div>
     </>
   );

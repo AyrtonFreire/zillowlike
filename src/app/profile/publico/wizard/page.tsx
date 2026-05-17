@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAgencyConfigs } from "@/lib/agency-profile";
 import ProfilePublicWizardClient, {
+  type WizardInitialAgencyExtras,
   type WizardInitialProfile,
 } from "./ProfilePublicWizardClient";
 
@@ -42,6 +44,13 @@ export default async function ProfilePublicWizardPage() {
       publicPhoneOptIn: true,
       publicInstagram: true,
       publicLinkedIn: true,
+      agencyProfile: { select: { teamId: true } },
+      ownedTeams: { take: 1, orderBy: { createdAt: "asc" }, select: { id: true } },
+      teamMemberships: {
+        take: 1,
+        orderBy: { createdAt: "asc" },
+        select: { teamId: true },
+      },
     } as never,
   });
 
@@ -52,6 +61,27 @@ export default async function ProfilePublicWizardPage() {
   const role = (user as { role: string }).role;
   if (role !== "REALTOR" && role !== "AGENCY") {
     redirect("/profile");
+  }
+
+  let agencyExtras: WizardInitialAgencyExtras | null = null;
+  if (role === "AGENCY") {
+    const teamId =
+      (user as { agencyProfile: { teamId: string } | null }).agencyProfile?.teamId ||
+      (user as { ownedTeams: Array<{ id: string }> }).ownedTeams?.[0]?.id ||
+      (user as { teamMemberships: Array<{ teamId: string }> }).teamMemberships?.[0]?.teamId ||
+      null;
+    if (teamId) {
+      try {
+        const { profileConfig } = await getAgencyConfigs(String(teamId));
+        agencyExtras = {
+          yearsInBusiness: profileConfig.yearsInBusiness ?? null,
+          website: profileConfig.website ?? null,
+          specialties: Array.isArray(profileConfig.specialties) ? profileConfig.specialties : [],
+        };
+      } catch {
+        agencyExtras = { yearsInBusiness: null, website: null, specialties: [] };
+      }
+    }
   }
 
   const initial: WizardInitialProfile = {
@@ -76,5 +106,5 @@ export default async function ProfilePublicWizardPage() {
     role: role as "REALTOR" | "AGENCY",
   };
 
-  return <ProfilePublicWizardClient initial={initial} />;
+  return <ProfilePublicWizardClient initial={initial} agencyExtras={agencyExtras} />;
 }

@@ -22,6 +22,42 @@ export type PortfolioProperty = {
   conditionTags?: string[];
   createdAt: string;
   images: { url: string }[];
+  // Optional fields used by PortfolioFull filters/map (present in PublicProperty payload).
+  latitude?: number | null;
+  longitude?: number | null;
+  yearBuilt?: number | null;
+  condoFee?: number | null;
+  iptuYearly?: number | null;
+  inCondominium?: boolean | null;
+  furnished?: boolean | null;
+  petFriendly?: boolean | null;
+  petsSmall?: boolean | null;
+  petsLarge?: boolean | null;
+  hasPool?: boolean | null;
+  hasGym?: boolean | null;
+  hasElevator?: boolean | null;
+  hasBalcony?: boolean | null;
+  hasPlayground?: boolean | null;
+  hasPartyRoom?: boolean | null;
+  hasGourmet?: boolean | null;
+  hasConcierge24h?: boolean | null;
+  comfortAC?: boolean | null;
+  comfortHeating?: boolean | null;
+  comfortSolar?: boolean | null;
+  comfortNoiseWindows?: boolean | null;
+  comfortLED?: boolean | null;
+  comfortWaterReuse?: boolean | null;
+  accRamps?: boolean | null;
+  accWideDoors?: boolean | null;
+  accAccessibleElevator?: boolean | null;
+  accTactile?: boolean | null;
+  finishCabinets?: boolean | null;
+  finishCounterGranite?: boolean | null;
+  finishCounterQuartz?: boolean | null;
+  viewSea?: boolean | null;
+  viewCity?: boolean | null;
+  viewRiver?: boolean | null;
+  viewLake?: boolean | null;
 };
 
 function formatBRL(valueCents: number | null): string {
