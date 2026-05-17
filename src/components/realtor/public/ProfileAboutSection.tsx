@@ -27,7 +27,7 @@ export default function ProfileAboutSection({
     >
       <div
         className={`grid gap-8 ${
-          hasSheet ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""
+          hasSheet ? "lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-1" : ""
         }`}
       >
         <div className="max-w-3xl">
@@ -39,7 +39,11 @@ export default function ProfileAboutSection({
           </div>
         </div>
 
-        {hasSheet ? <ProfileFactSheet factSheet={factSheet} /> : null}
+        {hasSheet ? (
+          <div className="xl:hidden">
+            <ProfileFactSheet factSheet={factSheet} />
+          </div>
+        ) : null}
       </div>
     </section>
   );

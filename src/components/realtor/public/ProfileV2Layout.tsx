@@ -17,7 +17,7 @@ import ProfileSignatureCard from "./ProfileSignatureCard";
 import ProfileSpecialtiesStrip from "./ProfileSpecialtiesStrip";
 import ProfileStickyNav, { type StickyNavItem } from "./ProfileStickyNav";
 import ProfileTrustRibbon from "./ProfileTrustRibbon";
-import type { FactSheetVM } from "./ProfileFactSheet";
+import ProfileFactSheet, { type FactSheetVM } from "./ProfileFactSheet";
 
 type ProfileV2RatingItem = {
   id: string;
@@ -407,14 +407,15 @@ export default function ProfileV2Layout({
             ) : null}
           </div>
 
-          {/* Sidebar sticky em xl+ — só QuickContact (SignatureCard vive no hero) */}
+          {/* Sidebar sticky em xl+ — QuickContact + FactSheet (SignatureCard vive no hero) */}
           <aside className="hidden xl:block">
-            <div className="sticky top-24">
+            <div className="sticky top-24 space-y-4">
               <ProfileQuickContactCard
                 realtorName={realtor.name}
                 whatsappAction={wrapAction("sidebar_quick_contact", "whatsapp", whatsappAction)}
                 telHref={telHref}
               />
+              <ProfileFactSheet factSheet={factSheet} />
             </div>
           </aside>
         </div>
