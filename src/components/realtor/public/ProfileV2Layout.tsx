@@ -323,6 +323,7 @@ export default function ProfileV2Layout({
             trackCtaClick("hero", "share");
             onOpenShare();
           }}
+          sideCard={signatureCard}
         />
       </div>
 
@@ -406,10 +407,9 @@ export default function ProfileV2Layout({
             ) : null}
           </div>
 
-          {/* Sidebar sticky em xl+ */}
+          {/* Sidebar sticky em xl+ — só QuickContact (SignatureCard vive no hero) */}
           <aside className="hidden xl:block">
-            <div className="sticky top-24 space-y-4">
-              {signatureCard}
+            <div className="sticky top-24">
               <ProfileQuickContactCard
                 realtorName={realtor.name}
                 whatsappAction={wrapAction("sidebar_quick_contact", "whatsapp", whatsappAction)}
